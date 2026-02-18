@@ -1,0 +1,76 @@
+plugins {
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JavaFX
+    implementation 'org.openjfx:javafx-controls:21'
+    implementation 'org.openjfx:javafx-fxml:21'
+    
+    // UI Styling (BootstrapFX/AtlantaFX)
+    implementation 'org.kordamp.bootstrapfx:bootstrapfx-core:0.4.0'
+    implementation 'io.github.mkpaz:atlantafx-base:2.0.1'
+
+    // Database & Cloud
+    implementation 'org.postgresql:postgresql:42.7.2'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+    // JSON & Utilities (NEW)
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    // AI & Cloud
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'org.postgresql:postgresql:42.7.2'
+    
+    // PDF Tools (Read & Write)
+    implementation 'org.apache.pdfbox:pdfbox:2.0.29' 
+    implementation 'com.itextpdf:itextpdf:5.5.13.3'
+    // JSON (For LeetCode API)
+    implementation 'org.json:json:20231013'
+    
+    // Jsoup (For Devpost Scraping)
+    implementation 'org.jsoup:jsoup:1.16.1'
+    
+    
+    // Lombok (Helper)
+
+    // 1. Telegram Bot API
+    implementation 'org.telegram:telegrambots:6.9.7.1'
+
+    // 2. LangChain4j (The AI Bridge for Gemini & OpenAI/Groq)
+    implementation 'dev.langchain4j:langchain4j-google-ai-gemini:0.35.0'
+    implementation 'dev.langchain4j:langchain4j-open-ai:0.35.0'
+    
+    // 3. JSON Parsing (For handling AI responses)
+    implementation 'org.json:json:20240303'
+    
+    // 4. PDFBox (To read text from PDF files for AI analysis)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.0'
+
+  implementation 'dev.langchain4j:langchain4j-google-ai-gemini:0.35.0'
+    
+    // .env and JSON remain the same
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    implementation 'org.json:json:20240303'
+    
+
+}
+
+javafx {
+    version = "21"
+    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.web' ]
+}
+
+application {
+    // IMPORTANT: Point to the Launcher class to bypass module errors
+    mainClass = 'com.scholar.Launcher'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}

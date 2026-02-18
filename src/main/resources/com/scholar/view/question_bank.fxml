@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="20" alignment="TOP_CENTER" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.scholar.controller.QuestionBankController"
+      style="-fx-padding: 30; -fx-background-color: #f4f6f7;">
+
+    <Label text="AI Question Bank Generator 🤖" textFill="#2c3e50">
+        <font>
+            <Font name="System Bold" size="24.0"/>
+        </font>
+    </Label>
+
+    <HBox spacing="15" alignment="CENTER">
+        <Button text="📂 Select PDF Files" onAction="#onSelectFilesClick" 
+                style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        
+        <Button fx:id="processBtn" text="⚡ AI Process" onAction="#onProcessClick" disable="true"
+                style="-fx-background-color: #8e44ad; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+        <VBox spacing="10" style="-fx-padding: 10;">
+            <Label text="Selected Files:" style="-fx-font-weight: bold;"/>
+            <ListView fx:id="fileListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+
+     <VBox spacing="10" style="-fx-padding: 10;" VBox.vgrow="ALWAYS">
+            <Label text="AI Processing Logs:" style="-fx-font-weight: bold;"/>
+            <TextArea fx:id="logArea" editable="false" wrapText="true" prefHeight="100" 
+                      style="-fx-font-family: 'Consolas'; -fx-control-inner-background: #2c3e50; -fx-text-fill: #ecf0f1;"/>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="resourceNameField" promptText="Enter custom resource name..." HBox.hgrow="ALWAYS"/>
+                <Button fx:id="downloadBtn" text="💾 Save &amp; Upload" onAction="#onDownloadPdfClick"
+                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <Label text="📚 Generated Resources:" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;"/>
+            <TableView fx:id="resourceTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="nameCol" text="Resource Name" prefWidth="200"/>
+                    <TableColumn fx:id="dateCol" text="Date" prefWidth="100"/>
+                    <TableColumn fx:id="actionCol" text="Actions" prefWidth="150"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </SplitPane>
+
+</VBox>
