@@ -36,7 +36,11 @@ public class CourseService {
         int hardVotes,
         boolean hasUserVoted,
         String tags ,
-        String description 
+        String description ,
+        String courseCode,   // e.g. CSE 105
+        String segmentName,  // e.g. CT-1
+        String topicName,    // e.g. DSA
+        String allUserNotes
         // ✅ Added tags to record
     ) {}
 
@@ -172,29 +176,33 @@ public class CourseService {
     // ==========================================
     // 🌍 RESOURCES & PROGRESS FETCHING (FIXED)
     // ==========================================
-    public List<Resource> getResources(int topicId) {
+   public List<Resource> getResources(int topicId) {
         List<Resource> list = new ArrayList<>();
         Connection conn = DatabaseConnection.getConnection();
         if (conn == null) return list;
 
-        // 🌟 SQL: Check if CURRENT USER voted and marked as done! 🌟
+        // 🌟 SQL আপডেট করা হয়েছে: এখন কোর্স, সেগমেন্ট এবং টপিক টেবিল JOIN করা হয়েছে
         String sql = """
             SELECT 
                 r.*, 
                 u.full_name as creator_name,
+                c.code as course_code, s.name as segment_name, t.title as topic_name,
+                (SELECT STRING_AGG(user_note, ' | ') FROM user_progress WHERE resource_id = r.id) as all_notes,
                 (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Easy') as easy_cnt,
                 (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Medium') as med_cnt,
                 (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Hard') as hard_cnt,
                 EXISTS(SELECT 1 FROM resource_votes v WHERE v.resource_id = r.id AND v.user_id = ?::uuid) as user_voted,
                 EXISTS(SELECT 1 FROM user_progress p WHERE p.resource_id = r.id AND p.user_id = ?::uuid) as user_completed
             FROM resources r 
+            JOIN topics t ON r.topic_id = t.id
+            JOIN segments s ON t.segment_id = s.id
+            JOIN courses c ON s.course_id = c.id
             LEFT JOIN users u ON r.created_by = u.id 
             WHERE r.topic_id = ? 
             ORDER BY r.upvotes DESC, r.id DESC
         """;
         
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            // ইউজারের আইডি তিন জায়গায় পাস করা হচ্ছে
             pstmt.setObject(1, AuthService.CURRENT_USER_ID);
             pstmt.setObject(2, AuthService.CURRENT_USER_ID);
             pstmt.setInt(3, topicId);
@@ -204,19 +212,169 @@ public class CourseService {
                 list.add(new Resource(
                     rs.getInt("id"), rs.getString("title"), rs.getString("link"), rs.getString("type"),
                     rs.getString("difficulty"), rs.getString("duration"),
-                    rs.getBoolean("user_completed"), // ✅ এটি "Done" বাটন ফিক্স করবে!
+                    rs.getBoolean("user_completed"), 
                     rs.getBoolean("is_public"),
                     rs.getInt("upvotes"), rs.getInt("downvotes"),
                     rs.getString("creator_name"), rs.getString("created_by"),
                     rs.getInt("easy_cnt"), rs.getInt("med_cnt"), rs.getInt("hard_cnt"),
-                    rs.getBoolean("user_voted"), // ✅ এটি ভোটের পর বাটন Disable করবে!
+                    rs.getBoolean("user_voted"), 
                     rs.getString("tags"),
-                    rs.getString("description")
+                    rs.getString("description"),
+                    // ✅ এই ৪টি নতুন লাইন যোগ করার ফলে লাল দাগ চলে যাবে
+                    rs.getString("course_code"),
+                    rs.getString("segment_name"),
+                    rs.getString("topic_name"),
+                    rs.getString("all_notes")
                 ));
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
+
+
+
+
+// ==========================================================
+    // 🧠 AI CONTEXT FETCHING (FULL HIERARCHY + AGGREGATED NOTES)
+    // ==========================================================
+    public String fetchResourceContextForAI(String userQuery) {
+        StringBuilder context = new StringBuilder();
+        String searchKeyword = "%" + userQuery.trim().toLowerCase() + "%";
+
+        // 🌟 MASTER SQL: Joins hierarchy & Aggregates Notes
+        String sql = """
+            SELECT 
+                r.title, r.link, r.type, r.difficulty, r.upvotes, r.ai_summary,
+                c.code AS course_code, 
+                s.name AS segment_name, 
+                t.title AS topic_name,
+                -- 🌟 AGGREGATE ALL USER NOTES (Line by Line)
+                (SELECT STRING_AGG('- ' || user_note, E'\n') 
+                 FROM user_progress 
+                 WHERE resource_id = r.id AND user_note IS NOT NULL AND user_note != '') as community_notes
+            FROM resources r
+            JOIN topics t ON r.topic_id = t.id
+            JOIN segments s ON t.segment_id = s.id
+            JOIN courses c ON s.course_id = c.id
+            WHERE (LOWER(c.code) LIKE ? OR LOWER(s.name) LIKE ? OR LOWER(t.title) LIKE ? OR LOWER(r.title) LIKE ? OR LOWER(r.tags) LIKE ?)
+            AND r.channel_id = ?
+            ORDER BY r.upvotes DESC LIMIT 5
+        """;
+
+        try (java.sql.Connection conn = DatabaseConnection.getConnection();
+             java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            // Search across all layers (Course, Segment, Topic, Resource)
+            pstmt.setString(1, searchKeyword);
+            pstmt.setString(2, searchKeyword);
+            pstmt.setString(3, searchKeyword);
+            pstmt.setString(4, searchKeyword);
+            pstmt.setString(5, searchKeyword);
+            pstmt.setInt(6, AuthService.CURRENT_CHANNEL_ID);
+
+            java.sql.ResultSet rs = pstmt.executeQuery();
+            boolean found = false;
+
+            while (rs.next()) {
+                found = true;
+                String notes = rs.getString("community_notes");
+                
+                // 📝 Formatting the data for Gemini AI
+                context.append("=== RESOURCE CARD ===\n")
+                       .append("📍 Path: ").append(rs.getString("course_code"))
+                       .append(" > ").append(rs.getString("segment_name")) // e.g. CT-1
+                       .append(" > ").append(rs.getString("topic_name")).append("\n") // e.g. DSA
+                       
+                       .append("📄 Title: ").append(rs.getString("title")).append("\n")
+                       .append("🔗 Link: ").append(rs.getString("link")).append("\n")
+                       .append("⭐ Stats: ").append(rs.getInt("upvotes")).append(" Upvotes | Difficulty: ").append(rs.getString("difficulty")).append("\n")
+                       .append("🤖 AI Summary: ").append(rs.getString("ai_summary")).append("\n");
+
+                // Appending all user notes line by line
+                if (notes != null && !notes.isEmpty()) {
+                    context.append("💬 Student Notes:\n").append(notes).append("\n");
+                } else {
+                    context.append("💬 Student Notes: No notes added yet.\n");
+                }
+                context.append("\n"); 
+            }
+            
+            if(!found) return ""; // AI Controller handles empty string
+            
+        } catch (java.sql.SQLException e) { 
+            e.printStackTrace(); 
+            return "Database Error: " + e.getMessage(); 
+        }
+        return context.toString();
+    }
+
+
+
+
+
+
+// ==========================================================
+    // 🔍 SMART SEARCH (FOR TABLE VIEW)
+    // ==========================================================
+    public List<Resource> searchResourcesSmart(String query) {
+        List<Resource> list = new ArrayList<>();
+        String searchKeyword = "%" + query.trim().toLowerCase() + "%";
+
+        String sql = """
+            SELECT r.*, u.full_name as creator_name,
+                   c.code as course_code, s.name as segment_name, t.title as topic_name,
+                   (SELECT STRING_AGG(user_note, ' | ') FROM user_progress WHERE resource_id = r.id) as all_notes,
+                   (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Easy') as easy_cnt,
+                   (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Medium') as med_cnt,
+                   (SELECT COUNT(*) FROM user_progress p WHERE p.resource_id = r.id AND p.difficulty_rating = 'Hard') as hard_cnt,
+                   EXISTS(SELECT 1 FROM resource_votes v WHERE v.resource_id = r.id AND v.user_id = ?::uuid) as user_voted,
+                   EXISTS(SELECT 1 FROM user_progress p WHERE p.resource_id = r.id AND p.user_id = ?::uuid) as user_completed
+            FROM resources r
+            JOIN topics t ON r.topic_id = t.id
+            JOIN segments s ON t.segment_id = s.id
+            JOIN courses c ON s.course_id = c.id
+            LEFT JOIN users u ON r.created_by = u.id
+            WHERE (LOWER(c.code) LIKE ? OR LOWER(s.name) LIKE ? OR LOWER(t.title) LIKE ? OR LOWER(r.title) LIKE ? OR LOWER(r.tags) LIKE ?)
+            AND r.channel_id = ?
+            ORDER BY r.upvotes DESC
+        """;
+
+        try (java.sql.Connection conn = DatabaseConnection.getConnection();
+             java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setObject(1, AuthService.CURRENT_USER_ID);
+            pstmt.setObject(2, AuthService.CURRENT_USER_ID);
+            for(int i=3; i<=7; i++) pstmt.setString(i, searchKeyword);
+            pstmt.setInt(8, AuthService.CURRENT_CHANNEL_ID);
+
+            java.sql.ResultSet rs = pstmt.executeQuery();
+            while(rs.next()) {
+                list.add(new Resource(
+                    rs.getInt("id"), rs.getString("title"), rs.getString("link"), rs.getString("type"),
+                    rs.getString("difficulty"), rs.getString("duration"),
+                    rs.getBoolean("user_completed"), rs.getBoolean("is_public"),
+                    rs.getInt("upvotes"), rs.getInt("downvotes"),
+                    rs.getString("creator_name"), rs.getString("created_by"),
+                    rs.getInt("easy_cnt"), rs.getInt("med_cnt"), rs.getInt("hard_cnt"),
+                    rs.getBoolean("user_voted"), rs.getString("tags"), rs.getString("description"),
+                    // ✅ NEW DATA MAPPED HERE
+                    rs.getString("course_code"),
+                    rs.getString("segment_name"),
+                    rs.getString("topic_name"),
+                    rs.getString("all_notes")
+                ));
+            }
+        } catch (java.sql.SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+
+
+
+
+
+
+
 
 
 

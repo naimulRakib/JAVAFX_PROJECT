@@ -22,6 +22,15 @@ import javafx.stage.Stage;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
+import javafx.scene.input.MouseEvent;
+
+
+
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
+
 import java.io.IOException;
 import java.net.URI;
 import java.sql.Connection;
@@ -51,7 +60,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.URI;
-import java.time.Duration;
 
 
 
@@ -108,6 +116,12 @@ private final AIController aiController = new AIController();
     @FXML private Button btnBacklog;
     @FXML private Button btnCompleted;
 
+    @FXML private TextArea communityAiInput;
+    @FXML private Button communityAiBtn;
+    @FXML private WebView communityAiWebView;
+
+    
+
     // 🌟 বর্তমান ভিউ ট্র্যাক করার জন্য একটি ভেরিয়েবল
     private String currentViewMode = "DAILY"; // 3 modes: DAILY, BACKLOG, COMPLETED
 
@@ -160,7 +174,7 @@ private final AIController aiController = new AIController();
 
 
     // ==========================================================
-    // 🚀 INITIALIZATION
+    //  INITIALIZATION
     // ==========================================================
    @FXML
     public void initialize() {
@@ -214,6 +228,7 @@ private final AIController aiController = new AIController();
         drawCalendar();
         loadResources();
         loadChannels();
+        loadTeamsForChannel(1, "Hackathons");
         loadQuestionBankTab();
         loadProfileSettings();
 
@@ -221,89 +236,63 @@ private final AIController aiController = new AIController();
         loadTasksFromDatabase();
        
 
+
         // ==========================================================
-        // 🤖 6. SETUP AI TUTOR TAB LOGIC (NEWLY ADDED)
+        // 🤖 AI TUTOR TAB LOGIC
         // ==========================================================
+        
+        // ১. সেফটি চেক: যদি FXML লোড না হয়, কনসোলে এরর দেখাবে
+        if (aiAskBtn == null) {
+            System.err.println("❌ ERROR: 'aiAskBtn' is NULL! FXML লিঙ্ক হয়নি।");
+        }
+
         if (aiWebView != null && aiAskBtn != null) {
             
-            // ১. ওয়েলকাম মেসেজ সেট করা
-            String welcomeHtml = "<html><body style='font-family: Arial, sans-serif; color: #2c3e50; text-align: center; margin-top: 15%;'>" +
-                "<h2 style='color: #8e44ad;'>👋 Hello! I am your ScholarGrid AI.</h2>" +
-                "<p>Ask me what to study, and I will find the <b>best resources</b> from our database for you!</p>" +
-                "</body></html>";
-            aiWebView.getEngine().loadContent(welcomeHtml);
+            // ২. ওয়েলকাম মেসেজ লোড করা
+            aiWebView.getEngine().loadContent("""
+                <html><body style='font-family: Arial; text-align: center; margin-top: 10%; color: #2c3e50; background-color: #f4f6f7;'>
+                <h2>👋 ScholarGrid AI Ready!</h2>
+                <p>Type a topic or question to start.</p>
+                </body></html>
+                """);
 
-    
+            // ৩. বাটনে ক্লিক করলে কী হবে
+            aiAskBtn.setOnAction(e -> {
+                System.out.println(" Button Clicked!"); // কনসোলে প্রিন্ট হবে
 
+                String topic = (aiTopicInput != null) ? aiTopicInput.getText().trim() : "";
+                String question = aiQuestionInput.getText().trim();
 
+                if (topic.isEmpty() && question.isEmpty()) {
+                    System.out.println("⚠️ No Input Found");
+                    return;
+                }
 
-       aiAskBtn.setOnAction(e -> {
-    // ১. ইউজারের কাঁচা ইনপুট নেওয়া
-    final String rawQuery = aiQuestionInput.getText().trim(); 
-    if (rawQuery.isEmpty()) return;
+                // লোডিং দেখানো
+                aiWebView.getEngine().loadContent("<h3> AI Thinking...</h3>");
+                aiAskBtn.setDisable(true); // বাটন অফ করা
 
-    // ২. ভেরিয়েবল ডিক্লেয়ার করা (যাতে লাল দাগ না আসে)
-    String extractedKeyword; 
+                // ব্যাকগ্রাউন্ডে কাজ শুরু
+                new Thread(() -> {
+                    try {
+                        String fullQuery = topic + " " + question;
+                        // AI Controller কে কল করা
+                        String response = aiController.askSmartAITutor(question, fullQuery);
 
-    // ৩. Regex ছাঁকনি দিয়ে কোর্স কোড (e.g., CSE 105) বের করা
-    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)([a-z]{2,3}\\s*\\d{3})").matcher(rawQuery);
-    
-    if (m.find()) {
-        extractedKeyword = m.group(1); // ব্র্যাকেটের ভেতরের টুকু (CSE 105) নিল
-    } else {
-        // কোর্স কোড না পেলে বাক্য ছোট করা
-        extractedKeyword = rawQuery.toLowerCase()
-                                   .replace("i need", "")
-                                   .replace("resources", "")
-                                   .trim();
-    }
-
-    // ৪. UI আপডেট: ইউজারকে জানানো কী সার্চ হচ্ছে
-    aiWebView.getEngine().loadContent("<html><body style='font-family:sans-serif; text-align:center; padding-top:20%;'>" +
-            "🤖 Searching ScholarGrid for: <b>" + extractedKeyword + "</b>...<br>Ranking by Community Votes...</body></html>");
-    aiAskBtn.setDisable(true);
-
-    // ৫. ব্যাকগ্রাউন্ড থ্রেড ব্যবহার করা (যাতে অ্যাপ হ্যাং না করে)
-    new Thread(() -> {
-        try {
-            // 🌟 AIController কল করা (সম্পূর্ণ প্রশ্ন এবং ফিল্টার কি-ওয়ার্ড সহ)
-            // এটি এখন systematic ভাবে র‍্যাঙ্ক করা ডাটা আনবে
-            String aiHtmlResponse = aiController.askSmartAITutor(rawQuery, extractedKeyword);
-
-            Platform.runLater(() -> {
-                aiWebView.getEngine().loadContent(aiHtmlResponse);
-                aiAskBtn.setDisable(false);
-                aiQuestionInput.clear();
-            });
-        } catch (Exception ex) {
-            Platform.runLater(() -> {
-                aiWebView.getEngine().loadContent("<p style='color:red;'>Error: " + ex.getMessage() + "</p>");
-                aiAskBtn.setDisable(false);
+                        // UI আপডেট করা
+                        javafx.application.Platform.runLater(() -> {
+                            aiWebView.getEngine().loadContent(response);
+                            aiAskBtn.setDisable(false); // বাটন অন করা
+                        });
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }).start();
             });
         }
-    }).start();
-});
-
-
-
-          
-         aiWebView.getEngine().locationProperty().addListener((obs, oldLoc, newLoc) -> {
-    if (newLoc != null && !newLoc.isEmpty() && newLoc.startsWith("http")) {
-        // ইউজারের জন্য ক্লিনিং মেসেজ
-        Platform.runLater(() -> {
-            aiWebView.getEngine().loadContent("<h3>🌍 Opening Resource in Browser...</h3>");
-        });
-        
-        try {
-            // পিসির ডিফল্ট ব্রাউজারে লিংকটি ওপেন করবে
-            java.awt.Desktop.getDesktop().browse(new java.net.URI(newLoc));
-        } catch (Exception ex) { 
-            ex.printStackTrace(); 
-        }
     }
-});
-        }
-    }
+  
+    
 
 
     private void loadQuestionBankTab() {
@@ -1085,9 +1074,9 @@ doneBtn.setOnAction(e -> showResourceCompletionDialog(getTableView().getItems().
                     new Thread(() -> {
                         List<CourseService.Segment> segments = courseService.getSegments(courseId);
                         Platform.runLater(() -> {
-                            TreeItem<String> ctGroup = new TreeItem<>("🚨 Class Tests (CT)");
-                            TreeItem<String> basicsGroup = new TreeItem<>("🛠️ Basic Building");
-                            TreeItem<String> finalGroup = new TreeItem<>("📚 Term Final");
+                            TreeItem<String> ctGroup = new TreeItem<>(" Class Tests (CT)");
+                            TreeItem<String> basicsGroup = new TreeItem<>("Basic Building");
+                            TreeItem<String> finalGroup = new TreeItem<>("Term Final");
                             TreeItem<String> othersGroup = new TreeItem<>("📁 Others");
 
                             for (var seg : segments) {
@@ -1507,63 +1496,572 @@ if (showOnlyMine && q.userId() != null && !String.valueOf(q.userId()).equals(cur
         public CourseService.Resource getRawResource() { return rawResource; }
     }
 
+
+
+
+// ==========================================================
+    // 🤝 5. COLLABORATION & TEAMS (FINAL FIXED VERSION)
     // ==========================================================
-    // 🤝 5. COLLABORATION & TEAMS
-    // ==========================================================
+
+    // ক্লাসের শুরুতে অন্য ভেরিয়েবলগুলোর সাথে রাখুন
+private CollaborationService.Post currentActivePost;
+@FXML private ListView<String> teamResourceList;
+
+    
+    // Telegram Service Instance
+    private final TelegramService telegramService = new TelegramService(); 
+    
+    // Auto-refresh timeline for chat
+    private Timeline chatTimeline;
+
+    @FXML
+    public void onCreateChannel() {
+        // Channel creation logic placeholder
+        System.out.println("Create Channel Clicked");
+        showSuccess("Feature coming soon! Default channels are available.");
+    }
+
     private void loadChannels() {
         if(channelList == null) return;
         channelList.getChildren().clear();
-        String[] channels = {"Hackathons 🏆", "Research 🔬", "Study Partners 📚", "Project Help 🆘"};
-        for (String c : channels) {
-            Button btn = new Button("# " + c);
-            btn.setMaxWidth(Double.MAX_VALUE); btn.setAlignment(Pos.CENTER_LEFT);
-            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-cursor: hand;");
-            btn.setOnAction(e -> loadTeamsForChannel(c)); channelList.getChildren().add(btn);
+        
+        // Load all channels from Service
+        List<CollaborationService.Channel> channels = collaborationService.getAllChannels(); 
+        for (var c : channels) {
+            Button btn = new Button("# " + c.title());
+            btn.setMaxWidth(Double.MAX_VALUE); 
+            btn.setAlignment(Pos.CENTER_LEFT);
+            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 8 15;");
+            
+            // Hover effect
+            btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 8 15;"));
+            btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 8 15;"));
+
+            btn.setOnAction(e -> loadTeamsForChannel(c.id(), c.title())); 
+            channelList.getChildren().add(btn);
         }
     }
 
-    private void loadTeamsForChannel(String channelName) {
+    private void loadTeamsForChannel(int channelId, String channelName) {
+        if (teamList == null) return;
         teamList.getChildren().clear();
-        Label title = new Label("Teams in " + channelName); title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
-        teamList.getChildren().add(title);
-        VBox card = new VBox(5); card.setStyle("-fx-background-color: white; -fx-padding: 10;");
-        card.getChildren().addAll(new Label("🚀 Space Apps Team"), new Button("View Team"));
-        card.setOnMouseClicked(e -> loadRoomView(1)); teamList.getChildren().add(card);
-    }
 
-    private void loadRoomView(int postId) {
-        String myStatus = collaborationService.getMyStatus(postId);
-        roomContainer.getChildren().clear();
-        if (myStatus.equals("APPROVED")) showChatRoom(postId);
-        else {
-            Button applyBtn = new Button("Apply to Join Team");
-            applyBtn.setOnAction(e -> { if (collaborationService.applyToTeam(postId)) showSuccess("Application Sent!"); });
-            roomContainer.getChildren().add(applyBtn);
+        List<CollaborationService.Post> posts = collaborationService.getPostsForChannel(channelId);
+        
+        if (posts.isEmpty()) {
+            Label noTeamLabel = new Label("No teams yet in #" + channelName);
+            noTeamLabel.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 10;");
+            teamList.getChildren().add(noTeamLabel);
+        }
+
+        for (CollaborationService.Post post : posts) {
+            VBox card = new VBox(8);
+            card.setStyle("-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; " +
+                          "-fx-border-color: #e2e8f0; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
+            
+            Label title = new Label("🚀 " + post.title());
+            title.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1e293b;");
+            
+            Label desc = new Label(post.desc() == null || post.desc().isEmpty() ? "No description." : post.desc());
+            desc.setWrapText(true);
+            desc.setStyle("-fx-text-fill: #64748b;");
+            
+            Label members = new Label("👥 Max Members: " + post.maxMembers());
+            members.setStyle("-fx-font-size: 12px; -fx-text-fill: #8b5cf6; -fx-font-weight: bold;");
+
+            Button viewBtn = new Button("View Workspace");
+            viewBtn.setMaxWidth(Double.MAX_VALUE);
+            viewBtn.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+            viewBtn.setOnAction(e -> loadRoomView(post));
+
+            card.getChildren().addAll(title, desc, members, viewBtn);
+            teamList.getChildren().add(card);
         }
     }
 
-    private void showChatRoom(int postId) {
-        VBox chatBox = new VBox(10); TextArea msgInput = new TextArea(); msgInput.setPrefRowCount(2);
-        Button sendBtn = new Button("Send 🚀");
-        sendBtn.setOnAction(e -> { collaborationService.sendMessage(postId, msgInput.getText()); msgInput.clear(); refreshChat(postId, chatBox); });
-        refreshChat(postId, chatBox); roomContainer.getChildren().addAll(chatBox, msgInput, sendBtn);
+
+    // ✅ এটি FXML এর সাথে যুক্ত হবে (কোনো প্যারামিটার নেই)
+    @FXML
+    public void onAddTeamResourceClick() {
+        // সেফটি চেক
+        if (currentActivePost == null) {
+            showError("Please select a team workspace first.");
+            return;
+        }
+        
+        // এবার আপনার তৈরি করা প্যারামিটারসহ মেথডটি কল করুন
+        // teamResourceList হলো ডান পাশের লিস্ট ভিউ (FXML ID)
+        onAddResourceClick(currentActivePost.id(), teamResourceList);
     }
 
-    private void refreshChat(int postId, VBox chatBox) {
+
+
+    private void loadRoomView(CollaborationService.Post post) {
+
+        this.currentActivePost = post;
+        roomContainer.getChildren().clear();
+        
+        // Stop any running chat updates
+        if (chatTimeline != null) chatTimeline.stop();
+        
+        String myStatus = collaborationService.getMyStatus(post.id());
+
+        if (myStatus.equals("OWNER")) {
+            showOwnerDashboard(post); 
+        } else if (myStatus.equals("APPROVED")) {
+            showChatRoom(post); 
+        } else if (myStatus.equals("PENDING")) {
+            VBox pendingBox = new VBox(15);
+            pendingBox.setAlignment(Pos.CENTER);
+            Label status = new Label("⏳ Application Sent");
+            status.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e67e22;");
+            Label msg = new Label("Waiting for the team owner to approve your request.");
+            msg.setStyle("-fx-text-fill: #64748b;");
+            pendingBox.getChildren().addAll(status, msg);
+            roomContainer.getChildren().add(pendingBox);
+        } else {
+            showRequirementZone(post);
+        }
+    }
+
+    private void showRequirementZone(CollaborationService.Post post) {
+        VBox reqBox = new VBox(15);
+        reqBox.setStyle("-fx-padding: 30; -fx-background-color: white; -fx-background-radius: 10; -fx-border-color: #e2e8f0;");
+        
+        Label title = new Label("📝 Join Team: " + post.title());
+        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        
+        Label subTitle = new Label("Please answer the following questions from the owner:");
+        subTitle.setStyle("-fx-text-fill: #64748b;");
+        
+        reqBox.getChildren().addAll(title, subTitle);
+
+        List<CollaborationService.Requirement> questions = collaborationService.getRequirements(post.id());
+        List<TextField> answers = new ArrayList<>();
+
+        if (questions.isEmpty()) {
+            reqBox.getChildren().add(new Label("No specific requirements. You can apply directly."));
+        }
+
+        for (var q : questions) {
+            Label qLbl = new Label("• " + q.question());
+            qLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #334155;");
+            reqBox.getChildren().add(qLbl);
+            
+            TextField ansField = new TextField();
+            ansField.setPromptText("Type your answer here...");
+            ansField.setStyle("-fx-padding: 10; -fx-background-radius: 5; -fx-border-color: #cbd5e1; -fx-border-radius: 5;");
+            answers.add(ansField);
+            reqBox.getChildren().add(ansField);
+        }
+
+        Button applyBtn = new Button("Submit Application 🚀");
+        applyBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 5; -fx-cursor: hand;");
+        
+        applyBtn.setOnAction(e -> {
+            List<String> answerTexts = answers.stream().map(TextField::getText).toList();
+            // Check empty answers
+            if (answerTexts.stream().anyMatch(String::isEmpty) && !questions.isEmpty()) {
+                showError("Please answer all questions.");
+                return;
+            }
+
+            List<Integer> qIds = questions.stream().map(CollaborationService.Requirement::id).toList();
+            
+            if (collaborationService.applyToTeamWithAnswers(post.id(), qIds, answerTexts)) {
+                showSuccess("Application Sent Successfully!");
+                loadRoomView(post);
+            } else {
+                showError("Failed to apply. You might have already applied.");
+            }
+        });
+
+        reqBox.getChildren().add(applyBtn);
+        roomContainer.getChildren().add(reqBox);
+    }
+
+    private void showOwnerDashboard(CollaborationService.Post post) {
+        roomContainer.getChildren().clear();
+        
+        VBox mainBox = new VBox(20);
+        mainBox.setPadding(new Insets(20));
+
+        // Header
+        HBox header = new HBox(15);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Label title = new Label("👑 Management Dashboard: " + post.title());
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 20px; -fx-text-fill: #1e293b;");
+        
+        Button gotoChatBtn = new Button("Go to Team Workspace 💬");
+        gotoChatBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        gotoChatBtn.setOnAction(e -> showChatRoom(post));
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(title, spacer, gotoChatBtn);
+
+        // Applications List
+        Label subTitle = new Label("Pending Applications");
+        subTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+
+        ScrollPane scrollPane = new ScrollPane();
+        VBox appsBox = new VBox(10);
+        scrollPane.setContent(appsBox);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        List<CollaborationService.Application> apps = collaborationService.getApplicationsForPost(post.id());
+
+        if (apps.isEmpty()) {
+            appsBox.getChildren().add(new Label("No pending applications right now."));
+        }
+
+        for (var app : apps) {
+            VBox appCard = new VBox(10);
+            appCard.setStyle("-fx-border-color: #e2e8f0; -fx-padding: 15; -fx-background-radius: 8; -fx-background-color: #f8fafc;");
+            
+            Label applicantName = new Label("👤 Applicant: " + app.username());
+            applicantName.setStyle("-fx-font-weight: bold; -fx-text-fill: #0f172a;");
+            
+            Label answersLabel = new Label("Responses:");
+            answersLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #64748b;");
+            
+            // Format answers nicely
+            VBox qaBox = new VBox(5);
+            for(String ans : app.answers()) {
+                 Label a = new Label("• " + ans);
+                 a.setWrapText(true);
+                 qaBox.getChildren().add(a);
+            }
+
+            HBox actions = new HBox(10);
+            if (app.status().equals("PENDING")) {
+                Button approveBtn = new Button("Approve ✅");
+                approveBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand;");
+                approveBtn.setOnAction(e -> {
+                    if (collaborationService.approveMember(post.id(), app.userId())) {
+                        showSuccess(app.username() + " approved!");
+                        showOwnerDashboard(post); // Refresh
+                    }
+                });
+                actions.getChildren().add(approveBtn);
+            } else {
+                actions.getChildren().add(new Label("Status: " + app.status()));
+            }
+
+            appCard.getChildren().addAll(applicantName, answersLabel, qaBox, new Separator(), actions);
+            appsBox.getChildren().add(appCard);
+        }
+
+        mainBox.getChildren().addAll(header, subTitle, scrollPane);
+        roomContainer.getChildren().add(mainBox);
+    }
+
+    // ==========================================================
+    // 💬 CHAT ROOM & RESOURCE LOGIC
+    // ==========================================================
+
+    // ✅ ৪. সম্পূর্ণ আপডেটেড চ্যাট রুম মেথড
+    private void showChatRoom(CollaborationService.Post post) {
+        roomContainer.getChildren().clear(); // পুরনো ভিউ মুছে ফেলা
+
+        // লেআউট তৈরি
+        SplitPane splitPane = new SplitPane();
+        splitPane.setDividerPositions(0.7);
+
+        // --- বাম পাশ: চ্যাট ---
+        VBox chatSide = new VBox(10); chatSide.setPadding(new Insets(10));
+        
+        // চ্যাট বাবল কন্টেইনার
+        VBox chatBox = new VBox(10);
+        chatBox.setPadding(new Insets(15));
+        ScrollPane chatScroll = new ScrollPane(chatBox); // স্ক্রল প্যানে চ্যাটবক্স ঢোকানো
+        chatScroll.setFitToWidth(true);
+        VBox.setVgrow(chatScroll, Priority.ALWAYS);
+
+        // ইনপুট বক্স
+        TextField msgInput = new TextField();
+        Button sendBtn = new Button("Send");
+        HBox inputBox = new HBox(10, msgInput, sendBtn);
+        inputBox.setAlignment(Pos.CENTER);
+
+        // সেন্ড অ্যাকশন
+        sendBtn.setOnAction(e -> {
+            if (!msgInput.getText().trim().isEmpty()) {
+                collaborationService.sendMessage(post.id(), msgInput.getText());
+                msgInput.clear();
+                refreshChat(post.id(), chatBox, chatScroll); // সাথে সাথে রিফ্রেশ
+            }
+        });
+
+        chatSide.getChildren().addAll(new Label("💬 " + post.title()), chatScroll, inputBox);
+
+        // --- ডান পাশ: রিসোর্স ---
+        VBox resSide = new VBox(10); resSide.setPadding(new Insets(10));
+        
+        // ডাইনামিক লিস্ট ভিউ তৈরি
+        ListView<String> dynamicResList = new ListView<>();
+        VBox.setVgrow(dynamicResList, Priority.ALWAYS);
+
+        Button addResBtn = new Button("➕ Add Resource");
+        addResBtn.setMaxWidth(Double.MAX_VALUE);
+        
+        // বাটন অ্যাকশন
+        addResBtn.setOnAction(e -> onAddResourceClick(post.id(), dynamicResList));
+        
+        // 🌟 ক্লিক লিসেনার সেট করা (এটি মিসিং ছিল)
+        dynamicResList.setOnMouseClicked(e -> handleTeamResourceClick(e, dynamicResList));
+
+        resSide.getChildren().addAll(new Label("📂 Files"), dynamicResList, addResBtn);
+
+        // ফিনিশিং
+        splitPane.getItems().addAll(chatSide, resSide);
+        roomContainer.getChildren().add(splitPane);
+
+        // প্রথমবার ডাটা লোড
+        refreshChat(post.id(), chatBox, chatScroll);
+        loadTeamResources(post.id(), dynamicResList); // এটি লোকাল লিস্ট আপডেট করবে
+        
+        // অটো রিফ্রেশ শুরু
+        startChatAutoRefresh(post.id(), chatBox, chatScroll);
+    }
+
+    // 1. ক্লাসের শুরুতে এই লিস্টটি আছে তো? (না থাকলে যোগ করুন)
+    private List<CollaborationService.TeamResource> currentResourceData = new ArrayList<>();
+
+    // 2. এই মেথডটি ক্লাসের ভেতরে যেকোনো জায়গায় বসান
+    private void handleTeamResourceClick(MouseEvent event, ListView<String> listView) {
+        // ডাবল ক্লিক চেক
+        if (event.getClickCount() == 2) { 
+            int index = listView.getSelectionModel().getSelectedIndex();
+            
+            // ইনডেক্স ভ্যালিড কিনা এবং ডাটা আছে কিনা চেক
+            if (index >= 0 && index < currentResourceData.size()) {
+                
+                // সঠিক অবজেক্ট থেকে URL বের করা
+                String url = currentResourceData.get(index).url();
+                
+                try {
+                    System.out.println("Opening Link: " + url);
+                    // ব্রাউজারে লিংক বা ফাইল ওপেন করা
+                    java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                } catch (Exception e) {
+                    showError("Could not open link. Please check the URL.");
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+    // ✅ ৫. চ্যাট রিফ্রেশ মেথড (Thread Safe)
+    private void refreshChat(int postId, VBox chatBox, ScrollPane scrollPane) {
         new Thread(() -> {
-            List<CollaborationService.Message> messages = collaborationService.getMessages(postId);
+            List<CollaborationService.Message> msgs = collaborationService.getMessages(postId);
+            
             Platform.runLater(() -> {
                 chatBox.getChildren().clear();
-                for (var msg : messages) chatBox.getChildren().add(new Label(msg.sender() + ": " + msg.content()));
+                for (var msg : msgs) {
+                    Label label = new Label(msg.sender() + ": " + msg.content());
+                    label.setWrapText(true);
+                    label.setStyle("-fx-background-color: #e2e8f0; -fx-padding: 8; -fx-background-radius: 5;");
+                    label.setMaxWidth(300);
+                    
+                    // নিজের মেসেজ ডানে, অন্যদের বামে
+                    HBox bubble = new HBox(label);
+                    if (msg.sender().equals(AuthService.CURRENT_USER_NAME)) {
+                        bubble.setAlignment(Pos.CENTER_RIGHT);
+                        label.setStyle("-fx-background-color: #dbeafe; -fx-padding: 8; -fx-background-radius: 5;");
+                    } else {
+                        bubble.setAlignment(Pos.CENTER_LEFT);
+                    }
+                    chatBox.getChildren().add(bubble);
+                }
+                // অটো স্ক্রল নিচে
+                chatBox.heightProperty().addListener(o -> scrollPane.setVvalue(1.0));
             });
         }).start();
     }
 
-    @FXML public void onCreateChannel() { showSuccess("Feature coming soon!"); }
-    @FXML public void onCreatePost() {
-        TextInputDialog dialog = new TextInputDialog(); dialog.setHeaderText("Create Post Title:");
-        dialog.showAndWait().ifPresent(title -> { if(collaborationService.createPost(1, title)) showSuccess("Post Created!"); });
+
+    private void startChatAutoRefresh(int postId, VBox chatBox, ScrollPane scrollPane) {
+        if (chatTimeline != null) chatTimeline.stop();
+        chatTimeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> refreshChat(postId, chatBox, scrollPane)));
+        chatTimeline.setCycleCount(Timeline.INDEFINITE);
+        chatTimeline.play();
+        
+        // Stop timeline when leaving view
+        roomContainer.sceneProperty().addListener((obs, old, nev) -> {
+            if (nev == null && chatTimeline != null) chatTimeline.stop();
+        });
     }
+
+
+
+
+
+
+    // ==========================================================
+    // 📂 RESOURCE HANDLING
+    // ==========================================================
+
+
+
+
+    
+
+    private void loadTeamResources(int postId, ListView<String> listView) {
+        listView.getItems().clear();
+        List<CollaborationService.TeamResource> resources = collaborationService.getTeamResources(postId);
+        
+        if (resources.isEmpty()) {
+            listView.getItems().add("No shared files.");
+        } else {
+            for (var res : resources) {
+                String icon = "FILE".equalsIgnoreCase(res.type()) ? "📄" : "🔗";
+                listView.getItems().add(icon + " " + res.title() + " (" + res.addedBy() + ")");
+            }
+        }
+    }
+
+    private void handleResourceClick(MouseEvent event, int postId) {
+        if (event.getClickCount() == 2) {
+            // Find the ListView that triggered the event
+            ListView<String> listView = (ListView<String>) event.getSource();
+            int index = listView.getSelectionModel().getSelectedIndex();
+            
+            List<CollaborationService.TeamResource> resources = collaborationService.getTeamResources(postId);
+            if (index >= 0 && index < resources.size()) {
+                String url = resources.get(index).url();
+                try {
+                    java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                } catch (Exception e) { showError("Cannot open link."); }
+            }
+        }
+    }
+
+    // Add Resource Dialog (Fixed with Post ID)
+    private void onAddResourceClick(int postId, ListView<String> listViewToRefresh) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("📂 Add Resource");
+        dialog.setHeaderText("Share Link or File");
+
+        VBox content = new VBox(10);
+        TextField titleField = new TextField(); titleField.setPromptText("Title");
+        TextArea descField = new TextArea(); descField.setPromptText("Description");
+        descField.setPrefRowCount(2);
+        
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("LINK", "FILE");
+        typeBox.setValue("LINK");
+
+        StackPane inputStack = new StackPane();
+        TextField linkField = new TextField(); linkField.setPromptText("Paste URL...");
+        
+        HBox fileBox = new HBox(10);
+        Button uploadBtn = new Button("Select File 📁");
+        Label fileLabel = new Label("No file");
+        fileBox.getChildren().addAll(uploadBtn, fileLabel);
+        fileBox.setVisible(false);
+
+        final File[] selectedFile = {null};
+        uploadBtn.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            File f = fc.showOpenDialog(null);
+            if(f != null) {
+                selectedFile[0] = f;
+                fileLabel.setText(f.getName());
+            }
+        });
+
+        typeBox.setOnAction(e -> {
+            boolean isFile = typeBox.getValue().equals("FILE");
+            linkField.setVisible(!isFile);
+            fileBox.setVisible(isFile);
+        });
+
+        inputStack.getChildren().addAll(linkField, fileBox);
+        content.getChildren().addAll(new Label("Type:"), typeBox, new Label("Title:"), titleField, descField, inputStack);
+        
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(type -> {
+            if (type == ButtonType.OK) {
+                String title = titleField.getText();
+                String desc = descField.getText();
+                
+                if (typeBox.getValue().equals("LINK")) {
+                    collaborationService.addTeamResource(postId, title, linkField.getText(), "LINK", desc, null);
+                    loadTeamResources(postId, listViewToRefresh);
+                    showSuccess("Link Added!");
+                } else {
+                    if (selectedFile[0] != null) {
+                        showSuccess("Uploading...");
+                        new Thread(() -> {
+                            String fileId = telegramService.uploadToCloud(selectedFile[0]);
+                            if (fileId != null) {
+                                String url = telegramService.getFileDownloadUrl(fileId);
+                                Platform.runLater(() -> {
+                                    collaborationService.addTeamResource(postId, title, url, "FILE", desc, fileId);
+                                    loadTeamResources(postId, listViewToRefresh);
+                                    showSuccess("File Uploaded!");
+                                });
+                            } else {
+                                Platform.runLater(() -> showError("Upload Failed"));
+                            }
+                        }).start();
+                    }
+                }
+            }
+        });
+    }
+
+    @FXML 
+    public void onCreatePost() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("🚀 Create Team");
+        dialog.setHeaderText("Create a new collaboration team");
+
+        VBox content = new VBox(10);
+        TextField titleField = new TextField(); titleField.setPromptText("Team Name");
+        TextArea descField = new TextArea(); descField.setPromptText("Description");
+        descField.setPrefRowCount(3);
+        Spinner<Integer> spinner = new Spinner<>(2, 10, 4);
+        
+        VBox qBox = new VBox(5);
+        List<TextField> qFields = new ArrayList<>();
+        Button addQ = new Button("+ Add Question");
+        addQ.setOnAction(e -> {
+            TextField tf = new TextField(); tf.setPromptText("Question...");
+            qFields.add(tf); qBox.getChildren().add(tf);
+        });
+
+        content.getChildren().addAll(new Label("Name:"), titleField, new Label("Desc:"), descField, new Label("Members:"), spinner, new Label("Entry Questions:"), qBox, addQ);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(type -> {
+            if (type == ButtonType.OK) {
+                String t = titleField.getText();
+                String d = descField.getText();
+                int m = spinner.getValue();
+                List<String> qs = qFields.stream().map(TextField::getText).filter(s -> !s.isEmpty()).toList();
+                
+                if(!t.isEmpty() && !d.isEmpty()){
+                    if(collaborationService.createPostWithRequirements(1, t, d, m, qs)){
+                        showSuccess("Team Created!");
+                        loadTeamsForChannel(1, "Hackathons");
+                    }
+                } else {
+                    showError("Fill all fields");
+                }
+            }
+        });
+    }
+
+
 
     // ==========================================================
     // 🏆 6. ECA TRACKER
@@ -2290,6 +2788,10 @@ private void deleteTimelineTask(StudyTask task) {
             }
         });
     }
+
+
+
+    
 
 
 }

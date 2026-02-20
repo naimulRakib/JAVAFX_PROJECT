@@ -23,6 +23,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.web.WebView?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.control.ListView?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1250.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.scholar.controller.DashboardController">
 
@@ -221,28 +222,36 @@
                     </SplitPane>
                 </Tab>
 
-                <Tab text="Collaborate 🤝" style="-fx-font-weight: bold;">
+               <Tab text="Collaborate 🤝" style="-fx-font-weight: bold;">
                     <SplitPane dividerPositions="0.2, 0.45" style="-fx-background-color: transparent; -fx-padding: 10;">
                         <items>
                             <VBox spacing="15" style="-fx-padding: 15; -fx-background-color: #1e293b; -fx-background-radius: 10;">
                                 <Label text="CHANNELS" textFill="#94a3b8" style="-fx-font-weight: bold; -fx-letter-spacing: 1px;" />
                                 <VBox fx:id="channelList" spacing="8" VBox.vgrow="ALWAYS"/>
-                                <Button text="➕ New Channel" onAction="#onCreateChannel" maxWidth="Infinity" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;"/>
+                                <Button text="➕ New Channel" onAction="#onCreateChannel" maxWidth="Infinity" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-cursor: hand;"/>
                             </VBox>
 
-                            <VBox spacing="15" style="-fx-padding: 20; -fx-background-color: #f8fafc; -fx-background-radius: 10; -fx-border-color: #e2e8f0; -fx-border-radius: 10;">
-                                <Label text="ACTIVE TEAMS" textFill="#475569" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                                <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">
-                                    <content>
-                                        <VBox fx:id="teamList" spacing="12"/>
-                                    </content>
+                            <VBox spacing="15" style="-fx-padding: 20; -fx-background-color: #f8fafc; -fx-background-radius: 10; -fx-border-color: #e2e8f0;">
+                                <Label text="ACTIVE TEAMS" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+                                    <VBox fx:id="teamList" spacing="12"/>
                                 </ScrollPane>
-                                <Button text="📢 Create Post" onAction="#onCreatePost" maxWidth="Infinity" style="-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 10; -fx-cursor: hand;"/>
+                                <Button text="📢 Create Post" onAction="#onCreatePost" maxWidth="Infinity" style="-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-cursor: hand;"/>
                             </VBox>
 
-                            <VBox fx:id="roomContainer" spacing="15" style="-fx-padding: 20; -fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 2);">
-                                <Label text="Chat Room" textFill="#1e293b" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                            <VBox fx:id="roomContainer" spacing="15" style="-fx-padding: 20; -fx-background-color: white; -fx-background-radius: 10;">
+                                <Label text="Team Workspace" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                                <Label text="Select a team or channel to start collaborating." textFill="#64748b"/>
                             </VBox>
+                            <VBox spacing="5" style="-fx-background-color: white; -fx-padding: 10;">
+    <Label text="📂 Shared Files and Links" style="-fx-font-weight: bold;"/>
+    
+    <ListView fx:id="teamResourceList" VBox.vgrow="ALWAYS" style="-fx-border-color: #e2e8f0;"/>
+    
+    <Button text="➕ Add Resource" onAction="#onAddTeamResourceClick" maxWidth="Infinity" style="-fx-background-color: #3b82f6; -fx-text-fill: white;"/>
+</VBox>
+
+
                         </items>
                     </SplitPane>
                 </Tab>

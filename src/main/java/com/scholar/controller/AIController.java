@@ -1,5 +1,9 @@
+
+ //private String GEMINI_API_KEY = "AIzaSyCsgRERKdg0pDtapy5nuYJeFfiotr5V6MM"; 
 package com.scholar.controller;
 
+import com.scholar.service.AuthService;
+import com.scholar.service.DatabaseConnection;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,21 +17,9 @@ import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-
-import com.scholar.service.*;
-
-
-
-
-
-// 🌟 আপনার প্রজেক্টের ডাটাবেস ক্লাসের লোকেশন অনুযায়ী এটি ইমপোর্ট করে নিন
-// import your.package.name.DatabaseConnection; 
-
 public class AIController {
 
-    // ইউজারের নিজস্ব API Key (BYOK) অথবা আপনার ডিফল্ট Key
-    // ⚠️ এখানে আপনার Google AI Studio থেকে পাওয়া Gemini API Key টি বসান
+    // ⚠️ Replace with your actual Google AI Studio Gemini API Key
     private String GEMINI_API_KEY = "AIzaSyCsgRERKdg0pDtapy5nuYJeFfiotr5V6MM"; 
 
     public void setApiKey(String key) {
@@ -35,10 +27,10 @@ public class AIController {
     }
 
     // ==========================================================
-    // 🤖 1. AUTO-SUMMARIZER (রিসোর্স আপলোডের সময় কল করবেন)
+    // 🤖 1. AUTO-SUMMARIZER (Called during resource upload)
     // ==========================================================
     public String generateResourceSummary(String title, String link, String tags, String description) {
-        if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_GEMINI_API_KEY")) {
+        if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_GEMINI_API_KEY_HERE")) {
             return "AI Summary is unavailable because API Key is missing.";
         }
 
@@ -51,20 +43,21 @@ public class AIController {
                 "Make the summary useful so students know exactly what they will learn from it. Do not use special characters that break JSON.";
 
         try {
-            // JSON-এর জন্য স্পেশাল ক্যারেক্টার ক্লিন করা (যাতে API ক্র্যাশ না করে)
+            // Escape special characters for JSON
             String cleanPrompt = prompt.replace("\"", "\\\"").replace("\n", " ");
             String jsonBody = "{\"contents\": [{\"parts\": [{\"text\": \"" + cleanPrompt + "\"}]}]}";
 
-            HttpRequest request = HttpRequest.newBuilder()
+           HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(15))
+                    .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             HttpClient client = HttpClient.newHttpClient();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
+            // Extract text from JSON response using Regex
             Matcher m = Pattern.compile("\"text\"\\s*:\\s*\"([^\"]+)\"").matcher(response.body());
             if (m.find()) {
                 return m.group(1).replace("\\n", "\n").replace("\\\"", "\"");
@@ -76,145 +69,134 @@ public class AIController {
     }
 
     // ==========================================================
-    // 🧠 2. FETCH CONTEXT (ডাটাবেস থেকে টপ রিসোর্স খোঁজা)
-    // ==========================================================
-    private String fetchComprehensiveContext(String keyword) {
-        StringBuilder context = new StringBuilder();
-        
-        // 🌟 ম্যাজিকাল SQL: রিসোর্সের ডাটা এবং ওই রিসোর্সের সব কমেন্ট একসাথে আনা (STRING_AGG ব্যবহার করে)
-        String sql = """
-            SELECT r.*, 
-                   (SELECT STRING_AGG('User Says: ' || content, ' | ') 
-                    FROM comments WHERE resource_id = r.id) as discussion
-            FROM resources r
-            WHERE r.title ILIKE ? OR r.tags ILIKE ? OR r.description ILIKE ?
-            ORDER BY r.upvotes DESC LIMIT 5
-        """;
-
-        try (java.sql.Connection conn = com.scholar.service.DatabaseConnection.getConnection();
-             java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            String searchParam = "%" + keyword.trim() + "%";
-            pstmt.setString(1, searchParam);
-            pstmt.setString(2, searchParam);
-            pstmt.setString(3, searchParam);
-
-            java.sql.ResultSet rs = pstmt.executeQuery();
-            int count = 1;
-
-            while (rs.next()) {
-                context.append("Resource ").append(count++).append(":\n")
-                       .append("- Title: ").append(rs.getString("title")).append("\n")
-                       .append("- Link: ").append(rs.getString("link")).append("\n")
-                       .append("- AI Summary: ").append(rs.getString("ai_summary")).append("\n")
-                       .append("- Discussion (Community Voice): ").append(rs.getString("discussion") != null ? rs.getString("discussion") : "No discussion yet.").append("\n")
-                       .append("- Upvotes: ").append(rs.getInt("upvotes")).append("\n\n");
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Error fetching AI context: " + e.getMessage());
-        }
-        return context.toString();
-    }
-
-    // ==========================================================
-    // 💬 3. SYSTEMATIC AI TUTOR (RANKED & CATEGORIZED)
+    // 💬 2. SYSTEMATIC AI TUTOR (Ranked & Categorized)
     // ==========================================================
     public String askSmartAITutor(String userQuery, String searchKeyword) {
-    // ১. এপিআই কী চেক
-    if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_GEMINI_API_KEY")) {
-        return "<p style='color:red;'>⚠️ Error: API Key is missing! Please connect your AI Key first.</p>";
-    }
+        // 1. API Key Check
+        if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_GEMINI_API_KEY_HERE")) {
+            return wrapWithModernUI("<p style='color:red;'>⚠️ Error: API Key is missing! Please connect your AI Key first.</p>");
+        }
 
-    // ২. ডাটাবেস থেকে সিস্টেমেটিক কন্টেন্ট আনা (এখানে আপনার ai_summary এবং discussion ডাটা থাকে)
-    String dbContext = fetchSystematicContext(searchKeyword);
+        // 2. Fetch Systematic Context from Database
+        String dbContext = fetchSystematicContext(searchKeyword);
 
-    if (dbContext.trim().isEmpty()) {
-        return "<p>ScholarGrid-এ '<b>" + searchKeyword + "</b>' সংক্রান্ত কোনো রিসোর্স (CT/Final/Basic) পাওয়া যায়নি। অন্য কী-ওয়ার্ড ট্রাই করুন!</p>";
-    }
+        if (dbContext.trim().isEmpty()) {
+            return wrapWithModernUI("<p>No resources found in ScholarGrid regarding '<b>" + searchKeyword + "</b>'. Please try a different keyword.</p>");
+        }
 
-    // ৩. প্রম্পট ইঞ্জিনিয়ারিং (AI Summary এবং Discussion ডাটাকে গুরুত্ব দেওয়া)
-    String systemPrompt = "You are 'ScholarGrid AI'. I am providing you with ranked resources and actual student discussions. " +
-            "--- CONTEXT ---\\n" + dbContext.replace("\n", "\\n") + "\\n" +
-            "YOUR STRICT INSTRUCTIONS:\\n" +
-            "1. List resources by Course > Segment > Topic.\\n" +
-            "2. SUMMARY: Use the UNIQUE 'ai_summary' from context. Do NOT generalize.\\n" +
-            "3. SENTIMENT: Check the 'Community Feedback'. If a student says 'problem' (like ID 23), warn the user. If they say 'better', highlight it as 'Student Choice'.\\n" +
-            "4. RANKING: Use this formula for internal priority: " +
-            "Score = (Upvotes * 1.5) + (CommentsCount * 0.5)\\n" +
-            "5. OUTPUT: Clean HTML with <h3>, <ul>, and clickable buttons.";
-
-   try {
-    // ১. JSON বডি তৈরি (সঠিক এস্কেপিং সহ)
-    String safeUserQuery = userQuery.replace("\"", "\\\"").replace("\n", " ");
-    String jsonBody = "{\"contents\": [{\"parts\": [{\"text\": \"" + systemPrompt + " USER QUESTION: " + safeUserQuery + "\"}]}]}";
-
-    // ২. জেমিনি ১.৫ ফ্ল্যাশ ব্যবহার (স্ট্যাবিলিটি নিশ্চিত করতে)
-    java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-            .uri(java.net.URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY))
-            .header("Content-Type", "application/json")
-            .timeout(java.time.Duration.ofSeconds(25))
-            .POST(java.net.http.HttpRequest.BodyPublishers.ofString(jsonBody))
-            .build();
-
-    java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-    java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-
-    // ৩. ডিবাগিং
-    System.out.println("🤖 AI Response Body: " + response.body());
-
-    if (response.statusCode() != 200) {
-        return wrapWithModernUI("<p style='color:red;'>⚠️ API Error (" + response.statusCode() + "): Quota exceeded or invalid key.</p>");
-    }
-
-    // ৪. উন্নত Regex এবং Unicode Fix (\u003c সমাধান)
-    java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"text\"\\s*:\\s*\"([^\"]+)\"").matcher(response.body());
+        // 3. Prompt Engineering
+       String systemPrompt = """
+    You are 'ScholarGrid AI', a professional academic assistant. Use the provided ranked resources and student discussions to help the user.
     
-    StringBuilder fullContent = new StringBuilder();
-    while (m.find()) {
-        String text = m.group(1);
-        
-        // 🌟 ইউনিকোড এবং এইচটিএমএল ক্যারেক্টার ক্লিন করা
-        String cleanPart = text
-                .replace("\\u003c", "<")
-                .replace("\\u003e", ">")
-                .replace("\\n", "<br>")
-                .replace("\\\"", "\"")
-                .replace("\\*", "") // Markdown বোল্ড সাইন রিমুভ
-                .replace("\\u0026", "&");
-        
-        fullContent.append(cleanPart);
+    --- CONTEXT ---
+    %s
+    
+    YOUR STRICT INSTRUCTIONS:
+    1. ROLE: Act as a helpful tutor. If no resources are found in the context, answer the query generally but state that no specific files were found in the database.
+    2. HIERARCHY: For each resource, strictly display the path as: <span class='path-badge'>COURSE > SEGMENT > TOPIC</span>.
+    3. SUMMARY: Directly use the 'ai_summary' field. Do not make up information.
+    4. SENTIMENT & FEEDBACK: 
+       - If 'Community Feedback' contains keywords like 'problem', 'error', or 'hard', add: <div class='warning'>⚠️ Note: Students reported issues with this resource.</div>
+       - If upvotes > 5 or feedback is very positive, add: <div class='student-choice'>⭐ Community Choice</div>
+    5. OUTPUT FORMAT:
+       - Every resource must be inside <div class='resource-card'>.
+       - Resource title should be in <h3>.
+       - Use <ul> for details like Upvotes and Difficulty.
+       - Links MUST use this exact class: <a class='btn-open' href='LINK'>View Resource</a>
+    6. TONE: Professional, clean, and academic. Do NOT use Markdown (like **bold**); use <b>bold</b> instead.
+    """.formatted(dbContext.replace("\n", "\\n").replace("\"", "\\\""));
+
+        try {
+            // 4. Construct JSON Body
+            String safeUserQuery = userQuery.replace("\"", "\\\"").replace("\n", " ");
+            String fullPrompt = systemPrompt + " USER QUESTION: " + safeUserQuery;
+            String jsonBody = "{\"contents\": [{\"parts\": [{\"text\": \"" + fullPrompt + "\"}]}]}";
+
+            // 5. Send Request
+         HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Debugging
+            System.out.println("🤖 AI Response Body: " + response.body());
+
+            if (response.statusCode() != 200) {
+                return wrapWithModernUI("<p style='color:red;'>⚠️ API Error (" + response.statusCode() + "): " + response.body() + "</p>");
+            }
+
+            // 6. Extract and Clean Response
+            Matcher m = Pattern.compile("\"text\"\\s*:\\s*\"([^\"]+)\"").matcher(response.body());
+            StringBuilder fullContent = new StringBuilder();
+            
+            while (m.find()) {
+                String text = m.group(1);
+                // Clean Unicode and HTML escape characters
+                String cleanPart = text
+                        .replace("\\u003c", "<")
+                        .replace("\\u003e", ">")
+                        .replace("\\n", "<br>")
+                        .replace("\\\"", "\"")
+                        .replace("\\*", "") // Remove Markdown bold
+                        .replace("\\u0026", "&");
+                fullContent.append(cleanPart);
+            }
+
+            if (fullContent.length() > 0) {
+                return wrapWithModernUI(fullContent.toString());
+            } else {
+                return wrapWithModernUI("<p>⚠️ Parsing Error: AI responded but data could not be read.</p>");
+            }
+
+        } catch (Exception e) {
+            System.err.println("❌ AI Error: " + e.getMessage());
+            return wrapWithModernUI("<p style='color:red;'>⚠️ Connection error with ScholarGrid AI.</p>");
+        }
     }
 
-    if (fullContent.length() > 0) {
-        // 🌟 ৫. আপনার আধুনিক HTML/CSS টেমপ্লেট দিয়ে র‍্যাপ করা
-        return wrapWithModernUI(fullContent.toString());
-    } else {
-        return wrapWithModernUI("<p>⚠️ Parsing Error: এআই উত্তর দিয়েছে কিন্তু ডাটা পড়া যাচ্ছে না।</p>");
-    }
-
-} catch (Exception e) {
-    System.err.println("❌ AI Error: " + e.getMessage());
-    return wrapWithModernUI("<p style='color:red;'>⚠️ Connection error with ScholarGrid AI.</p>");
-}}
-
-
-    // ==========================================================
-    // 🧠 2. SYSTEMATIC FETCH: GET RANKED RESOURCES + FEEDBACK
-    // ==========================================================
-   private String fetchSystematicContext(String keyword) {
+    
+private String fetchSystematicContext(String keyword) {
     StringBuilder context = new StringBuilder();
-    String searchParam = "%" + keyword.trim() + "%";
+    
+    // 🌟 ১. ফ্লেক্সিবল সার্চ প্যাটার্ন তৈরি
+    // এটি "cse 105 ct1 dsa" কে "%cse%105%ct%1%dsa%" তে রূপান্তর করবে।
+    String cleanKeyword = keyword.trim().toLowerCase()
+                                 .replace("-", " ") 
+                                 .replace("0", "") // CT-01 এবং CT 1 এর পার্থক্য দূর করতে
+                                 .replace("  ", " ");
+    
+    String[] parts = cleanKeyword.split("\\s+");
+    StringBuilder patternBuilder = new StringBuilder("%");
+    for (String part : parts) {
+        if (!part.isEmpty()) patternBuilder.append(part).append("%");
+    }
+    String searchPattern = patternBuilder.toString();
 
-    // 🌟 JOIN Logic: Course > Segment > Topic এবং র‍্যাঙ্কিং
+    // 🌟 ২. ফ্লেক্সিবল SQL (সব ডিটেইলস চেক করবে)
     String sql = """
-        SELECT r.title, r.link, r.type, r.difficulty, r.upvotes, r.ai_summary,
-               c.code AS course, s.name AS segment, t.title AS topic,
-               (SELECT STRING_AGG('User Note: ' || content, ' | ') FROM comments WHERE resource_id = r.id) as discussion
+        SELECT r.*, 
+               c.code AS course_name, s.name AS segment_name, t.title AS topic_name,
+               (SELECT STRING_AGG('- Note: ' || user_note || ' (Rated: ' || difficulty_rating || ')', E'\\n') 
+                FROM user_progress 
+                WHERE resource_id = r.id AND user_note IS NOT NULL AND user_note != '') as sentiment,
+               
+               (SELECT STRING_AGG('- Student Doubt: ' || content, E'\\n') 
+                FROM comments 
+                WHERE resource_id = r.id AND content IS NOT NULL) as discussions,
+
+               (SELECT COUNT(*) FROM user_progress WHERE resource_id = r.id AND difficulty_rating = 'Easy') as easy_count,
+               (SELECT COUNT(*) FROM user_progress WHERE resource_id = r.id AND difficulty_rating = 'Medium') as med_count,
+               (SELECT COUNT(*) FROM user_progress WHERE resource_id = r.id AND difficulty_rating = 'Hard') as hard_count
         FROM resources r
         JOIN topics t ON r.topic_id = t.id
         JOIN segments s ON t.segment_id = s.id
         JOIN courses c ON s.course_id = c.id
-        WHERE (c.code ILIKE ? OR r.title ILIKE ? OR r.tags ILIKE ?)
+        WHERE (LOWER(c.code) || ' ' || LOWER(s.name) || ' ' || LOWER(t.title) || ' ' || LOWER(r.title) || ' ' || LOWER(r.tags)) LIKE ?
         AND r.channel_id = ? 
         ORDER BY r.upvotes DESC LIMIT 5; 
     """;
@@ -222,39 +204,125 @@ public class AIController {
     try (Connection conn = DatabaseConnection.getConnection();
          PreparedStatement pstmt = conn.prepareStatement(sql)) {
         
-        pstmt.setString(1, searchParam);
-        pstmt.setString(2, searchParam);
-        pstmt.setString(3, searchParam);
-        pstmt.setInt(4, AuthService.CURRENT_CHANNEL_ID); 
+        pstmt.setString(1, searchPattern);
+        pstmt.setInt(2, AuthService.CURRENT_CHANNEL_ID); 
 
         ResultSet rs = pstmt.executeQuery();
         while (rs.next()) {
-            context.append("--- DATA ENTRY ---\n")
-                   .append("Hierarchy: ").append(rs.getString("course")).append(" > ")
-                   .append(rs.getString("segment")).append(" > ").append(rs.getString("topic")).append("\n")
-                   .append("Resource: ").append(rs.getString("title")).append("\n")
-                   .append("Discussion Data: ").append(rs.getString("discussion") != null ? rs.getString("discussion") : "No comments.").append("\n")
-                   .append("AI Summary: ").append(rs.getString("ai_summary")).append("\n")
-                   .append("Link: ").append(rs.getString("link")).append("\n\n");
+            context.append("=== RESOURCE ENTRY ===\n")
+                   .append("📁 Hierarchy: ").append(rs.getString("course_name")).append(" > ")
+                   .append(rs.getString("segment_name")).append(" > ").append(rs.getString("topic_name")).append("\n")
+                   
+                   .append("📄 Title: ").append(rs.getString("title")).append(" (").append(rs.getString("type")).append(")\n")
+                   .append("🏷️ Tags: ").append(rs.getString("tags")).append("\n")
+                   .append("📝 Description: ").append(rs.getString("description")).append("\n")
+                   
+                   .append("📊 Stats: Upvotes(").append(rs.getInt("upvotes")).append("), ")
+                   .append("Easy(").append(rs.getInt("easy_count")).append("), ")
+                   .append("Med(").append(rs.getInt("med_count")).append("), ")
+                   .append("Hard(").append(rs.getInt("hard_count")).append(")\n")
+                   
+                   .append("🤖 AI Summary: ").append(rs.getString("ai_summary")).append("\n")
+                   
+                   // স্টুডেন্ট ফিডব্যাক (যেমন: "not so good") এবং ডাউটস (যেমন: "i have doubts") অন্তর্ভুক্ত করা হয়েছে
+                   .append("💬 STUDENT SENTIMENT (Progress Notes):\n")
+                   .append(rs.getString("sentiment") != null ? rs.getString("sentiment") : "No sentiment data yet.").append("\n")
+                   
+                   .append("❓ COMMUNITY DOUBTS (Discussion):\n")
+                   .append(rs.getString("discussions") != null ? rs.getString("discussions") : "No active doubts.").append("\n")
+                   
+                   .append("🔗 Link: ").append(rs.getString("link")).append("\n\n");
         }
-    } catch (SQLException e) { e.printStackTrace(); }
+    } catch (SQLException e) { 
+        e.printStackTrace(); 
+        context.append("Error: ").append(e.getMessage());
+    }
     return context.toString();
 }
 
-private String wrapWithModernUI(String aiResponse) {
-    // আপনার দেওয়া স্টাইল এবং স্ট্রাকচার এখানে থাকবে
-    return "<!DOCTYPE html><html><head><style>" +
-        "body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; }" +
-        ".chat-container { max-width: 100%; margin: auto; }" +
-        ".ai-message { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #8e44ad; line-height: 1.6; }" +
-        ".resource-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-top: 12px; background: #fff; border-left: 3px solid #3498db; }" +
-        ".rank-badge { background: #f1c40f; color: black; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }" +
-        ".warning { color: #e74c3c; font-weight: bold; background: #fff5f5; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 13px; border: 1px solid #ffe3e3; }" +
-        ".btn-read { display: inline-block; background: #8e44ad; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-top: 8px; font-size: 13px; font-weight: bold; }" +
-        "</style></head><body>" +
-        "<div class='chat-container'><div class='ai-message'>" + aiResponse + "</div></div>" +
-        "</body></html>";
+
+    // ==========================================================
+    // 🎨 4. MODERN UI WRAPPER
+    // ==========================================================
+   private String wrapWithModernUI(String aiResponse) {
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                :root {
+                    --bg-color: #f7f7f8;
+                    --user-msg-bg: #ffffff;
+                    --ai-msg-bg: #f7f7f8;
+                    --text-color: #374151;
+                    --accent-color: #10a37f; /* ChatGPT Green */
+                }
+                body { 
+                    font-family: 'Sentry', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    background-color: var(--bg-color); 
+                    margin: 0; padding: 0; color: var(--text-color);
+                }
+                .chat-container { display: flex; flex-direction: column; width: 100%; }
+                
+                /* চ্যাট বাবল স্টাইল */
+                .message {
+                    padding: 25px 15%;
+                    display: flex;
+                    gap: 20px;
+                    line-height: 1.6;
+                    border-bottom: 1px solid rgba(0,0,0,0.05);
+                }
+                .ai-message { background-color: var(--ai-msg-bg); }
+                .user-message { background-color: var(--user-msg-bg); }
+                
+                .avatar {
+                    width: 35px; height: 35px; border-radius: 4px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: bold; font-size: 12px; flex-shrink: 0;
+                }
+                .ai-avatar { background-color: var(--accent-color); color: white; }
+                .user-avatar { background-color: #5436da; color: white; }
+
+                .content { flex-grow: 1; font-size: 15px; }
+                
+                /* রিসোর্স কার্ড স্টাইল */
+                .resource-card {
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin: 15px 0;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+                }
+                .path-badge {
+                    font-size: 11px; color: var(--accent-color);
+                    background: #e6f6f2; padding: 4px 10px;
+                    border-radius: 20px; font-weight: 600;
+                }
+                .btn-open {
+                    display: inline-block; background-color: var(--accent-color);
+                    color: white; padding: 8px 18px; text-decoration: none;
+                    border-radius: 6px; font-size: 14px; font-weight: 500;
+                    margin-top: 12px; transition: background 0.2s;
+                }
+                .btn-open:hover { background-color: #1a7f64; }
+                
+                h3 { margin-top: 0; color: #111827; }
+                ul { padding-left: 20px; }
+                li { margin-bottom: 8px; }
+            </style>
+        </head>
+        <body>
+            <div class="chat-container">
+                <div class="message ai-message">
+                    <div class="avatar ai-avatar">SG</div>
+                    <div class="content">
+                        """ + aiResponse + """
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """;
 }
-
-
 }

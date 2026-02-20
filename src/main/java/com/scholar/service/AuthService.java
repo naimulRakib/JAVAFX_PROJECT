@@ -24,6 +24,8 @@ public class AuthService {
     public static String CURRENT_CHANNEL_CODE = ""; // e.g. "CSE24"
     public static String CURRENT_CHANNEL_NAME = "Personal Workspace";
 public static String CURRENT_USER_STATUS = "";
+public static String CURRENT_USER_NAME= null;
+
     // Helper to clear session on Logout
   
 
@@ -154,5 +156,30 @@ public void refreshSession() {
         System.err.println("❌ Session refresh failed: " + e.getMessage());
     }
 }
+
+// AuthService.java এর ভেতরে
+
+
+
+    // ২. নাম বের করার মেথড
+    public String getUsername(String email) {
+        String username = "Unknown"; // ডিফল্ট ভ্যালু
+        String sql = "SELECT username FROM users WHERE email = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                username = rs.getString("username");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return username;
+    }
+
 
 }

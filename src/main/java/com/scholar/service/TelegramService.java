@@ -75,4 +75,37 @@ public class TelegramService {
             return null; // Upload failed
         }
     }
+
+
+
+    /**
+     * Get direct download URL from File ID
+     */
+    public String getFileDownloadUrl(String fileId) {
+        if (BOT_TOKEN == null) return null;
+        try {
+            // 1. Get File Path from Telegram API
+            String urlString = "https://api.telegram.org/bot" + BOT_TOKEN + "/getFile?file_id=" + fileId;
+            URL url = new URL(urlString);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) response.append(line);
+            
+            JSONObject json = new JSONObject(response.toString());
+            String filePath = json.getJSONObject("result").getString("file_path");
+
+            // 2. Construct Download URL
+            return "https://api.telegram.org/file/bot" + BOT_TOKEN + "/" + filePath;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    
 }

@@ -16,11 +16,11 @@ public class Main extends Application {
     public void start(Stage stage) throws IOException {
         hostServices = getHostServices();
 
-        // LOAD LOGIN VIEW FIRST
+        
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/scholar/view/login.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 500, 600);
         
-        stage.setTitle("Scholar Grid - Login");
+        stage.setTitle("Study Easy - Login");
         stage.setScene(scene);
         stage.show();
     }
