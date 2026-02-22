@@ -4,7 +4,12 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value; // 🟢 নতুন
+import org.springframework.stereotype.Service; // 🟢 নতুন
+import jakarta.annotation.PostConstruct;
+import org.springframework.stereotype.Service;
 
+@Service
 public class AIOrchestrator {
 
     private static final Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
@@ -17,6 +22,7 @@ public class AIOrchestrator {
     // 2. THE TUTOR: Gemini 2.5 Pro
     // Optimized for deep reasoning (answering "Why?" questions)
     private final ChatLanguageModel tutor;
+    
 
     public AIOrchestrator() {
         if (GOOGLE_API_KEY == null) {

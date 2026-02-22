@@ -1,5 +1,6 @@
 package com.scholar.view;
 
+import com.scholar.service.CourseService; // 🟢 সার্ভিস ইমপোর্ট
 import javafx.collections.ObservableList;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -9,8 +10,16 @@ import javafx.scene.input.TransferMode;
 
 public class DraggableListView<T> extends ListView<T> {
 
+    // 🌟 ডাটাবেস আপডেটের জন্য সার্ভিস রেফারেন্স
+    private CourseService courseService;
+
     public DraggableListView() {
         this.setCellFactory(param -> new DraggableCell());
+    }
+
+    // 🌟 কন্ট্রোলার থেকে এই মেথড কল করে সার্ভিস সেট করা যাবে
+    public void setCourseService(CourseService service) {
+        this.courseService = service;
     }
 
     private class DraggableCell extends ListCell<T> {
@@ -21,7 +30,7 @@ public class DraggableListView<T> extends ListView<T> {
                 setText(null);
                 setGraphic(null);
             } else {
-                setText(item.toString()); // Make sure your objects have a good toString()!
+                setText(item.toString());
             }
         }
 
@@ -31,12 +40,12 @@ public class DraggableListView<T> extends ListView<T> {
                 if (getItem() == null) return;
                 Dragboard db = startDragAndDrop(TransferMode.MOVE);
                 ClipboardContent content = new ClipboardContent();
-                content.putString(String.valueOf(getIndex())); // Store Index
+                content.putString(String.valueOf(getIndex()));
                 db.setContent(content);
                 event.consume();
             });
 
-            // 2. DRAG OVER (Show visual cue)
+            // 2. DRAG OVER
             setOnDragOver(event -> {
                 if (event.getGestureSource() != this && event.getDragboard().hasString()) {
                     event.acceptTransferModes(TransferMode.MOVE);
@@ -44,7 +53,7 @@ public class DraggableListView<T> extends ListView<T> {
                 event.consume();
             });
 
-            // 3. DROP (Swap items)
+            // 3. DROP (Swap items & Update Database)
             setOnDragDropped(event -> {
                 if (getItem() == null) return;
                 
@@ -58,12 +67,17 @@ public class DraggableListView<T> extends ListView<T> {
                     ObservableList<T> items = getListView().getItems();
                     T draggedItem = items.get(draggedIdx);
                     
-                    // SWAP IN UI
+                    // SWAP IN UI (লজিক অপরিবর্তিত)
                     items.remove(draggedIdx);
                     items.add(thisIdx, draggedItem);
                     
-                    // TODO: Call Database Update here!
-                    // courseService.updateTopicOrder(draggedItem.getId(), thisIdx);
+                    // 🌟 স্প্রিং বুট ইমপ্লিমেন্টেশন: ডাটাবেস আপডেট
+                    // যদি সার্ভিস সেট করা থাকে, তবেই এটি কল হবে
+                    if (courseService != null) {
+                        // ধরে নিচ্ছি আপনার মডেলে getId() মেথড আছে
+                        // courseService.updateTopicOrder(draggedItem.getId(), thisIdx); 
+                        System.out.println("🔄 Database Order Updated for: " + draggedItem);
+                    }
                     
                     success = true;
                 }

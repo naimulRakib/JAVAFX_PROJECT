@@ -8,6 +8,8 @@ import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import org.json.JSONObject;
 import java.io.File;
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.stereotype.Controller;
 
 public class SmartUploadController {
 
@@ -15,8 +17,11 @@ public class SmartUploadController {
     @FXML private TextArea aiOutputArea; // To show the tags
     @FXML private Button uploadBtn;
 
-    private final TelegramService telegramService = new TelegramService();
-    private final AIOrchestrator aiBrain = new AIOrchestrator();
+  @Autowired 
+    private TelegramService telegramService;
+
+    @Autowired 
+    private AIOrchestrator aiBrain;
 
     @FXML
     public void onSmartUploadClick() {

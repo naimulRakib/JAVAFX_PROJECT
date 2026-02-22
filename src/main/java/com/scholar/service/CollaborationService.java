@@ -1,12 +1,15 @@
 package com.scholar.service;
 
+
+import org.springframework.stereotype.Service;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class CollaborationService {
 
-    // --- ডাটা মডেল (Records) ---
     public record Channel(int id, String title, String desc) {}
     public record Post(int id, String title, String desc, String status, int maxMembers, String ownerId) {}
     public record Requirement(int id, String question) {}
@@ -15,10 +18,9 @@ public class CollaborationService {
     public record Message(String sender, String content, String time) {}
 
     // ==========================================
-    // 📺 ১. চ্যানেল এবং পোস্ট হ্যান্ডলিং
+    // 1. CHANNELS & POSTS
     // ==========================================
 
-    // সব চ্যানেল লিস্ট আনা
     public List<Channel> getAllChannels() {
         List<Channel> list = new ArrayList<>();
         String sql = "SELECT * FROM channels ORDER BY id ASC";
@@ -32,34 +34,31 @@ public class CollaborationService {
         return list;
     }
 
-public List<Post> getPostsForChannel(int channelId) {
-    List<Post> list = new ArrayList<>();
-    // কলামের নামগুলো ডাটাবেসের সাথে হুবহু মিলতে হবে
-    String sql = "SELECT id, title, description, status, max_members, created_by FROM posts WHERE channel_id = ?";
-    
-    try (Connection conn = DatabaseConnection.getConnection();
-         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        pstmt.setInt(1, channelId);
-        ResultSet rs = pstmt.executeQuery();
-        while (rs.next()) {
-            list.add(new Post(
-                rs.getInt("id"), 
-                rs.getString("title"), 
-                rs.getString("description"), // ডাটাবেসে 'description' থাকলে এটিই ব্যবহার করুন
-                rs.getString("status"), // এই কলামটিই এখন এরর দিচ্ছে
-                rs.getInt("max_members"), 
-                rs.getString("created_by")
-            ));
-        }
-    } catch (SQLException e) { e.printStackTrace(); }
-    return list;
-}
+    public List<Post> getPostsForChannel(int channelId) {
+        List<Post> list = new ArrayList<>();
+        String sql = "SELECT id, title, description, status, max_members, created_by FROM posts WHERE channel_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, channelId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                list.add(new Post(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("description"),
+                    rs.getString("status"),
+                    rs.getInt("max_members"),
+                    rs.getString("created_by")
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 
     // ==========================================
-    // 🛡️ ২. মেম্বার স্ট্যাটাস এবং রিকোয়ারমেন্ট
+    // 2. MEMBER STATUS & REQUIREMENTS
     // ==========================================
 
-    // ইউজারের বর্তমান স্ট্যাটাস চেক করা
     public String getMyStatus(int postId) {
         String sql = "SELECT status, role FROM team_members WHERE post_id = ? AND user_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -75,7 +74,6 @@ public List<Post> getPostsForChannel(int channelId) {
         return "NONE";
     }
 
-    // পোস্টের রিকোয়ারমেন্ট (প্রশ্ন) আনা
     public List<Requirement> getRequirements(int postId) {
         List<Requirement> list = new ArrayList<>();
         String sql = "SELECT id, question FROM post_requirements WHERE post_id = ?";
@@ -91,12 +89,12 @@ public List<Post> getPostsForChannel(int channelId) {
     }
 
     // ==========================================
-    // 📤 ৩. পোস্ট তৈরি এবং আবেদন (Transaction based)
+    // 3. CREATE POST & APPLY (Transaction based)
     // ==========================================
 
     public boolean createPostWithRequirements(int channelId, String title, String desc, int maxMembers, List<String> questions) {
-        String sqlPost = "INSERT INTO posts (channel_id, title, description, max_members, created_by, status) VALUES (?, ?, ?, ?, ?, 'OPEN') RETURNING id";
-        String sqlReq = "INSERT INTO post_requirements (post_id, question) VALUES (?, ?)";
+        String sqlPost   = "INSERT INTO posts (channel_id, title, description, max_members, created_by, status) VALUES (?, ?, ?, ?, ?, 'OPEN') RETURNING id";
+        String sqlReq    = "INSERT INTO post_requirements (post_id, question) VALUES (?, ?)";
         String sqlMember = "INSERT INTO team_members (post_id, user_id, role, status) VALUES (?, ?, 'OWNER', 'APPROVED')";
 
         Connection conn = DatabaseConnection.getConnection();
@@ -117,7 +115,8 @@ public List<Post> getPostsForChannel(int channelId) {
                 try (PreparedStatement p3 = conn.prepareStatement(sqlMember)) {
                     p3.setInt(1, postId); p3.setObject(2, AuthService.CURRENT_USER_ID); p3.executeUpdate();
                 }
-                conn.commit(); return true;
+                conn.commit();
+                return true;
             }
             conn.rollback();
         } catch (SQLException e) { e.printStackTrace(); }
@@ -125,7 +124,7 @@ public List<Post> getPostsForChannel(int channelId) {
     }
 
     public boolean applyToTeamWithAnswers(int postId, List<Integer> questionIds, List<String> answers) {
-        String sqlApply = "INSERT INTO team_members (post_id, user_id, status, role) VALUES (?, ?, 'PENDING', 'MEMBER')";
+        String sqlApply  = "INSERT INTO team_members (post_id, user_id, status, role) VALUES (?, ?, 'PENDING', 'MEMBER')";
         String sqlAnswer = "INSERT INTO application_answers (post_id, user_id, question_id, answer) VALUES (?, ?, ?, ?)";
         Connection conn = DatabaseConnection.getConnection();
         try {
@@ -140,12 +139,13 @@ public List<Post> getPostsForChannel(int channelId) {
                 }
                 p2.executeBatch();
             }
-            conn.commit(); return true;
+            conn.commit();
+            return true;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
     // ==========================================
-    // ✅ ৪. মেম্বার ম্যানেজমেন্ট এবং রিসোর্স
+    // 4. MEMBER MANAGEMENT
     // ==========================================
 
     public List<Application> getApplicationsForPost(int postId) {
@@ -183,7 +183,7 @@ public List<Post> getPostsForChannel(int channelId) {
     }
 
     // ==========================================
-    // 💬 ৫. চ্যাট এবং রিসোর্স (লিংক)
+    // 5. CHAT & RESOURCES
     // ==========================================
 
     public boolean sendMessage(int postId, String message) {
@@ -219,52 +219,37 @@ public List<Post> getPostsForChannel(int channelId) {
         } catch (SQLException e) { return false; }
     }
 
-public List<TeamResource> getTeamResources(int postId) {
-        List<TeamResource> list = new ArrayList<>();
-        // SQL কুয়েরিতে নতুন কলামগুলো যোগ করা হয়েছে
-        String sql = "SELECT r.*, u.username FROM team_resources r JOIN users u ON r.added_by = u.id WHERE r.post_id = ? ORDER BY r.created_at DESC";
-        
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setInt(1, postId);
-            ResultSet rs = pstmt.executeQuery();
-            
-            while (rs.next()) {
-                // নতুন আপডেটেড রেকর্ড কনস্ট্রাক্টর
-                list.add(new TeamResource(
-                    rs.getInt("id"),
-                    rs.getString("title"),
-                    rs.getString("url"),
-                    rs.getString("type"),          // নতুন ফিল্ড (এটিই লাল দাগ ফিক্স করবে)
-                    rs.getString("description"),   // নতুন ফিল্ড
-                    rs.getString("file_id"),       // নতুন ফিল্ড
-                    rs.getString("username")
-                ));
-            }
-        } catch (SQLException e) { 
-            e.printStackTrace(); 
-        }
-        return list;
-    }
-
-    // রিসোর্স অ্যাড করা (টাইপ এবং ফাইল আইডি সহ)
     public boolean addTeamResource(int postId, String title, String url, String type, String desc, String fileId) {
         String sql = "INSERT INTO team_resources (post_id, title, url, type, description, file_id, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, postId);
-            pstmt.setString(2, title);
-            pstmt.setString(3, url);
-            pstmt.setString(4, type);
-            pstmt.setString(5, desc);
-            pstmt.setString(6, fileId);
+            pstmt.setInt(1, postId); pstmt.setString(2, title);
+            pstmt.setString(3, url); pstmt.setString(4, type);
+            pstmt.setString(5, desc); pstmt.setString(6, fileId);
             pstmt.setObject(7, AuthService.CURRENT_USER_ID);
             return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) { 
-            e.printStackTrace(); 
-            return false; 
-        }
+        } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
+    public List<TeamResource> getTeamResources(int postId) {
+        List<TeamResource> list = new ArrayList<>();
+        String sql = "SELECT r.*, u.username FROM team_resources r JOIN users u ON r.added_by = u.id WHERE r.post_id = ? ORDER BY r.created_at DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, postId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                list.add(new TeamResource(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("url"),
+                    rs.getString("type"),
+                    rs.getString("description"),
+                    rs.getString("file_id"),
+                    rs.getString("username")
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 }

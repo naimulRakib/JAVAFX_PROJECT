@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.scholar.controller.SocialZoneController"
+            style="-fx-background-color: #0f1117;">
+
+    <left>
+        <VBox prefWidth="260" style="-fx-background-color: #161b27; -fx-border-color: #252d3d; -fx-border-width: 0 1 0 0;" spacing="0">
+
+            <!-- App Header -->
+            <HBox alignment="CENTER_LEFT" style="-fx-padding: 20 18 16 18; -fx-background-color: #1a2236; -fx-border-color: #252d3d; -fx-border-width: 0 0 1 0;" spacing="10">
+                <Label text="⚡" style="-fx-font-size: 22px;"/>
+                <VBox spacing="1">
+                    <Label text="Scholar Zone" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"/>
+                    <Label text="Social Hub" style="-fx-font-size: 10px; -fx-text-fill: #64748b;"/>
+                </VBox>
+            </HBox>
+
+            <!-- Scrollable Nav -->
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                        style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;">
+                <VBox spacing="4" style="-fx-padding: 12 10 12 10;">
+
+                    <!-- PUBLIC ZONE -->
+                    <Label text="  PUBLIC ZONE" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 8 0 4 4;"/>
+
+                    <Button fx:id="navGroupChat" text="🌍  Global Group Chat" onAction="#showGroupChatView"
+                            maxWidth="Infinity"
+                            style="-fx-background-color: #1e3a5f; -fx-text-fill: #93c5fd; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 13px;"/>
+
+                    <!-- Threads Section -->
+                    <VBox style="-fx-background-color: #1a2236; -fx-background-radius: 8; -fx-border-color: #252d3d; -fx-border-radius: 8;">
+                        <Button text="🌟  Daily Threads  ▾" onAction="#showDailyThreadsView"
+                                maxWidth="Infinity"
+                                style="-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-cursor: hand; -fx-font-size: 13px;"/>
+
+                        <VBox spacing="2" style="-fx-padding: 0 8 8 8;">
+                            <Button text="🏠  Home Feed" onAction="#showThreadsHome" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 7 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                            <Button text="🌐  Public Threads" onAction="#showPublicThreads" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 7 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 12px;"/>
+
+                            <Label text="  🏛️ Department" style="-fx-font-size: 10px; -fx-text-fill: #334155; -fx-padding: 4 4 0 4;"/>
+                            <Button text="      📚 Academics" onAction="#showThreadsAcademics" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 11px;"/>
+                            <Button text="      🎉 Events" onAction="#showThreadsEvents" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 11px;"/>
+                            <Button text="      💼 Placements" onAction="#showThreadsPlacements" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 11px;"/>
+                            <Button text="      🚨 Issues" onAction="#showThreadsIssues" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 11px;"/>
+
+                            <Separator style="-fx-opacity: 0.3;"/>
+                            <Button text="👤  My Threads" onAction="#showMyThreads" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 7 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                            <Button text="🔖  Saved Threads" onAction="#showSavedThreads" maxWidth="Infinity"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-alignment: CENTER_LEFT; -fx-padding: 7 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                        </VBox>
+                    </VBox>
+
+                    <!-- PRIVATE MESSAGES -->
+                    <Label text="  PRIVATE MESSAGES" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 12 0 4 4;"/>
+
+                    <StackPane>
+                        <Button text="📩  Message Requests" onAction="#showMessageRequestsView"
+                                maxWidth="Infinity"
+                                style="-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                        <Label fx:id="requestBadge" text="0" visible="false" managed="false"
+                               style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 9px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 2 5; -fx-min-width: 16; -fx-alignment: CENTER;"
+                               StackPane.alignment="CENTER_RIGHT"/>
+                    </StackPane>
+
+                    <Button text="➕  Add Contact" onAction="#onSendNewRequest" maxWidth="Infinity"
+                            style="-fx-background-color: transparent; -fx-text-fill: #3b82f6; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 8 14; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 12px; -fx-border-color: #1e3a5f; -fx-border-radius: 8;"/>
+
+                    <Label text="  CONVERSATIONS" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 8 0 4 4;"/>
+                    <VBox fx:id="contactsContainer" spacing="3"/>
+
+                    <!-- NOTIFICATIONS -->
+                    <Label text="  NOTIFICATIONS" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 12 0 4 4;"/>
+
+                    <StackPane>
+                        <Button text="🔔  Notifications" onAction="#showNotificationsView"
+                                maxWidth="Infinity"
+                                style="-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                        <Label fx:id="notificationBadge" text="" visible="false" managed="false"
+                               style="-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-size: 9px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 2 6; -fx-min-width: 18; -fx-alignment: CENTER;"
+                               StackPane.alignment="CENTER_RIGHT"/>
+                    </StackPane>
+
+                </VBox>
+            </ScrollPane>
+
+            <!-- Bottom user info -->
+            <HBox alignment="CENTER_LEFT" spacing="10"
+                  style="-fx-padding: 12 15; -fx-background-color: #1a2236; -fx-border-color: #252d3d; -fx-border-width: 1 0 0 0;">
+                <Label text="👤" style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-background-radius: 20; -fx-padding: 6 9; -fx-font-size: 14px;"/>
+                <VBox spacing="1" HBox.hgrow="ALWAYS">
+                    <Label fx:id="currentUserLabel" text="You" style="-fx-font-weight: bold; -fx-text-fill: #e2e8f0; -fx-font-size: 12px;"/>
+                    <Label text="● Online" style="-fx-text-fill: #22c55e; -fx-font-size: 10px;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </left>
+
+    <center>
+        <StackPane style="-fx-background-color: #0f1117;">
+
+            <!-- GROUP / PRIVATE CHAT -->
+            <BorderPane fx:id="chatMainContainer" visible="true" managed="true">
+                <top>
+                    <VBox style="-fx-background-color: #161b27; -fx-padding: 14 20; -fx-border-color: #252d3d; -fx-border-width: 0 0 1 0;">
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Label fx:id="chatHeaderLabel" text="🌍 Global Group Chat"
+                                   style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"
+                                   HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Button fx:id="muteAudioBtn" text="🎤 Mute" onAction="#onToggleMute"
+                                    visible="false" managed="false"
+                                    style="-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 20; -fx-padding: 7 16;"/>
+                            <Button text="📊 Polls" onAction="#onOpenPolls"
+                                    style="-fx-background-color: #7c3aed; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 20; -fx-padding: 7 16;"/>
+                            <Button fx:id="joinAudioBtn" text="🎙️ Join Voice" onAction="#onJoinAudioCall"
+                                    style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 20; -fx-padding: 7 16;"/>
+                            <Button fx:id="leaveAudioBtn" text="🛑 Leave" onAction="#onLeaveAudioCall"
+                                    visible="false" managed="false"
+                                    style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 20; -fx-padding: 7 16;"/>
+                        </HBox>
+                        <Label fx:id="activeVoiceUsersLabel" text="🎙️ Active in Voice: None"
+                               visible="false" managed="false"
+                               style="-fx-text-fill: #22c55e; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 5 0 0 0;"/>
+                    </VBox>
+                </top>
+                <center>
+                    <ScrollPane fx:id="chatScroll" fitToWidth="true"
+                                style="-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;">
+                        <VBox fx:id="chatContainer" spacing="6" style="-fx-padding: 20;"/>
+                    </ScrollPane>
+                </center>
+                <bottom>
+                    <HBox spacing="10" alignment="CENTER"
+                          style="-fx-padding: 12 16; -fx-background-color: #161b27; -fx-border-color: #252d3d; -fx-border-width: 1 0 0 0;">
+                        <TextField fx:id="messageInput" onAction="#onSendMessage"
+                                   promptText="Type a message..."
+                                   HBox.hgrow="ALWAYS"
+                                   style="-fx-background-color: #1e2738; -fx-text-fill: #e2e8f0; -fx-prompt-text-fill: #475569; -fx-background-radius: 22; -fx-padding: 11 18; -fx-border-color: #2d3748; -fx-border-radius: 22; -fx-font-size: 13px;"/>
+                        <Button onAction="#onSendMessage" text="Send ➤"
+                                style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-background-radius: 22; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 11 22; -fx-font-size: 13px;"/>
+                    </HBox>
+                </bottom>
+            </BorderPane>
+
+            <!-- DAILY THREADS FEED -->
+            <BorderPane fx:id="dailyThreadsContainer" visible="false" managed="false"
+                        style="-fx-background-color: #0f1117;">
+                <top>
+                    <HBox alignment="CENTER_LEFT" spacing="12"
+                          style="-fx-padding: 16 20; -fx-background-color: #161b27; -fx-border-color: #252d3d; -fx-border-width: 0 0 1 0;">
+                        <VBox HBox.hgrow="ALWAYS" spacing="2">
+                            <Label fx:id="threadsCategoryLabel" text="🌟 Daily Threads"
+                                   style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"/>
+                            <Label fx:id="threadsSubtitleLabel" text="Share your thoughts with the community"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+                        </VBox>
+                        <Button text="✏️ Create Post" onAction="#onOpenCreateThread"
+                                style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 9 18; -fx-cursor: hand;"/>
+                    </HBox>
+                </top>
+                <center>
+                    <ScrollPane fitToWidth="true"
+                                style="-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;">
+                        <VBox fx:id="threadsFeedBox" spacing="14" style="-fx-padding: 20 60;" alignment="TOP_CENTER">
+                            <Label text="✨ Loading threads..." style="-fx-text-fill: #475569; -fx-font-size: 14px;"/>
+                        </VBox>
+                    </ScrollPane>
+                </center>
+            </BorderPane>
+
+            <!-- MESSAGE REQUESTS -->
+            <VBox fx:id="messageRequestsContainer" visible="false" managed="false"
+                  style="-fx-background-color: #0f1117;" spacing="0">
+                <HBox alignment="CENTER_LEFT" spacing="12"
+                      style="-fx-padding: 18 20; -fx-background-color: #161b27; -fx-border-color: #252d3d; -fx-border-width: 0 0 1 0;">
+                    <VBox HBox.hgrow="ALWAYS" spacing="2">
+                        <Label text="📩 Message Requests"
+                               style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"/>
+                        <Label text="Accept to start a private conversation"
+                               style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+                    </VBox>
+                </HBox>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;">
+                    <VBox fx:id="requestsContainer" spacing="10" style="-fx-padding: 20 60;" alignment="TOP_CENTER"/>
+                </ScrollPane>
+            </VBox>
+
+            <!-- NOTIFICATIONS -->
+            <BorderPane fx:id="notificationsContainer" visible="false" managed="false"
+                        style="-fx-background-color: #0f1117;">
+                <top>
+                    <HBox alignment="CENTER_LEFT" spacing="12"
+                          style="-fx-padding: 16 20; -fx-background-color: #161b27; -fx-border-color: #252d3d; -fx-border-width: 0 0 1 0;">
+                        <VBox HBox.hgrow="ALWAYS" spacing="2">
+                            <Label text="🔔 Notifications"
+                                   style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"/>
+                            <Label text="Your recent activity and alerts"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+                        </VBox>
+                        <Button text="Mark All Read" onAction="#onMarkAllNotificationsRead"
+                                style="-fx-background-color: transparent; -fx-text-fill: #3b82f6; -fx-font-weight: bold; -fx-cursor: hand; -fx-border-color: #1e3a5f; -fx-border-radius: 16; -fx-padding: 7 15;"/>
+                    </HBox>
+                </top>
+                <center>
+                    <ScrollPane fitToWidth="true"
+                                style="-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;">
+                        <VBox fx:id="notificationsListContainer" spacing="8" style="-fx-padding: 20 60;" alignment="TOP_CENTER"/>
+                    </ScrollPane>
+                </center>
+            </BorderPane>
+
+        </StackPane>
+    </center>
+
+</BorderPane>

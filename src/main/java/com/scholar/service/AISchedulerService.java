@@ -11,11 +11,14 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import org.springframework.stereotype.Service; // 🟢 নতুন
 
 /**
  * AI Scheduler Service powered by Google Gemini.
  * Handles schedule generation, varsity routine parsing, and AI study guides.
  */
+
+@Service
 public class AISchedulerService {
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";

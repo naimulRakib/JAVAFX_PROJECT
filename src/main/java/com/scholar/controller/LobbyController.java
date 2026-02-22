@@ -9,9 +9,14 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.context.ApplicationContext; // 🟢 নতুন
+import org.springframework.stereotype.Controller; // 🟢 নতুন
 
 import java.io.IOException;
 
+
+@Controller
 public class LobbyController {
 
     @FXML private TextField joinCodeField;
@@ -19,9 +24,16 @@ public class LobbyController {
     @FXML private TextField createCodeField;
     @FXML private Label statusLabel;
     
-    // ✅ এই দুটি সার্ভিস ক্লাসের শুরুতে ইনিশিয়ালাইজ থাকতে হবে
-    private final ChannelService channelService = new ChannelService();
-    private final AuthService authService = new AuthService(); // 👈 এটি যোগ করুন
+  @Autowired
+    private ApplicationContext springContext;
+
+    // 🌟 ৩. 'new' কি-ওয়ার্ড সরিয়ে @Autowired করা হলো
+    @Autowired
+    private ChannelService channelService;
+
+    @Autowired
+    private AuthService authService;
+
 
     // ==========================================
     // OPTION A: JOIN A CHANNEL (Student)
@@ -84,6 +96,7 @@ public class LobbyController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/scholar/view/dashboard.fxml"));
             Parent root = loader.load();
+            loader.setControllerFactory(springContext::getBean);
             Stage stage = (Stage) statusLabel.getScene().getWindow();
             
             // ড্যাশবোর্ডের স্ট্যান্ডার্ড সাইজ দিন

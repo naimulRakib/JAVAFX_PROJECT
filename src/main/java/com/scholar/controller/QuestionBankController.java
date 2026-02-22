@@ -1,6 +1,8 @@
 package com.scholar.controller;
 
 import com.scholar.model.Question;
+import com.scholar.service.AuthService;
+import com.scholar.service.CourseService;
 import com.scholar.service.QuestionBankService;
 import com.scholar.service.TelegramService;
 
@@ -20,11 +22,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.awt.Desktop; // ব্রাউজারে লিংক ওপেন করার জন্য
 import java.net.URI;
-
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.stereotype.Controller;
 
 import java.io.File;
 import java.util.List;
-
+@Controller
 public class QuestionBankController {
 
     // --- UI উপাদান (FXML) ---
@@ -42,8 +45,10 @@ public class QuestionBankController {
 
 
     // --- সার্ভিস ---
-    private final QuestionBankService qbService = new QuestionBankService();
-    private final TelegramService telegramService = new TelegramService();
+   @Autowired private QuestionBankService qbService;
+    @Autowired private TelegramService telegramService;
+    @Autowired private CourseService courseService; 
+    @Autowired private AuthService authService;
     
     // private final CourseService courseService = new CourseService(); // ডাটাবেসের জন্য এটি আনকমেন্ট করবেন
 

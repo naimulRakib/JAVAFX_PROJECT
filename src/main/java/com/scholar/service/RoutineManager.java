@@ -1,16 +1,22 @@
 package com.scholar.service;
 
 import com.scholar.model.StudyTask;
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.stereotype.Service; // 🟢 নতুন
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service // 🌟 ১. ক্লাসটিকে স্প্রিং সার্ভিস হিসেবে রেজিস্টার করা হলো
 public class RoutineManager {
 
-    private final AISchedulerService aiService = new AISchedulerService();
+    // 🌟 ২. 'new' কি-ওয়ার্ড সরিয়ে @Autowired করা হলো। 
+    // এখন স্প্রিং নিজে থেকেই AISchedulerService ইনজেক্ট করে দেবে।
+    @Autowired
+    private AISchedulerService aiService;
 
     // ==========================================================
-    // 🏛️ 1. VARSITY ROUTINE (Admin Task - Null Status)
+    // 🏛️ 1. VARSITY ROUTINE (Admin Task - Logic Unchanged)
     // ==========================================================
     public List<StudyTask> processVarsitySchedule(String rawText) {
         List<StudyTask> weeklyRules = aiService.parseVarsityRoutine(rawText);
@@ -26,7 +32,7 @@ public class RoutineManager {
                         null, rule.title(), date.toString(), rule.startTime(), 
                         rule.durationMinutes(), rule.roomNo(), "ROUTINE", 
                         rule.tags(), "admin", null, null, 
-                        null, null // 🌟 ফিক্স: ROUTINE এর জন্য Status এবং Importance null থাকবে
+                        null, null // 🌟 লজিক অপরিবর্তিত: ROUTINE এর জন্য Status এবং Importance null
                     ));
                 }
             }
@@ -35,7 +41,7 @@ public class RoutineManager {
     }
 
     // ==========================================================
-    // 👤 2. PERSONAL TASKS (Date Verification & Importance)
+    // 👤 2. PERSONAL TASKS (Logic Unchanged)
     // ==========================================================
     public List<StudyTask> processPersonalRequest(String rawText) {
         List<StudyTask> tasks = aiService.parsePersonalTask(rawText);
@@ -45,7 +51,7 @@ public class RoutineManager {
             String type = "CANCEL".equalsIgnoreCase(t.type()) ? "CANCEL" : "PERSONAL";
             String importance = t.importance() != null ? t.importance() : "Medium"; 
             
-            // 🌟 ফিক্স: যদি এআই তারিখ না দেয়, তবে আজকের তারিখ অটোমেটিক বসে যাবে!
+            // 🌟 তারিখ ভেরিফিকেশন লজিক অপরিবর্তিত
             String safeDate = (t.date() != null && !t.date().isEmpty() && !t.date().equals("null")) 
                               ? t.date() : LocalDate.now().toString();
             

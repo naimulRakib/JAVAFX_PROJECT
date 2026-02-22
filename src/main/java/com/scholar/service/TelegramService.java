@@ -1,34 +1,35 @@
 package com.scholar.service;
 
-import io.github.cdimascio.dotenv.Dotenv; 
 import org.json.JSONObject;
+import org.springframework.stereotype.Service; // 🟢 নতুন
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 
+@Service // 🌟 ১. এটিকে একটি স্প্রিং সার্ভিস হিসেবে রেজিস্টার করা হলো
 public class TelegramService {
 
- 
-    private static final Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-
-   
-    private static final String BOT_TOKEN = dotenv.get("TELEGRAM_BOT_TOKEN"); 
-    private static final String CHAT_ID = dotenv.get("TELEGRAM_CHAT_ID"); 
+    // ২. ফিল্ডগুলো সরাসরি সিস্টেম এনভায়রনমেন্ট থেকে ডাটা নেবে
+    private final String BOT_TOKEN; 
+    private final String CHAT_ID; 
 
     public TelegramService() {
-       
+        // 🟢 আপনার ইচ্ছা অনুযায়ী সরাসরি System.getenv() ব্যবহার করা হয়েছে
+        this.BOT_TOKEN = System.getenv("TELEGRAM_BOT_TOKEN");
+        this.CHAT_ID = System.getenv("TELEGRAM_CHAT_ID");
+
         if (BOT_TOKEN == null || BOT_TOKEN.isEmpty() || CHAT_ID == null || CHAT_ID.isEmpty()) {
-            System.err.println("❌ ERROR: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in the .env file!");
+            System.err.println("❌ ERROR: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in the environment variables!");
         }
     }
 
     /**
-     * Uploads a file to Telegram and returns the File ID.
+     * Uploads a file to Telegram and returns the File ID. (Logic Unchanged)
      */
     public String uploadToCloud(File file) {
         if (BOT_TOKEN == null || CHAT_ID == null) {
-            return null; // টোকেন না থাকলে আপলোড বাতিল হবে
+            return null; 
         }
 
         String urlString = "https://api.telegram.org/bot" + BOT_TOKEN + "/sendDocument";
@@ -72,14 +73,12 @@ public class TelegramService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return null; // Upload failed
+            return null; 
         }
     }
 
-
-
     /**
-     * Get direct download URL from File ID
+     * Get direct download URL from File ID. (Logic Unchanged)
      */
     public String getFileDownloadUrl(String fileId) {
         if (BOT_TOKEN == null) return null;
@@ -106,6 +105,4 @@ public class TelegramService {
             return null;
         }
     }
-
-    
 }

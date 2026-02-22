@@ -16,8 +16,16 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.stereotype.Controller; // 🟢 নতুন
+import javax.sql.DataSource; // 🟢
+
+
+@Controller
 
 public class AIController {
+    @Autowired
+    private DataSource dataSource;
 
     // ⚠️ Replace with your actual Google AI Studio Gemini API Key
     private String GEMINI_API_KEY = "AIzaSyCsgRERKdg0pDtapy5nuYJeFfiotr5V6MM"; 
@@ -201,7 +209,7 @@ private String fetchSystematicContext(String keyword) {
         ORDER BY r.upvotes DESC LIMIT 5; 
     """;
 
-    try (Connection conn = DatabaseConnection.getConnection();
+    try (Connection conn = dataSource.getConnection();
          PreparedStatement pstmt = conn.prepareStatement(sql)) {
         
         pstmt.setString(1, searchPattern);

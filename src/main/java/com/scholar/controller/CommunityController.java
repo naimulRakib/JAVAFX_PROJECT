@@ -6,6 +6,10 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 
+import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.stereotype.Controller; // 🟢 নতুন
+
+@Controller
 public class CommunityController {
 
     @FXML private ComboBox<String> courseSelector; // CSE 105, PHY 101
@@ -14,7 +18,8 @@ public class CommunityController {
     // We create these dynamically
     private DraggableListView<String> topicList = new DraggableListView<>();
     
-    private final CourseService courseService = new CourseService();
+   @Autowired
+    private CourseService courseService;
 
     @FXML
     public void initialize() {
@@ -35,6 +40,8 @@ public class CommunityController {
         createSegmentTab("Term Final 📚");
         createSegmentTab("Basic Building 🛠️");
     }
+
+    
 
     private void createSegmentTab(String title) {
         Tab tab = new Tab(title);

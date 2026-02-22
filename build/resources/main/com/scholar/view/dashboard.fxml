@@ -312,6 +312,20 @@
                     </content>
                 </Tab>
 
+               
+    
+        <Tab text="Social Zone 🌎">
+            <content>
+                <fx:include source="social_zone.fxml" />
+            </content>
+        </Tab>
+        <Tab text="Mentorship 🎓">
+    <content>
+        <fx:include source="consultancy_panel.fxml" />
+    </content>
+</Tab>
+      
+
                 <Tab text="🤖 AI Tutor" style="-fx-font-weight: bold; -fx-text-base-color: #8e44ad;">
                     <content>
                         <VBox spacing="15" style="-fx-padding: 15; -fx-background-color: #f4f6f7;">

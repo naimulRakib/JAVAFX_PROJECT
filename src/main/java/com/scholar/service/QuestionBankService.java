@@ -7,9 +7,10 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
-import io.github.cdimascio.dotenv.Dotenv;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.Loader;
+import org.springframework.stereotype.Service; // 🟢 নতুন
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,51 +19,54 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Collections;
 import java.util.List;
-import org.apache.pdfbox.Loader; // 👈 এটি যোগ করুন
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Service // 🌟 ১. এটিকে একটি স্প্রিং সার্ভিস হিসেবে রেজিস্টার করা হলো
 public class QuestionBankService {
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
     private final String apiKey;
     private final ObjectMapper jsonMapper = new ObjectMapper();
 
+    // ✅ ২. আপনার অরিজিনাল কনস্ট্রাক্টর লজিক (অক্ষত)
     public QuestionBankService() {
-        Dotenv dotenv = Dotenv.load();
-        this.apiKey = dotenv.get("GEMINI_API_KEY");
-    }
-
- public String readPdfs(List<File> files) {
-    StringBuilder rawText = new StringBuilder();
-    for (File file : files) {
-        // এখানে পরিবর্তন করা হয়েছে 👇
-        try (PDDocument doc = Loader.loadPDF(file)) { 
-            PDFTextStripper stripper = new PDFTextStripper();
-            rawText.append("--- SOURCE: ").append(file.getName()).append(" ---\n");
-            rawText.append(stripper.getText(doc)).append("\n\n");
-        } catch (IOException e) {
-            e.printStackTrace();
+        // সরাসরি সিস্টেম এনভায়রনমেন্ট ভ্যারিয়েবল ব্যবহার
+        this.apiKey = System.getenv("GEMINI_API_KEY");
+        
+        if (this.apiKey == null || this.apiKey.isEmpty()) {
+            System.err.println("❌ ERROR: GEMINI_API_KEY not found in system environment variables!");
         }
     }
-    return rawText.toString();
-}
 
-    // --- MAIN AI ANALYSIS ---
+    /**
+     * Reads PDFs using Apache PDFBox. (Logic Unchanged)
+     */
+    public String readPdfs(List<File> files) {
+        StringBuilder rawText = new StringBuilder();
+        for (File file : files) {
+            try (PDDocument doc = Loader.loadPDF(file)) { 
+                PDFTextStripper stripper = new PDFTextStripper();
+                rawText.append("--- SOURCE: ").append(file.getName()).append(" ---\n");
+                rawText.append(stripper.getText(doc)).append("\n\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return rawText.toString();
+    }
+
+    /**
+     * Main AI Analysis via Gemini API. (Logic Unchanged)
+     */
     public List<Question> analyzeQuestions(String rawPdfText) throws Exception {
-        
-        // 1. Strict Prompt
         String prompt = """
             You are a JSON Converter. Extract exam questions from the text.
             Merge duplicates. Rate importance (1-5).
-            
-            Return STRICT JSON Array ONLY. No markdown. No "Here is the json".
-            
+            Return STRICT JSON Array ONLY. No markdown.
             Example:
             [{"topic": "BST", "text": "Explain deletion", "years": "2021", "frequency": 1, "stars": 5}]
-            
             TEXT:
             %s
             """.formatted(rawPdfText);
@@ -78,27 +82,23 @@ public class QuestionBankService {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        // 2. Extract Response Text
         String aiResponseText = extractTextFromGemini(response.body());
         
-        // 3. AGGRESSIVE CLEANING (The Fix)
-        // Remove Markdown code blocks
         aiResponseText = aiResponseText.replace("```json", "").replace("```", "").trim();
-        
-        // Find the First '[' and Last ']'
         int start = aiResponseText.indexOf("[");
         int end = aiResponseText.lastIndexOf("]");
         
         if (start == -1 || end == -1) {
-            throw new Exception("AI returned invalid format (No JSON Array found). RAW RESPONSE:\n" + aiResponseText);
+            throw new Exception("AI returned invalid format. RAW RESPONSE:\n" + aiResponseText);
         }
         
-        // 4. Parse strictly the JSON part
         String cleanJson = aiResponseText.substring(start, end + 1);
         return jsonMapper.readValue(cleanJson, new TypeReference<List<Question>>() {});
     }
 
+    /**
+     * Creates Output PDF using iText. (Logic Unchanged)
+     */
     public String createPdfDocument(List<Question> questions, String destPath) {
         if (questions.isEmpty()) return "❌ No questions found. PDF not created.";
 
@@ -152,7 +152,6 @@ public class QuestionBankService {
         }
     }
 
-    // Helper: Extract text from Gemini JSON structure
     private String extractTextFromGemini(String rawResponse) {
         try {
             var root = jsonMapper.readTree(rawResponse);

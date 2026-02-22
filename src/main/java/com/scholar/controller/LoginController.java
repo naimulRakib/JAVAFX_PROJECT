@@ -1,5 +1,6 @@
 package com.scholar.controller;
 
+import com.scholar.repository.UserRepository;
 import com.scholar.service.AuthService;
 import com.scholar.service.ChannelService;
 import javafx.application.Platform;
@@ -12,7 +13,26 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import java.io.IOException;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Controller;
+
+@Controller
 public class LoginController {
+
+    // 🌟 Spring Boot-এর কনটেক্সট (পরবর্তী পেজ লোড করার জন্য দরকার)
+    @Autowired
+    private ApplicationContext springContext;
+
+    @Autowired
+    private UserRepository userRepository;
+    
+    // 🟢 Service Injection (Spring এখন এগুলোকে হ্যান্ডেল করবে)
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private ChannelService channelService;
 
     // --- Login Fields ---
     @FXML private TextField emailField;
@@ -36,9 +56,6 @@ public class LoginController {
     @FXML private Label statusLabel;
     @FXML private Button loginBtn;
     @FXML private ToggleButton studentToggle, adminToggle;
-
-    private final AuthService authService = new AuthService();
-    private final ChannelService channelService = new ChannelService();
 
     @FXML
     public void initialize() {
@@ -88,7 +105,7 @@ public class LoginController {
     // ==========================================================
     // 2. ADMIN SIGNUP (Create Admin + Create Channel)
     // ==========================================================
-   @FXML
+    @FXML
     public void onAdminSignupClick() {
         String name = regNameField.getText().trim();
         String email = regEmailField.getText().trim();
@@ -112,6 +129,7 @@ public class LoginController {
             });
         }).start();
     }
+
     // ==========================================================
     // 3. STUDENT SIGNUP (Create User + Join via UUID)
     // ==========================================================
@@ -145,19 +163,14 @@ public class LoginController {
     // 🚦 ROUTER: Decides Dashboard vs Lobby
     // ==========================================================
     private void handlePostLoginRouting() {
-        // Context is already loaded in AuthService.login()
         if (AuthService.CURRENT_CHANNEL_ID != -1) {
-            
-            // Check status for students
             if ("student".equals(AuthService.CURRENT_USER_ROLE) && 
-                "pending".equals(AuthService.CURRENT_USER_STATUS)) { // Assuming status is added to AuthService
+                "pending".equals(AuthService.CURRENT_USER_STATUS)) { 
                  setMsg("⚠️ Account is Pending CR Approval", "#f39c12");
             } else {
                  loadScene("/com/scholar/view/dashboard.fxml", "Scholar Grid - Dashboard");
             }
-            
         } else {
-            // Homeless user -> Lobby to Create or Join
             loadScene("/com/scholar/view/lobby.fxml", "Scholar Grid - Lobby");
         }
     }
@@ -165,6 +178,10 @@ public class LoginController {
     private void loadScene(String fxmlPath, String title) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
+            
+            // 🌟 অত্যন্ত সেনসিটিভ লাইন: এটি পরবর্তী পেজের কন্ট্রোলারকেও স্প্রিং-এর আন্ডারে রাখবে
+            loader.setControllerFactory(springContext::getBean);
+
             Parent root = loader.load();
             Stage stage = (Stage) loginBtn.getScene().getWindow();
             stage.setScene(new Scene(root, 1200, 800));
