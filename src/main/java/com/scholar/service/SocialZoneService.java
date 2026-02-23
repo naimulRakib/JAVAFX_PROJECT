@@ -14,6 +14,7 @@ import java.util.List;
 public class SocialZoneService {
 
     @Autowired private DataService dataService;
+    @Autowired private ChatSettingsService chatSettingsService;
 
     // ─────────────────────────────────────────────
     //  GROUP CHAT
@@ -494,4 +495,26 @@ public class SocialZoneService {
             return createdAt.substring(0, Math.min(10, createdAt.length()));
         }
     }
+
+
+
+    public boolean isSendingAllowed() {
+    if ("admin".equals(AuthService.CURRENT_USER_ROLE)) return true;
+    return chatSettingsService.isPublicChatEnabled();
+}
+
+/**
+ * Overrides sendMessage to enforce the chat toggle.
+ * Call this from SocialZoneController instead of sendMessage() directly,
+ * or replace the body of sendMessage() with this guard.
+ *
+ * Returns "SENT", "DISABLED", or "ERROR".
+ */
+public String sendMessageGuarded(String content) {
+    if (!isSendingAllowed()) return "DISABLED";
+    boolean ok = sendMessage(content);
+    return ok ? "SENT" : "ERROR";
+}
+
+
 }

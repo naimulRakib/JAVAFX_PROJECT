@@ -4,6 +4,7 @@ import com.scholar.model.ChatMessage;
 import com.scholar.model.ChatRequest;
 import com.scholar.model.PrivateContact;
 import com.scholar.service.AuthService;
+import com.scholar.service.ChatSettingsService;
 import com.scholar.service.SocialZoneService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -18,10 +19,15 @@ import javafx.scene.layout.*;
 import javafx.util.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-
+ import com.scholar.util.PopupHelper;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.List;
+import javafx.scene.Scene;
+import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 
 @Controller
 public class SocialZoneController {
@@ -61,6 +67,7 @@ public class SocialZoneController {
 
     @Autowired private com.scholar.service.AudioCallService audioCallService;
     @Autowired private SocialZoneService socialService;
+      @Autowired private ChatSettingsService chatSettingsService;
 
     // State
     private String currentChatMode = "GROUP";
@@ -93,11 +100,19 @@ public class SocialZoneController {
     // ─────────────────────────────────────────────
     //  CHAT – SEND & LOAD
     // ─────────────────────────────────────────────
-
     @FXML
     public void onSendMessage(ActionEvent event) {
         String text = messageInput.getText().trim();
         if (text.isEmpty()) return;
+
+        // Block regular users when public chat is disabled
+        if (currentChatMode.equals("GROUP")
+                && !chatSettingsService.isPublicChatEnabled()
+                && !"admin".equals(AuthService.CURRENT_USER_ROLE)) {
+            showToast("🔒 Public chat is currently disabled by the admin.");
+            return;
+        }
+
         new Thread(() -> {
             boolean success = false;
             if (currentChatMode.equals("GROUP")) {
@@ -113,6 +128,9 @@ public class SocialZoneController {
             }
         }).start();
     }
+
+
+
 
     private void loadMessages() {
         new Thread(() -> {
@@ -148,14 +166,57 @@ public class SocialZoneController {
         if (node != null) { node.setVisible(v); node.setManaged(v); }
     }
 
-    @FXML public void showGroupChatView(ActionEvent event) {
+   @FXML
+    public void showGroupChatView(ActionEvent event) {
         hideAllPanels();
         setVisible(chatMainContainer, true);
         currentChatMode = "GROUP";
         currentPrivateContactId = null;
         chatHeaderLabel.setText("🌍 Global Group Chat");
         loadMessages();
+        applyChatInputState(); // <-- only new line added here
     }
+
+
+     private void applyChatInputState() {
+        if (!currentChatMode.equals("GROUP")) return;
+
+        boolean chatEnabled = chatSettingsService.isPublicChatEnabled()
+                || "admin".equals(AuthService.CURRENT_USER_ROLE);
+
+        messageInput.setDisable(!chatEnabled);
+
+        if (chatEnabled) {
+            messageInput.setPromptText("Type a message...");
+            messageInput.setStyle(
+                "-fx-background-color: #1e2738;" +
+                "-fx-text-fill: #e2e8f0;" +
+                "-fx-prompt-text-fill: #475569;" +
+                "-fx-background-radius: 22;" +
+                "-fx-padding: 11 18;" +
+                "-fx-border-color: #2d3748;" +
+                "-fx-border-radius: 22;" +
+                "-fx-font-size: 13px;"
+            );
+        } else {
+            messageInput.setPromptText("🔒 Public chat disabled by admin");
+            messageInput.setStyle(
+                "-fx-background-color: #1a1a1a;" +
+                "-fx-text-fill: #6b7280;" +
+                "-fx-prompt-text-fill: #6b7280;" +
+                "-fx-background-radius: 22;" +
+                "-fx-padding: 11 18;" +
+                "-fx-border-color: #374151;" +
+                "-fx-border-radius: 22;" +
+                "-fx-font-size: 13px;" +
+                "-fx-opacity: 0.6;"
+            );
+        }
+    }
+
+
+
+
 
     @FXML public void showDailyThreadsView(ActionEvent event) {
         hideAllPanels();
@@ -620,30 +681,34 @@ public class SocialZoneController {
 
     @FXML
     public void onSendNewRequest(ActionEvent event) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("👥 Channel Members");
-        dialog.setHeaderText("Send a message request to connect");
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        styleDialog(dialog);
+        Window owner = chatMainContainer.getScene().getWindow();
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(15));
-        vbox.setPrefSize(380, 440);
         vbox.setStyle("-fx-background-color: #0f1117;");
+
         ScrollPane scroll = new ScrollPane(vbox);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;");
-        dialog.getDialogPane().setContent(scroll);
-        dialog.getDialogPane().setStyle("-fx-background-color: #0f1117;");
+
+        Label header = new Label("👥 Channel Members");
+        header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
+        Label sub = new Label("Send a message request to connect");
+        sub.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
+        VBox headerBox = new VBox(4, header, sub);
+        headerBox.setPadding(new Insets(0, 0, 10, 0));
 
         Label loading = new Label("⏳ Fetching members...");
         loading.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
-        vbox.getChildren().add(loading);
+        vbox.getChildren().addAll(headerBox, loading);
+
+        Stage stage = PopupHelper.create(owner, "👥 Channel Members",
+                scroll, 360, 400, 420, 520);
 
         new Thread(() -> {
             List<PrivateContact> members = socialService.getChannelMembers(AuthService.CURRENT_CHANNEL_ID);
-            Platform.runLater(() -> {
-                vbox.getChildren().clear();
+            javafx.application.Platform.runLater(() -> {
+                vbox.getChildren().remove(loading);
                 if (members.isEmpty()) {
                     Label l = new Label("No other members found.");
                     l.setStyle("-fx-text-fill: #64748b;");
@@ -653,34 +718,40 @@ public class SocialZoneController {
                 for (PrivateContact member : members) {
                     HBox row = new HBox(12);
                     row.setAlignment(Pos.CENTER_LEFT);
-                    row.setStyle("-fx-background-color: #161b27; -fx-padding: 12 14; -fx-background-radius: 10; -fx-border-color: #252d3d; -fx-border-radius: 10;");
+                    row.setStyle("-fx-background-color: #161b27; -fx-padding: 12 14; " +
+                                 "-fx-background-radius: 10; -fx-border-color: #252d3d; -fx-border-radius: 10;");
 
                     String init = member.userName() != null && !member.userName().isEmpty()
                             ? String.valueOf(member.userName().charAt(0)).toUpperCase() : "?";
                     Label av = new Label(init);
-                    av.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 18; -fx-min-width: 36; -fx-min-height: 36; -fx-alignment: CENTER;");
+                    av.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; " +
+                                "-fx-background-radius: 18; -fx-min-width: 36; -fx-min-height: 36; -fx-alignment: CENTER;");
 
-                    VBox nameBox = new VBox(2); HBox.setHgrow(nameBox, Priority.ALWAYS);
+                    VBox nameBox = new VBox(2);
+                    HBox.setHgrow(nameBox, javafx.scene.layout.Priority.ALWAYS);
                     Label name = new Label(member.userName());
                     name.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0; -fx-font-size: 13px;");
-                    Label sub = new Label("Channel member");
-                    sub.setStyle("-fx-text-fill: #475569; -fx-font-size: 10px;");
-                    nameBox.getChildren().addAll(name, sub);
+                    Label s = new Label("Channel member");
+                    s.setStyle("-fx-text-fill: #475569; -fx-font-size: 10px;");
+                    nameBox.getChildren().addAll(name, s);
 
                     Button reqBtn = new Button("Connect ➕");
-                    reqBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 16; -fx-padding: 7 14; -fx-cursor: hand;");
+                    reqBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; " +
+                                   "-fx-background-radius: 16; -fx-padding: 7 14; -fx-cursor: hand;");
                     reqBtn.setOnAction(e -> {
                         reqBtn.setText("Sending...");
                         reqBtn.setDisable(true);
                         new Thread(() -> {
                             boolean success = socialService.sendChatRequestById(member.userId());
-                            Platform.runLater(() -> {
+                            javafx.application.Platform.runLater(() -> {
                                 if (success) {
                                     reqBtn.setText("Sent ✅");
-                                    reqBtn.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 16; -fx-padding: 7 14;");
+                                    reqBtn.setStyle("-fx-background-color: #059669; -fx-text-fill: white; " +
+                                                   "-fx-font-weight: bold; -fx-background-radius: 16; -fx-padding: 7 14;");
                                 } else {
                                     reqBtn.setText("Already Sent");
-                                    reqBtn.setStyle("-fx-background-color: #374151; -fx-text-fill: #94a3b8; -fx-background-radius: 16; -fx-padding: 7 14;");
+                                    reqBtn.setStyle("-fx-background-color: #374151; -fx-text-fill: #94a3b8; " +
+                                                   "-fx-background-radius: 16; -fx-padding: 7 14;");
                                 }
                             });
                         }).start();
@@ -692,8 +763,10 @@ public class SocialZoneController {
             });
         }).start();
 
-        dialog.showAndWait();
+        stage.showAndWait();
     }
+
+
 
     // ─────────────────────────────────────────────
     //  MESSAGE BUBBLE
@@ -787,19 +860,17 @@ public class SocialZoneController {
     //  POLLING SYSTEM
     // ─────────────────────────────────────────────
 
-  @FXML
+ @FXML
     public void onOpenPolls(ActionEvent event) {
         if (currentChatMode == null || !currentChatMode.equals("GROUP")) {
             showToast("⚠️ Polls are only available in Group Channels!");
             return;
         }
 
-        boolean isAdmin = true; // টেস্ট করার জন্য আপাতত true
+        boolean isAdmin = "admin".equals(AuthService.CURRENT_USER_ROLE);
+        Window owner = chatMainContainer.getScene().getWindow();
 
-        javafx.stage.Stage stage = new javafx.stage.Stage();
-        stage.setTitle("📊 Channel Polls");
-        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-
+        // ── Root layout ────────────────────────────────────────────
         VBox container = new VBox(15);
         container.setPadding(new Insets(20));
         container.setStyle("-fx-background-color: #0f1117;");
@@ -807,34 +878,62 @@ public class SocialZoneController {
         if (isAdmin) {
             Button createBtn = new Button("➕ Create New Poll");
             createBtn.setMaxWidth(Double.MAX_VALUE);
-            createBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10; -fx-background-radius: 8;");
-            
-            createBtn.setOnAction(e -> {
-                stage.close(); // প্রথম উইন্ডোটি ক্লোজ করা হলো
-                // 🌟 MAC FIX 1: সাথে সাথে ওপেন না করে, runLater দিয়ে ম্যাককে একটু সময় দেওয়া হলো
-                Platform.runLater(() -> openCreatePollDialog());
-            });
+            createBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; " +
+                               "-fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10; " +
+                               "-fx-background-radius: 8;");
             container.getChildren().add(createBtn);
-        }
 
+            // Forward-declare stage so lambda can close it
+            final Stage[] stageRef = new Stage[1];
+            createBtn.setOnAction(e -> {
+                if (stageRef[0] != null) stageRef[0].close();
+                javafx.application.Platform.runLater(() -> openCreatePollDialog(owner));
+            });
+
+            Stage stage = PopupHelper.create(owner, "📊 Channel Polls",
+                    container, 420, 500, 500, 600);
+            stageRef[0] = stage;
+
+            VBox pollsList = buildPollsList(isAdmin, owner);
+            ScrollPane scroll = new ScrollPane(pollsList);
+            scroll.setFitToWidth(true);
+            VBox.setVgrow(scroll, javafx.scene.layout.Priority.ALWAYS);
+            scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; " +
+                            "-fx-border-color: transparent;");
+            container.getChildren().add(scroll);
+
+            stage.showAndWait();
+        } else {
+            VBox pollsList = buildPollsList(isAdmin, owner);
+            ScrollPane scroll = new ScrollPane(pollsList);
+            scroll.setFitToWidth(true);
+            VBox.setVgrow(scroll, javafx.scene.layout.Priority.ALWAYS);
+            scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; " +
+                            "-fx-border-color: transparent;");
+            container.getChildren().add(scroll);
+
+            Stage stage = PopupHelper.create(owner, "📊 Channel Polls",
+                    container, 420, 500, 500, 600);
+            stage.showAndWait();
+        }
+    }
+
+
+
+
+
+    private VBox buildPollsList(boolean isAdmin, Window owner) {
         VBox pollsList = new VBox(15);
         pollsList.setStyle("-fx-background-color: #0f1117;");
-        
-        ScrollPane scroll = new ScrollPane(pollsList);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-        container.getChildren().add(scroll);
 
-        // 🌟 MAC FIX 2: Scene কে ফোর্স করে ডার্ক কালার করে দেওয়া, যাতে সাদা স্ক্রিন আসতে না পারে!
-        javafx.scene.Scene scene = new javafx.scene.Scene(container, 480, 600);
-        scene.setFill(javafx.scene.paint.Color.web("#0f1117")); 
-        stage.setScene(scene);
+        Label loading = new Label("⏳ Loading polls...");
+        loading.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
+        pollsList.getChildren().add(loading);
 
         new Thread(() -> {
             try {
                 List<com.scholar.model.Poll> polls = socialService.getChannelPolls();
-                Platform.runLater(() -> {
+                javafx.application.Platform.runLater(() -> {
                     pollsList.getChildren().clear();
                     if (polls == null || polls.isEmpty()) {
                         Label empty = new Label("📭 No active polls right now.");
@@ -846,13 +945,15 @@ public class SocialZoneController {
                         }
                     }
                 });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }).start();
 
-        stage.showAndWait();
+        return pollsList;
     }
+
+
+
+
 
 
 
@@ -960,46 +1061,47 @@ public class SocialZoneController {
 
 
 
-    private void showToast(String message) {
-        Platform.runLater(() -> {
-            // ১. মূল উইন্ডো (Stage) খুঁজে বের করা
-            javafx.stage.Window window = chatMainContainer.getScene().getWindow();
+     private void showToast(String message) {
+        javafx.application.Platform.runLater(() -> {
+            Window window = chatMainContainer.getScene().getWindow();
             if (window == null) return;
 
-            // ২. টোস্টের ডিজাইন (স্লীক এবং রাউন্ডেড)
             Label toastLabel = new Label(message);
             toastLabel.setStyle(
-                "-fx-background-color: #10b981; " +  // সুন্দর সবুজ রঙ
-                "-fx-text-fill: white; " +
-                "-fx-padding: 12 24; " +
-                "-fx-background-radius: 25; " +
-                "-fx-font-size: 14px; " +
-                "-fx-font-weight: bold; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 4);" // ভাসমান ইফেক্ট
+                "-fx-background-color: #10b981;" +
+                "-fx-text-fill: white;" +
+                "-fx-padding: 12 24;" +
+                "-fx-background-radius: 25;" +
+                "-fx-font-size: 14px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 4);"
             );
 
-            // ৩. পপ-আপ তৈরি করা
             javafx.stage.Popup popup = new javafx.stage.Popup();
             popup.getContent().add(toastLabel);
             popup.setAutoHide(true);
-            
-            // স্ক্রিনে শো করানো (যাতে width ক্যালকুলেট করতে পারে)
+
+            // Show first so JavaFX calculates label dimensions
             popup.show(window);
 
-            // ৪. পজিশন সেট করা (স্ক্রিনের একদম নিচে মাঝখানে)
-            popup.setX(window.getX() + (window.getWidth() / 2) - (toastLabel.getWidth() / 2));
-            popup.setY(window.getY() + window.getHeight() - 100);
+            // Then position: centred horizontally, 80px from bottom of owner window
+            javafx.application.Platform.runLater(() -> {
+                popup.setX(window.getX() + (window.getWidth()  - toastLabel.getWidth())  / 2.0);
+                popup.setY(window.getY() +  window.getHeight() - toastLabel.getHeight()  - 80);
+            });
 
-            // ৫. ফেড-আউট (Fade-out) অ্যানিমেশন (২ সেকেন্ড পর ধীরে ধীরে মিলিয়ে যাবে)
-            javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.millis(500), toastLabel);
-            fade.setDelay(javafx.util.Duration.seconds(2)); // ২ সেকেন্ড স্ক্রিনে থাকবে
+            javafx.animation.FadeTransition fade =
+                new javafx.animation.FadeTransition(javafx.util.Duration.millis(500), toastLabel);
+            fade.setDelay(javafx.util.Duration.seconds(2));
             fade.setFromValue(1.0);
             fade.setToValue(0.0);
-            fade.setOnFinished(e -> popup.hide()); // অ্যানিমেশন শেষ হলে পপ-আপ মুছে যাবে
+            fade.setOnFinished(e -> popup.hide());
             fade.play();
         });
     }
 
+
+    
 
 
     private void refreshPollsList(VBox pollsList, boolean isAdmin) {
@@ -1022,86 +1124,92 @@ public class SocialZoneController {
     //  CREATE POLL DIALOG (DYNAMIC & DARK THEME)
     // ─────────────────────────────────────────────
 
-  private void openCreatePollDialog() {
-        javafx.stage.Stage stage = new javafx.stage.Stage();
-        stage.setTitle("📊 Create New Poll");
-        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-
+   private void openCreatePollDialog(Window owner) {
         VBox box = new VBox(15);
         box.setPadding(new Insets(20));
-        box.setStyle("-fx-background-color: #0f1117;"); 
+        box.setStyle("-fx-background-color: #0f1117;");
+
+        // Wrap in ScrollPane so nothing gets clipped on small windows
+        ScrollPane scroll = new ScrollPane(box);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; " +
+                        "-fx-border-color: transparent;");
+
+        String fieldStyle = "-fx-background-color: #1e2738; -fx-text-fill: #e2e8f0; " +
+                            "-fx-border-color: #2d3748; -fx-background-radius: 6; -fx-padding: 10;";
 
         Label qLabel = new Label("❓ Question:");
         qLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #94a3b8;");
-        TextField qField = new TextField(); qField.setPromptText("Enter your question...");
-        qField.setStyle("-fx-background-color: #1e2738; -fx-text-fill: #e2e8f0; -fx-border-color: #2d3748; -fx-background-radius: 6; -fx-padding: 10;");
+        TextField qField = new TextField();
+        qField.setPromptText("Enter your question...");
+        qField.setStyle(fieldStyle);
+        qField.setMaxWidth(Double.MAX_VALUE);
 
         Label optLabel = new Label("📋 Options:");
         optLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #94a3b8;");
         VBox optionsBox = new VBox(10);
-
-        String fieldStyle = "-fx-background-color: #1e2738; -fx-text-fill: #e2e8f0; -fx-border-color: #2d3748; -fx-background-radius: 6; -fx-padding: 10;";
-        TextField opt1 = new TextField(); opt1.setPromptText("Option 1"); opt1.setStyle(fieldStyle);
-        TextField opt2 = new TextField(); opt2.setPromptText("Option 2"); opt2.setStyle(fieldStyle);
+        TextField opt1 = new TextField(); opt1.setPromptText("Option 1"); opt1.setStyle(fieldStyle); opt1.setMaxWidth(Double.MAX_VALUE);
+        TextField opt2 = new TextField(); opt2.setPromptText("Option 2"); opt2.setStyle(fieldStyle); opt2.setMaxWidth(Double.MAX_VALUE);
         optionsBox.getChildren().addAll(opt1, opt2);
 
         Button addMoreBtn = new Button("➕ Add Another Option");
-        addMoreBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #3b82f6; -fx-cursor: hand; -fx-font-weight: bold;");
+        addMoreBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #3b82f6; " +
+                           "-fx-cursor: hand; -fx-font-weight: bold;");
+
+        HBox actionBox = new HBox(12);
+        actionBox.setAlignment(Pos.CENTER_RIGHT);
+        actionBox.setPadding(new Insets(15, 0, 0, 0));
+
+        Stage stage = PopupHelper.create(owner, "📊 Create New Poll",
+                scroll, 400, 380, 480, 460);
+
         addMoreBtn.setOnAction(e -> {
-            TextField newOpt = new TextField(); newOpt.setPromptText("Option " + (optionsBox.getChildren().size() + 1));
+            TextField newOpt = new TextField();
+            newOpt.setPromptText("Option " + (optionsBox.getChildren().size() + 1));
             newOpt.setStyle(fieldStyle);
+            newOpt.setMaxWidth(Double.MAX_VALUE);
             optionsBox.getChildren().add(newOpt);
-            stage.sizeToScene(); 
         });
 
-        HBox actionBox = new HBox(12); actionBox.setAlignment(Pos.CENTER_RIGHT); actionBox.setPadding(new Insets(15, 0, 0, 0));
-        
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setStyle("-fx-background-color: #374151; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 8 18; -fx-background-radius: 6; -fx-font-weight: bold;");
+        cancelBtn.setStyle("-fx-background-color: #374151; -fx-text-fill: white; -fx-cursor: hand; " +
+                           "-fx-padding: 8 18; -fx-background-radius: 6; -fx-font-weight: bold;");
         cancelBtn.setOnAction(e -> {
             stage.close();
-            // ক্যানসেল করলে আবার আগের পোল লিস্টে ফিরিয়ে নিয়ে যাওয়া
-            Platform.runLater(() -> onOpenPolls(null));
+            javafx.application.Platform.runLater(() -> onOpenPolls(null));
         });
 
         Button createBtn = new Button("🚀 Create Poll");
-        createBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 8 18; -fx-background-radius: 6;");
+        createBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; " +
+                           "-fx-cursor: hand; -fx-padding: 8 18; -fx-background-radius: 6;");
         createBtn.setOnAction(e -> {
             if (qField.getText().trim().isEmpty()) { showToast("⚠️ Question cannot be empty!"); return; }
             List<String> finalOptions = new ArrayList<>();
             for (javafx.scene.Node node : optionsBox.getChildren()) {
-                if (node instanceof TextField && !((TextField) node).getText().trim().isEmpty()) {
-                    finalOptions.add(((TextField) node).getText().trim());
+                if (node instanceof TextField tf && !tf.getText().trim().isEmpty()) {
+                    finalOptions.add(tf.getText().trim());
                 }
             }
             if (finalOptions.size() >= 2) {
                 stage.close();
                 new Thread(() -> {
                     boolean success = socialService.createPoll(qField.getText().trim(), finalOptions);
-                    Platform.runLater(() -> {
-                        if (success) { 
-                            showToast("✅ Poll Created!"); 
-                            // 🌟 MAC FIX 1: পোল ক্রিয়েট হওয়ার পর runLater দিয়ে পোল লিস্ট ওপেন করা
-                            Platform.runLater(() -> onOpenPolls(null)); 
-                        } 
+                    javafx.application.Platform.runLater(() -> {
+                        if (success) { showToast("✅ Poll Created!"); javafx.application.Platform.runLater(() -> onOpenPolls(null)); }
                         else showToast("❌ Failed to create poll.");
                     });
                 }).start();
-            } else showToast("⚠️ Provide at least 2 options!");
+            } else {
+                showToast("⚠️ Provide at least 2 options!");
+            }
         });
 
         actionBox.getChildren().addAll(cancelBtn, createBtn);
         box.getChildren().addAll(qLabel, qField, optLabel, optionsBox, addMoreBtn, actionBox);
 
-        // 🌟 MAC FIX 2: Scene কে ফোর্স করে ডার্ক কালার দেওয়া হলো
-        javafx.scene.Scene scene = new javafx.scene.Scene(box, 450, 450);
-        scene.setFill(javafx.scene.paint.Color.web("#0f1117")); 
-        stage.setScene(scene);
-        
         stage.showAndWait();
     }
 
-    
 
 
 
@@ -1196,4 +1304,8 @@ public class SocialZoneController {
     private void loadDailyThreads() {
         // Kept for compatibility
     }
+
+
+
+    
 }

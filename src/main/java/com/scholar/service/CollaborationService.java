@@ -1,6 +1,5 @@
 package com.scholar.service;
 
-
 import org.springframework.stereotype.Service;
 
 import java.sql.*;
@@ -18,17 +17,36 @@ public class CollaborationService {
     public record Message(String sender, String content, String time) {}
 
     // ==========================================
-    // 1. CHANNELS & POSTS
+    // 1. ROUTES (UI-তে এগুলো Channel হিসেবে দেখাবে)
     // ==========================================
+
+    public boolean createChannel(String name, String information) {
+        // 🌟 FIX: channels এর বদলে routes টেবিলে সেভ হচ্ছে
+        String sql = "INSERT INTO routes (channel_id, name, information) VALUES (5, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, information);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+            return false; 
+        }
+    }
 
     public List<Channel> getAllChannels() {
         List<Channel> list = new ArrayList<>();
-        String sql = "SELECT * FROM channels ORDER BY id ASC";
+        // 🌟 FIX: channels এর বদলে routes টেবিল থেকে ডেটা আনছে
+        String sql = "SELECT id, name, information FROM routes WHERE channel_id = 5 ORDER BY id ASC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                list.add(new Channel(rs.getInt("id"), rs.getString("title"), rs.getString("description")));
+                list.add(new Channel(
+                    rs.getInt("id"), 
+                    rs.getString("name"), 
+                    rs.getString("information")
+                ));
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
@@ -60,11 +78,11 @@ public class CollaborationService {
     // ==========================================
 
     public String getMyStatus(int postId) {
-        String sql = "SELECT status, role FROM team_members WHERE post_id = ? AND user_id = ?";
+        String sql = "SELECT status, role FROM team_members WHERE post_id = ? AND user_id = ?::uuid";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, postId);
-            pstmt.setObject(2, AuthService.CURRENT_USER_ID);
+            pstmt.setString(2, AuthService.CURRENT_USER_ID.toString());
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 if ("OWNER".equals(rs.getString("role"))) return "OWNER";
@@ -89,53 +107,74 @@ public class CollaborationService {
     }
 
     // ==========================================
-    // 3. CREATE POST & APPLY (Transaction based)
+    // 3. CREATE POST & APPLY
     // ==========================================
 
     public boolean createPostWithRequirements(int channelId, String title, String desc, int maxMembers, List<String> questions) {
-        String sqlPost   = "INSERT INTO posts (channel_id, title, description, max_members, created_by, status) VALUES (?, ?, ?, ?, ?, 'OPEN') RETURNING id";
+        String sqlPost   = "INSERT INTO posts (channel_id, title, description, max_members, created_by, status) VALUES (?, ?, ?, ?, ?::uuid, 'OPEN') RETURNING id";
         String sqlReq    = "INSERT INTO post_requirements (post_id, question) VALUES (?, ?)";
-        String sqlMember = "INSERT INTO team_members (post_id, user_id, role, status) VALUES (?, ?, 'OWNER', 'APPROVED')";
+        String sqlMember = "INSERT INTO team_members (post_id, user_id, role, status) VALUES (?, ?::uuid, 'OWNER', 'APPROVED')";
 
         Connection conn = DatabaseConnection.getConnection();
         try {
             conn.setAutoCommit(false);
             int postId = -1;
             try (PreparedStatement p1 = conn.prepareStatement(sqlPost)) {
-                p1.setInt(1, channelId); p1.setString(2, title); p1.setString(3, desc);
-                p1.setInt(4, maxMembers); p1.setObject(5, AuthService.CURRENT_USER_ID);
+                p1.setInt(1, channelId); 
+                p1.setString(2, title); 
+                p1.setString(3, desc);
+                p1.setInt(4, maxMembers); 
+                p1.setString(5, AuthService.CURRENT_USER_ID.toString());
                 ResultSet rs = p1.executeQuery();
                 if (rs.next()) postId = rs.getInt(1);
             }
             if (postId != -1) {
-                try (PreparedStatement p2 = conn.prepareStatement(sqlReq)) {
-                    for (String q : questions) { p2.setInt(1, postId); p2.setString(2, q); p2.addBatch(); }
-                    p2.executeBatch();
+                if (questions != null && !questions.isEmpty()) {
+                    try (PreparedStatement p2 = conn.prepareStatement(sqlReq)) {
+                        for (String q : questions) { 
+                            p2.setInt(1, postId); 
+                            p2.setString(2, q); 
+                            p2.addBatch(); 
+                        }
+                        p2.executeBatch();
+                    }
                 }
                 try (PreparedStatement p3 = conn.prepareStatement(sqlMember)) {
-                    p3.setInt(1, postId); p3.setObject(2, AuthService.CURRENT_USER_ID); p3.executeUpdate();
+                    p3.setInt(1, postId); 
+                    p3.setString(2, AuthService.CURRENT_USER_ID.toString()); 
+                    p3.executeUpdate();
                 }
                 conn.commit();
                 return true;
             }
             conn.rollback();
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+            try { if (conn != null) conn.rollback(); } catch (SQLException ex) {}
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (SQLException ex) {}
+        }
         return false;
     }
 
     public boolean applyToTeamWithAnswers(int postId, List<Integer> questionIds, List<String> answers) {
-        String sqlApply  = "INSERT INTO team_members (post_id, user_id, status, role) VALUES (?, ?, 'PENDING', 'MEMBER')";
-        String sqlAnswer = "INSERT INTO application_answers (post_id, user_id, question_id, answer) VALUES (?, ?, ?, ?)";
+        String sqlApply  = "INSERT INTO team_members (post_id, user_id, status, role) VALUES (?, ?::uuid, 'PENDING', 'MEMBER')";
+        String sqlAnswer = "INSERT INTO application_answers (post_id, user_id, question_id, answer) VALUES (?, ?::uuid, ?, ?)";
         Connection conn = DatabaseConnection.getConnection();
         try {
             conn.setAutoCommit(false);
             try (PreparedStatement p1 = conn.prepareStatement(sqlApply)) {
-                p1.setInt(1, postId); p1.setObject(2, AuthService.CURRENT_USER_ID); p1.executeUpdate();
+                p1.setInt(1, postId); 
+                p1.setString(2, AuthService.CURRENT_USER_ID.toString()); 
+                p1.executeUpdate();
             }
             try (PreparedStatement p2 = conn.prepareStatement(sqlAnswer)) {
                 for (int i = 0; i < questionIds.size(); i++) {
-                    p2.setInt(1, postId); p2.setObject(2, AuthService.CURRENT_USER_ID);
-                    p2.setInt(3, questionIds.get(i)); p2.setString(4, answers.get(i)); p2.addBatch();
+                    p2.setInt(1, postId); 
+                    p2.setString(2, AuthService.CURRENT_USER_ID.toString());
+                    p2.setInt(3, questionIds.get(i)); 
+                    p2.setString(4, answers.get(i)); 
+                    p2.addBatch();
                 }
                 p2.executeBatch();
             }
@@ -177,7 +216,8 @@ public class CollaborationService {
         String sql = "UPDATE team_members SET status = 'APPROVED' WHERE post_id = ? AND user_id = ?::uuid";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, postId); pstmt.setString(2, userId);
+            pstmt.setInt(1, postId); 
+            pstmt.setString(2, userId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { return false; }
     }
@@ -187,11 +227,13 @@ public class CollaborationService {
     // ==========================================
 
     public boolean sendMessage(int postId, String message) {
-        String sql = "INSERT INTO messages (post_id, user_id, content) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO messages (post_id, user_id, content) VALUES (?, ?::uuid, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, postId); pstmt.setObject(2, AuthService.CURRENT_USER_ID);
-            pstmt.setString(3, message); return pstmt.executeUpdate() > 0;
+            pstmt.setInt(1, postId); 
+            pstmt.setString(2, AuthService.CURRENT_USER_ID.toString());
+            pstmt.setString(3, message); 
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { return false; }
     }
 
@@ -210,23 +252,28 @@ public class CollaborationService {
     }
 
     public boolean addTeamResource(int postId, String title, String url) {
-        String sql = "INSERT INTO team_resources (post_id, title, url, added_by) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO team_resources (post_id, title, url, added_by) VALUES (?, ?, ?, ?::uuid)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, postId); pstmt.setString(2, title);
-            pstmt.setString(3, url); pstmt.setObject(4, AuthService.CURRENT_USER_ID);
+            pstmt.setInt(1, postId); 
+            pstmt.setString(2, title);
+            pstmt.setString(3, url); 
+            pstmt.setString(4, AuthService.CURRENT_USER_ID.toString());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { return false; }
     }
 
     public boolean addTeamResource(int postId, String title, String url, String type, String desc, String fileId) {
-        String sql = "INSERT INTO team_resources (post_id, title, url, type, description, file_id, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO team_resources (post_id, title, url, type, description, file_id, added_by) VALUES (?, ?, ?, ?, ?, ?, ?::uuid)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, postId); pstmt.setString(2, title);
-            pstmt.setString(3, url); pstmt.setString(4, type);
-            pstmt.setString(5, desc); pstmt.setString(6, fileId);
-            pstmt.setObject(7, AuthService.CURRENT_USER_ID);
+            pstmt.setInt(1, postId); 
+            pstmt.setString(2, title);
+            pstmt.setString(3, url); 
+            pstmt.setString(4, type);
+            pstmt.setString(5, desc); 
+            pstmt.setString(6, fileId);
+            pstmt.setString(7, AuthService.CURRENT_USER_ID.toString());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }

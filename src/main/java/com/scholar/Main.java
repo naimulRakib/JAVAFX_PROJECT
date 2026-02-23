@@ -41,6 +41,12 @@ public class Main extends Application {
 
         // আপনার অরিজিনাল সিন এবং স্টেজ লজিক (অক্ষত)
         Scene scene = new Scene(fxmlLoader.load(), 500, 600);
+           scene.getStylesheets().add(
+            getClass().getResource(
+                "/com/scholar/view/css/scholar-dark-theme.css")
+                .toExternalForm()
+        );
+
         
         stage.setTitle("Study Easy - Login");
         stage.setScene(scene);

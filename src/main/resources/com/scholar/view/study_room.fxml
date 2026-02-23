@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<!--
+    STUDY ROOM UI
+    Path: src/main/resources/com/scholar/view/study_room.fxml
+    Controller: com.scholar.controller.StudyRoomController
+-->
+<BorderPane
+    prefHeight="820.0" prefWidth="1280.0"
+    style="-fx-background-color: #f0f4ff;"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.scholar.controller.StudyRoomController">
+
+    <!-- ═══════════════════════════════════════════
+         TOP HEADER
+    ═══════════════════════════════════════════ -->
+    <top>
+        <HBox
+            alignment="CENTER_LEFT" spacing="20"
+            style="
+                -fx-background-color: linear-gradient(to right, #1a1a2e, #16213e, #0f3460);
+                -fx-padding: 16 28;
+                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 12, 0, 0, 4);
+            ">
+
+            <!-- Icon + Title -->
+            <VBox alignment="CENTER_LEFT" spacing="2">
+                <Label text="📖 Study Room Hub" textFill="#ffffff">
+                    <font><Font name="System Bold" size="22.0"/></font>
+                </Label>
+                <Label text="Focus. Track. Achieve." textFill="#7c83fd"
+                    style="-fx-font-size: 11px; -fx-letter-spacing: 0.5px;"/>
+            </VBox>
+
+            <Separator orientation="VERTICAL" style="-fx-opacity: 0.2;"/>
+
+            <!-- Streak badge -->
+            <HBox alignment="CENTER" spacing="8"
+                style="
+                    -fx-background-color: rgba(239,68,68,0.15);
+                    -fx-border-color: rgba(239,68,68,0.35);
+                    -fx-border-radius: 20; -fx-background-radius: 20;
+                    -fx-padding: 6 16;
+                ">
+                <Label fx:id="streakLabel" text="🔥 0 Day Streak" textFill="#fca5a5">
+                    <font><Font name="System Bold" size="13.0"/></font>
+                </Label>
+            </HBox>
+
+            <!-- XP badge -->
+            <HBox alignment="CENTER" spacing="8"
+                style="
+                    -fx-background-color: rgba(251,191,36,0.15);
+                    -fx-border-color: rgba(251,191,36,0.35);
+                    -fx-border-radius: 20; -fx-background-radius: 20;
+                    -fx-padding: 6 16;
+                ">
+                <Label fx:id="xpLabel" text="⭐ 0 XP" textFill="#fde68a">
+                    <font><Font name="System Bold" size="13.0"/></font>
+                </Label>
+            </HBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Create room button -->
+            <Button text="＋ Create Room"
+                onAction="#showCreateRoomDialog"
+                style="
+                    -fx-background-color: linear-gradient(to right, #10b981, #06b6d4);
+                    -fx-text-fill: white; -fx-font-weight: bold;
+                    -fx-background-radius: 20; -fx-padding: 9 22;
+                    -fx-cursor: hand; -fx-font-size: 13px;
+                    -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.5), 10, 0, 0, 3);
+                "/>
+        </HBox>
+    </top>
+
+    <!-- ═══════════════════════════════════════════
+         MAIN: LEFT sidebar + RIGHT content
+    ═══════════════════════════════════════════ -->
+    <center>
+        <HBox spacing="0">
+
+            <!-- ─── LEFT SIDEBAR: Room list ─────────── -->
+            <VBox
+                prefWidth="280" minWidth="240" maxWidth="300"
+                spacing="14"
+                style="
+                    -fx-background-color: white;
+                    -fx-padding: 20 16 20 16;
+                    -fx-border-color: #e8eeff;
+                    -fx-border-width: 0 1 0 0;
+                ">
+
+                <Label text="🏠 Public Rooms" textFill="#1e293b">
+                    <font><Font name="System Bold" size="16.0"/></font>
+                </Label>
+
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="publicRoomList" spacing="10"
+                        style="-fx-background-color: transparent;"/>
+                </ScrollPane>
+
+                <Separator style="-fx-opacity: 0.2;"/>
+
+                <!-- Private room quick access -->
+                <VBox spacing="8"
+                    style="
+                        -fx-background-color: linear-gradient(to bottom right, #fdf4ff, #fff);
+                        -fx-background-radius: 12; -fx-padding: 14;
+                        -fx-border-color: #e9d5ff; -fx-border-radius: 12;
+                    ">
+                    <Label text="🔒 My Private Room" textFill="#7c3aed">
+                        <font><Font name="System Bold" size="13.0"/></font>
+                    </Label>
+                    <Label text="Your personal focus space — history tracked privately."
+                        textFill="#94a3b8" style="-fx-font-size: 11px;" wrapText="true"/>
+                    <Button text="Enter Private Room →"
+                        style="
+                            -fx-background-color: #7c3aed;
+                            -fx-text-fill: white; -fx-font-weight: bold;
+                            -fx-background-radius: 8; -fx-cursor: hand;
+                            -fx-padding: 8 0; -fx-font-size: 12px;
+                        "
+                        maxWidth="1.7976931348623157E308"/>
+                </VBox>
+            </VBox>
+
+            <!-- ─── RIGHT: Tabs (Room / Analytics / Leaderboard / History) ─── -->
+            <TabPane HBox.hgrow="ALWAYS"
+                tabClosingPolicy="UNAVAILABLE"
+                style="-fx-background-color: transparent; -fx-tab-min-height: 38px;">
+
+                <!-- TAB 1: Active Room -->
+                <Tab text="📖 Study Room" style="-fx-font-weight: bold;">
+                    <VBox fx:id="roomContentPane" spacing="0" VBox.vgrow="ALWAYS"
+                        style="-fx-background-color: #f8faff;">
+
+                        <!-- Placeholder shown before joining -->
+                        <VBox alignment="CENTER" spacing="20" VBox.vgrow="ALWAYS"
+                            style="-fx-padding: 80 60;">
+                            <Label text="📖" style="-fx-font-size: 56px;"/>
+                            <Label text="Join a Study Room to begin"
+                                style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                            <Label text="Pick a public room from the left sidebar, or create your own."
+                                textFill="#94a3b8" style="-fx-font-size: 14px;"
+                                wrapText="true"/>
+
+                            <!-- Quick start cards row -->
+                            <HBox spacing="16" alignment="CENTER" style="-fx-padding: 20 0 0 0;">
+
+                                <VBox spacing="10" alignment="CENTER"
+                                    style="
+                                        -fx-background-color: white;
+                                        -fx-background-radius: 16; -fx-padding: 24 28;
+                                        -fx-border-color: #e8eeff; -fx-border-radius: 16;
+                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 14, 0, 0, 4);
+                                        -fx-cursor: hand;
+                                    "
+                                    prefWidth="170">
+                                    <Label text="⚡" style="-fx-font-size: 32px;"/>
+                                    <Label text="Quick Sprint" textFill="#4f46e5"
+                                        style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                    <Label text="25 min focused session"
+                                        textFill="#94a3b8" style="-fx-font-size: 11px;"/>
+                                </VBox>
+
+                                <VBox spacing="10" alignment="CENTER"
+                                    style="
+                                        -fx-background-color: white;
+                                        -fx-background-radius: 16; -fx-padding: 24 28;
+                                        -fx-border-color: #e8eeff; -fx-border-radius: 16;
+                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 14, 0, 0, 4);
+                                        -fx-cursor: hand;
+                                    "
+                                    prefWidth="170">
+                                    <Label text="🧠" style="-fx-font-size: 32px;"/>
+                                    <Label text="Deep Work" textFill="#0891b2"
+                                        style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                    <Label text="90 min deep focus"
+                                        textFill="#94a3b8" style="-fx-font-size: 11px;"/>
+                                </VBox>
+
+                                <VBox spacing="10" alignment="CENTER"
+                                    style="
+                                        -fx-background-color: white;
+                                        -fx-background-radius: 16; -fx-padding: 24 28;
+                                        -fx-border-color: #e8eeff; -fx-border-radius: 16;
+                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 14, 0, 0, 4);
+                                        -fx-cursor: hand;
+                                    "
+                                    prefWidth="170">
+                                    <Label text="🤝" style="-fx-font-size: 32px;"/>
+                                    <Label text="Group Study" textFill="#059669"
+                                        style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                    <Label text="Study with classmates"
+                                        textFill="#94a3b8" style="-fx-font-size: 11px;"/>
+                                </VBox>
+
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+
+                <!-- TAB 2: Analytics -->
+                <Tab text="📊 Analytics" style="-fx-font-weight: bold;">
+                    <ScrollPane fitToWidth="true"
+                        style="-fx-background-color: #f8faff; -fx-border-color: transparent;">
+                        <VBox spacing="20" style="-fx-padding: 24;">
+
+                            <Label text="📊 My Study Analytics" textFill="#1e293b">
+                                <font><Font name="System Bold" size="20.0"/></font>
+                            </Label>
+
+                            <!-- Stats row -->
+                            <HBox spacing="14">
+                                <VBox alignment="CENTER" spacing="6" HBox.hgrow="ALWAYS"
+                                    style="
+                                        -fx-background-color: linear-gradient(to bottom right, #eef2ff, #fff);
+                                        -fx-background-radius: 14; -fx-padding: 20;
+                                        -fx-border-color: #c7d2fe; -fx-border-radius: 14;
+                                    ">
+                                    <Label text="📅" style="-fx-font-size: 24px;"/>
+                                    <Label text="Today" textFill="#64748b" style="-fx-font-size: 12px;"/>
+                                    <Label text="0 min" textFill="#4f46e5"
+                                        style="-fx-font-weight: bold; -fx-font-size: 22px;"/>
+                                </VBox>
+                                <VBox alignment="CENTER" spacing="6" HBox.hgrow="ALWAYS"
+                                    style="
+                                        -fx-background-color: linear-gradient(to bottom right, #f0fdf4, #fff);
+                                        -fx-background-radius: 14; -fx-padding: 20;
+                                        -fx-border-color: #bbf7d0; -fx-border-radius: 14;
+                                    ">
+                                    <Label text="📆" style="-fx-font-size: 24px;"/>
+                                    <Label text="This Week" textFill="#64748b" style="-fx-font-size: 12px;"/>
+                                    <Label text="0 min" textFill="#16a34a"
+                                        style="-fx-font-weight: bold; -fx-font-size: 22px;"/>
+                                </VBox>
+                                <VBox alignment="CENTER" spacing="6" HBox.hgrow="ALWAYS"
+                                    style="
+                                        -fx-background-color: linear-gradient(to bottom right, #fff7ed, #fff);
+                                        -fx-background-radius: 14; -fx-padding: 20;
+                                        -fx-border-color: #fed7aa; -fx-border-radius: 14;
+                                    ">
+                                    <Label text="🔥" style="-fx-font-size: 24px;"/>
+                                    <Label text="Streak" textFill="#64748b" style="-fx-font-size: 12px;"/>
+                                    <Label fx:id="analyticsStreakLabel" text="0 days"
+                                        textFill="#ea580c"
+                                        style="-fx-font-weight: bold; -fx-font-size: 22px;"/>
+                                </VBox>
+                                <VBox alignment="CENTER" spacing="6" HBox.hgrow="ALWAYS"
+                                    style="
+                                        -fx-background-color: linear-gradient(to bottom right, #fdf4ff, #fff);
+                                        -fx-background-radius: 14; -fx-padding: 20;
+                                        -fx-border-color: #e9d5ff; -fx-border-radius: 14;
+                                    ">
+                                    <Label text="⭐" style="-fx-font-size: 24px;"/>
+                                    <Label text="Total XP" textFill="#64748b" style="-fx-font-size: 12px;"/>
+                                    <Label fx:id="analyticsXpLabel" text="0 XP"
+                                        textFill="#7c3aed"
+                                        style="-fx-font-weight: bold; -fx-font-size: 22px;"/>
+                                </VBox>
+                            </HBox>
+
+                            <!-- Charts row -->
+                            <HBox spacing="16">
+                                <!-- Weekly bar chart -->
+                                <VBox HBox.hgrow="ALWAYS" spacing="8"
+                                    style="
+                                        -fx-background-color: white; -fx-background-radius: 14;
+                                        -fx-padding: 18; -fx-border-color: #e8eeff; -fx-border-radius: 14;
+                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0, 0, 4);
+                                    ">
+                                    <Label text="📅 Weekly Study Minutes" textFill="#1e293b"
+                                        style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                    <BarChart fx:id="weeklyChart" VBox.vgrow="ALWAYS"
+                                        style="-fx-background-color: transparent;"
+                                        prefHeight="220" animated="false" legendVisible="false">
+                                        <xAxis><CategoryAxis fx:id="weeklyXAxis"/></xAxis>
+                                        <yAxis><NumberAxis fx:id="weeklyYAxis" label="Minutes"/></yAxis>
+                                    </BarChart>
+                                </VBox>
+
+                                <!-- Topic pie chart -->
+                                <VBox prefWidth="300" spacing="8"
+                                    style="
+                                        -fx-background-color: white; -fx-background-radius: 14;
+                                        -fx-padding: 18; -fx-border-color: #e8eeff; -fx-border-radius: 14;
+                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0, 0, 4);
+                                    ">
+                                    <Label text="📚 Topics Breakdown" textFill="#1e293b"
+                                        style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                    <PieChart fx:id="topicPieChart" VBox.vgrow="ALWAYS"
+                                        prefHeight="220" animated="false" legendVisible="true"
+                                        labelsVisible="false"/>
+                                </VBox>
+                            </HBox>
+
+                        </VBox>
+                    </ScrollPane>
+                </Tab>
+
+                <!-- TAB 3: Leaderboard -->
+                <Tab text="🏆 Leaderboard" style="-fx-font-weight: bold;">
+                    <VBox spacing="18" style="-fx-padding: 26; -fx-background-color: #f8faff;">
+
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="🏆 Department Leaderboard" textFill="#1e293b">
+                                <font><Font name="System Bold" size="20.0"/></font>
+                            </Label>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="Ranked by Total XP + Streak"
+                                textFill="#94a3b8" style="-fx-font-size: 12px;"/>
+                        </HBox>
+
+                        <!-- Top 3 podium -->
+                        <HBox spacing="12" alignment="BOTTOM_CENTER" style="-fx-padding: 10 0;">
+                            <!-- 2nd -->
+                            <VBox alignment="CENTER" spacing="6"
+                                style="
+                                    -fx-background-color: linear-gradient(to bottom, #e2e8f0, #f8fafc);
+                                    -fx-background-radius: 12 12 0 0; -fx-padding: 20 28 16 28;
+                                    -fx-border-color: #cbd5e1; -fx-border-radius: 12 12 0 0;
+                                ">
+                                <Label text="🥈" style="-fx-font-size: 32px;"/>
+                                <Label text="2nd" textFill="#64748b" style="-fx-font-weight: bold;"/>
+                            </VBox>
+                            <!-- 1st -->
+                            <VBox alignment="CENTER" spacing="6"
+                                style="
+                                    -fx-background-color: linear-gradient(to bottom, #fef3c7, #fffbeb);
+                                    -fx-background-radius: 12 12 0 0; -fx-padding: 28 32 16 32;
+                                    -fx-border-color: #fde68a; -fx-border-radius: 12 12 0 0;
+                                    -fx-effect: dropshadow(gaussian, rgba(251,191,36,0.3), 14, 0, 0, 4);
+                                ">
+                                <Label text="🥇" style="-fx-font-size: 38px;"/>
+                                <Label text="1st" textFill="#d97706" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+                            </VBox>
+                            <!-- 3rd -->
+                            <VBox alignment="CENTER" spacing="6"
+                                style="
+                                    -fx-background-color: linear-gradient(to bottom, #fed7aa, #fff7ed);
+                                    -fx-background-radius: 12 12 0 0; -fx-padding: 16 28 16 28;
+                                    -fx-border-color: #fdba74; -fx-border-radius: 12 12 0 0;
+                                ">
+                                <Label text="🥉" style="-fx-font-size: 28px;"/>
+                                <Label text="3rd" textFill="#ea580c" style="-fx-font-weight: bold;"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Full ranking list -->
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                            <VBox fx:id="leaderboardContainer" spacing="10"
+                                style="-fx-background-color: transparent;"/>
+                        </ScrollPane>
+                    </VBox>
+                </Tab>
+
+                <!-- TAB 4: History -->
+                <Tab text="📜 History" style="-fx-font-weight: bold;">
+                    <VBox spacing="18" style="-fx-padding: 26; -fx-background-color: #f8faff;">
+
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="📜 Study History" textFill="#1e293b">
+                                <font><Font name="System Bold" size="20.0"/></font>
+                            </Label>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="All your completed sessions"
+                                textFill="#94a3b8" style="-fx-font-size: 12px;"/>
+                        </HBox>
+
+                        <!-- Filter chips -->
+                        <HBox spacing="8">
+                            <Button text="All Time"
+                                style="
+                                    -fx-background-color: #4f46e5; -fx-text-fill: white;
+                                    -fx-background-radius: 20; -fx-padding: 5 16;
+                                    -fx-cursor: hand; -fx-font-size: 12px; -fx-font-weight: bold;
+                                "/>
+                            <Button text="This Week"
+                                style="
+                                    -fx-background-color: #f1f5f9; -fx-text-fill: #64748b;
+                                    -fx-border-color: #e2e8f0; -fx-border-radius: 20;
+                                    -fx-background-radius: 20; -fx-padding: 5 16;
+                                    -fx-cursor: hand; -fx-font-size: 12px;
+                                "/>
+                            <Button text="Today"
+                                style="
+                                    -fx-background-color: #f1f5f9; -fx-text-fill: #64748b;
+                                    -fx-border-color: #e2e8f0; -fx-border-radius: 20;
+                                    -fx-background-radius: 20; -fx-padding: 5 16;
+                                    -fx-cursor: hand; -fx-font-size: 12px;
+                                "/>
+                        </HBox>
+
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                            <VBox fx:id="historyContainer" spacing="10"
+                                style="-fx-background-color: transparent;"/>
+                        </ScrollPane>
+                    </VBox>
+                </Tab>
+
+            </TabPane>
+        </HBox>
+    </center>
+
+</BorderPane>

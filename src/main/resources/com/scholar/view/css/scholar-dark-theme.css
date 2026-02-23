@@ -1,0 +1,281 @@
+/* ================================================================
+   ScholarGrid — Dark Theme Fix
+   Path: src/main/resources/com/scholar/view/css/scholar-dark-theme.css
+   Apply to your root scene or individual stages via:
+       scene.getStylesheets().add(getClass().getResource("/com/scholar/view/css/scholar-dark-theme.css").toExternalForm());
+   ================================================================ */
+
+/* ── ROOT DEFAULTS ─────────────────────────────────────────── */
+.root {
+    -fx-font-family: "Segoe UI", "Inter", "SF Pro Display", sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* ================================================================
+   TEXT FIELD — Fix invisible text in dark backgrounds
+   This is the #1 cause of your blank modal fields.
+   JavaFX TextField uses an inner .text-field skin that ignores
+   parent inline -fx-text-fill unless you target it directly.
+   ================================================================ */
+.text-field {
+    -fx-background-color: #1a2236;
+    -fx-text-fill: #e2e8f0;
+    -fx-prompt-text-fill: #4a5a72;
+    -fx-highlight-fill: #3b82f6;
+    -fx-highlight-text-fill: white;
+    -fx-border-color: #2c3a52;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+}
+
+.text-field:focused {
+    -fx-border-color: #3b82f6;
+    -fx-effect: dropshadow(three-pass-box, rgba(59,130,246,0.25), 6, 0, 0, 0);
+}
+
+/* ================================================================
+   TEXT AREA — Same fix for the multi-line fields
+   ================================================================ */
+.text-area {
+    -fx-background-color: #1a2236;
+    -fx-text-fill: #e2e8f0;
+    -fx-prompt-text-fill: #4a5a72;
+    -fx-highlight-fill: #3b82f6;
+    -fx-highlight-text-fill: white;
+    -fx-border-color: #2c3a52;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4;
+}
+
+/* Inner viewport and content area */
+.text-area .content {
+    -fx-background-color: #1a2236;
+    -fx-text-fill: #e2e8f0;
+    -fx-background-radius: 8;
+    -fx-padding: 6 10;
+}
+
+.text-area:focused {
+    -fx-border-color: #3b82f6;
+}
+
+/* Scroll bars inside TextArea */
+.text-area .scroll-pane {
+    -fx-background-color: transparent;
+}
+.text-area .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* ================================================================
+   COMBO BOX — Fix dropdown text and selected item visibility
+   ================================================================ */
+.combo-box {
+    -fx-background-color: #1a2236;
+    -fx-border-color: #2c3a52;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+/* The visible selected-item text */
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2e8f0;
+    -fx-padding: 6 10;
+}
+
+/* Arrow button area */
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+.combo-box .arrow-button .arrow {
+    -fx-background-color: #7b8fa8;
+}
+
+.combo-box:focused {
+    -fx-border-color: #3b82f6;
+}
+
+/* Dropdown popup */
+.combo-box-popup .list-view {
+    -fx-background-color: #1a2236;
+    -fx-border-color: #2c3a52;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 12, 0, 0, 4);
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2e8f0;
+    -fx-padding: 8 14;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #243050;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+}
+
+/* ================================================================
+   ACTION BUTTONS in the resource table — fix tiny colored dots
+   Give them a minimum width so text is visible
+   ================================================================ */
+.table-view .table-row-cell .button {
+    -fx-min-width: 64px;
+    -fx-min-height: 26px;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+
+/* ================================================================
+   TABLE VIEW — dark styling
+   ================================================================ */
+.table-view {
+    -fx-background-color: #0d1117;
+    -fx-border-color: #1e2736;
+    -fx-table-cell-border-color: #1a2236;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #161b27;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: #161b27;
+    -fx-border-color: transparent #1e2736 #1e2736 transparent;
+    -fx-size: 36px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #7b8fa8;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #1a2236 transparent;
+    -fx-text-fill: #e2e8f0;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #1e2f50;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #161f33;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: #e2e8f0;
+    -fx-alignment: center-left;
+    -fx-padding: 6 8;
+}
+
+/* Hide default focus ring */
+.table-view:focused {
+    -fx-border-color: transparent;
+}
+
+/* ================================================================
+   SCROLL BAR — slim dark scrollbars throughout
+   ================================================================ */
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8px;
+    -fx-pref-height: 8px;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #2c3a52;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #3b4f6e;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+/* ================================================================
+   TREE VIEW (left panel explorer)
+   ================================================================ */
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.tree-view .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cbd5e1;
+    -fx-padding: 4 8;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: #1e3a5f;
+    -fx-text-fill: #93c5fd;
+    -fx-background-radius: 6;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: #1a2236;
+    -fx-background-radius: 6;
+}
+
+/* Expand/collapse arrows */
+.tree-view .tree-disclosure-node .arrow {
+    -fx-background-color: #4a5a72;
+}
+
+/* ================================================================
+   SEPARATOR
+   ================================================================ */
+.separator .line {
+    -fx-border-color: #1e2736;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ================================================================
+   TOOLTIP
+   ================================================================ */
+.tooltip {
+    -fx-background-color: #1a2236;
+    -fx-text-fill: #e2e8f0;
+    -fx-border-color: #2c3a52;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-size: 11px;
+    -fx-padding: 5 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.35), 8, 0, 0, 2);
+}
+
+/* ================================================================
+   LABEL DEFAULTS inside dark panels
+   ================================================================ */
+.label {
+    -fx-text-fill: #cbd5e1;
+}
+
+/* ================================================================
+   GRID PANE (modal form backgrounds)
+   ================================================================ */
+.grid-pane {
+    -fx-background-color: #161b27;
+}
