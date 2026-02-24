@@ -2,17 +2,22 @@ package com.scholar.controller.collaboration;
 
 import com.scholar.service.AuthService;
 import com.scholar.service.CollaborationService;
+import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Component("dashCollaborationController")
 public class CollaborationController {
@@ -23,7 +28,6 @@ public class CollaborationController {
     @FXML private VBox channelList;
     @FXML private VBox teamList;
     @FXML private VBox roomContainer;
-    
     @FXML private VBox channelInfoBox;
     @FXML private Label channelTitleLabel;
     @FXML private Label channelDescLabel;
@@ -32,7 +36,22 @@ public class CollaborationController {
     private int currentChannelId = -1;
     private String currentChannelName = "";
 
-    public void init(VBox channelList, VBox teamList, VBox roomContainer, VBox channelInfoBox, Label channelTitleLabel, Label channelDescLabel, Button createChannelBtn) {
+    // ── Evaluated at runtime, not class-load time ──────────────────────────
+    private boolean isAdmin() {
+        return "admin".equals(AuthService.CURRENT_USER_ROLE);
+    }
+
+    // Shared background executor for async DB calls
+    private final ExecutorService executor =
+            Executors.newCachedThreadPool(r -> { Thread t = new Thread(r); t.setDaemon(true); return t; });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void init(VBox channelList, VBox teamList, VBox roomContainer,
+                     VBox channelInfoBox, Label channelTitleLabel,
+                     Label channelDescLabel, Button createChannelBtn) {
         this.channelList       = channelList;
         this.teamList          = teamList;
         this.roomContainer     = roomContainer;
@@ -41,227 +60,471 @@ public class CollaborationController {
         this.channelDescLabel  = channelDescLabel;
         this.createChannelBtn  = createChannelBtn;
 
-        if (createChannelBtn != null) {
-            createChannelBtn.setVisible("admin".equals(AuthService.CURRENT_USER_ROLE));
-            createChannelBtn.setManaged("admin".equals(AuthService.CURRENT_USER_ROLE));
-        }
+        // ── Admin button visibility — evaluated NOW after login ──────────────
+        applyAdminVisibility();
 
-        loadChannels();
+        loadChannelsAsync();
     }
 
-    public void loadChannels() {
-        if (channelList == null) return;
-        channelList.getChildren().clear();
-        List<CollaborationService.Channel> channels = collaborationService.getAllChannels();
-        
-        for (var c : channels) {
-            Button btn = new Button("# " + c.title());
-            btn.setMaxWidth(Double.MAX_VALUE); 
-            btn.setAlignment(Pos.CENTER_LEFT);
-            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 15; -fx-background-radius: 8;");
-            
-            btn.setOnMouseEntered(e -> {
-                if (currentChannelId != c.id()) {
-                    btn.setStyle("-fx-background-color: rgba(124,131,253,0.1); -fx-text-fill: #c7d2fe; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 15; -fx-background-radius: 8;");
-                }
-            });
-            btn.setOnMouseExited(e -> {
-                if (currentChannelId != c.id()) {
-                    btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 15; -fx-background-radius: 8;");
-                }
-            });
+    /** Shows/hides the create-channel button based on current role. */
+    private void applyAdminVisibility() {
+        if (createChannelBtn == null) return;
+        boolean admin = isAdmin();
+        createChannelBtn.setVisible(admin);
+        createChannelBtn.setManaged(admin);
+    }
 
-            btn.setOnAction(e -> {
-                currentChannelId = c.id();
-                currentChannelName = c.title();
-                
-                channelList.getChildren().forEach(node -> 
-                    node.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 15; -fx-background-radius: 8;"));
-                
-                btn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 15; -fx-background-radius: 8;");
-                
-                showChannelInfo(c);
-                loadTeamsForChannel(c.id(), c.title());
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHANNELS — async load
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void loadChannelsAsync() {
+        if (channelList == null) return;
+        // Show a spinner while loading
+        showChannelListLoading(true);
+
+        executor.submit(() -> {
+            List<CollaborationService.Channel> channels = collaborationService.getAllChannels();
+            Platform.runLater(() -> {
+                showChannelListLoading(false);
+                renderChannels(channels);
             });
-            channelList.getChildren().add(btn);
+        });
+    }
+
+    /** Kept for callers that need synchronous reload after create/delete. */
+    public void loadChannels() {
+        loadChannelsAsync();
+    }
+
+    private void showChannelListLoading(boolean loading) {
+        if (channelList == null) return;
+        if (loading) {
+            channelList.getChildren().clear();
+            Label lbl = new Label("Loading…");
+            lbl.setStyle("-fx-text-fill:#64748b; -fx-font-size:12px; -fx-font-style:italic; -fx-padding:8 14;");
+            channelList.getChildren().add(lbl);
         }
+    }
+
+    private void renderChannels(List<CollaborationService.Channel> channels) {
+        channelList.getChildren().clear();
+
+        if (channels.isEmpty()) {
+            Label empty = new Label("No channels yet.");
+            empty.setStyle("-fx-text-fill:#64748b; -fx-font-size:12px; -fx-font-style:italic; -fx-padding:8 14;");
+            channelList.getChildren().add(empty);
+            return;
+        }
+
+        for (var c : channels) {
+            HBox row = new HBox(4);
+            row.setAlignment(Pos.CENTER_LEFT);
+
+            Button btn = new Button("# " + c.title());
+            btn.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(btn, Priority.ALWAYS);
+            btn.setAlignment(Pos.CENTER_LEFT);
+            btn.setStyle(channelBtnStyle(false));
+            btn.setOnMouseEntered(e -> { if (currentChannelId != c.id()) btn.setStyle(channelBtnHover()); });
+            btn.setOnMouseExited(e  -> { if (currentChannelId != c.id()) btn.setStyle(channelBtnStyle(false)); });
+            btn.setOnAction(e -> selectChannel(c, btn));
+            row.getChildren().add(btn);
+
+            // Admin: delete channel button
+            if (isAdmin()) {
+                Button del = new Button("✕");
+                del.setStyle("-fx-background-color:transparent; -fx-text-fill:#f87171; "
+                        + "-fx-cursor:hand; -fx-font-size:12px; -fx-padding:4 6;");
+                del.setOnMouseEntered(e -> del.setStyle(
+                        "-fx-background-color:rgba(248,113,113,0.15); -fx-text-fill:#f87171; "
+                        + "-fx-background-radius:6; -fx-cursor:hand; -fx-padding:4 6;"));
+                del.setOnMouseExited(e -> del.setStyle(
+                        "-fx-background-color:transparent; -fx-text-fill:#f87171; "
+                        + "-fx-cursor:hand; -fx-font-size:12px; -fx-padding:4 6;"));
+                del.setOnAction(e ->
+                    PopupHelper.showConfirm(getWindow(),
+                        "Delete Channel",
+                        "Delete \"" + c.title() + "\" and ALL its teams,\nmessages and resources?",
+                        () -> {
+                            executor.submit(() -> {
+                                collaborationService.deleteChannel(c.id());
+                                Platform.runLater(() -> {
+                                    if (currentChannelId == c.id()) {
+                                        currentChannelId = -1;
+                                        currentChannelName = "";
+                                        if (channelInfoBox != null) {
+                                            channelInfoBox.setVisible(false);
+                                            channelInfoBox.setManaged(false);
+                                        }
+                                        teamList.getChildren().clear();
+                                        roomContainer.getChildren().clear();
+                                    }
+                                    loadChannelsAsync();
+                                });
+                            });
+                        }
+                    )
+                );
+                row.getChildren().add(del);
+            }
+
+            channelList.getChildren().add(row);
+        }
+    }
+
+    private void selectChannel(CollaborationService.Channel c, Button btn) {
+        currentChannelId   = c.id();
+        currentChannelName = c.title();
+
+        // Reset all channel button styles
+        channelList.getChildren().forEach(node -> {
+            if (node instanceof HBox hb)
+                hb.getChildren().forEach(child -> {
+                    if (child instanceof Button b && b != btn)
+                        b.setStyle(channelBtnStyle(false));
+                });
+        });
+        btn.setStyle(channelBtnStyle(true));
+
+        showChannelInfo(c);
+        loadTeamsForChannelAsync(c.id(), c.title());
     }
 
     private void showChannelInfo(CollaborationService.Channel channel) {
-        if (channelInfoBox != null && channelTitleLabel != null && channelDescLabel != null) {
-            channelTitleLabel.setText("📌 " + channel.title());
-            channelDescLabel.setText(channel.desc() != null && !channel.desc().isEmpty() ? channel.desc() : "No information provided for this channel.");
-            channelInfoBox.setVisible(true);
-            channelInfoBox.setManaged(true);
-        }
+        if (channelInfoBox == null) return;
+        channelTitleLabel.setText("📌 " + channel.title());
+        channelDescLabel.setText(channel.desc() != null && !channel.desc().isEmpty()
+                ? channel.desc() : "No information provided for this channel.");
+        channelInfoBox.setVisible(true);
+        channelInfoBox.setManaged(true);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TEAMS — async load
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void loadTeamsForChannelAsync(int channelId, String channelName) {
+        if (teamList == null) return;
+        teamList.getChildren().clear();
+
+        // Loading indicator
+        Label loading = new Label("Loading teams…");
+        loading.setStyle("-fx-text-fill:#64748b; -fx-font-size:13px; -fx-font-style:italic; -fx-padding:20;");
+        teamList.getChildren().add(loading);
+
+        executor.submit(() -> {
+            List<CollaborationService.Post> posts = collaborationService.getPostsForChannel(channelId);
+            Platform.runLater(() -> renderTeams(posts, channelId, channelName));
+        });
     }
 
     public void loadTeamsForChannel(int channelId, String channelName) {
-        if (teamList == null) return;
+        loadTeamsForChannelAsync(channelId, channelName);
+    }
+
+    private void renderTeams(List<CollaborationService.Post> posts,
+                              int channelId, String channelName) {
         teamList.getChildren().clear();
-        List<CollaborationService.Post> posts = collaborationService.getPostsForChannel(channelId);
 
         if (posts.isEmpty()) {
-            Label noTeamLabel = new Label("No teams yet in #" + channelName + ". Be the first to create one!");
-            noTeamLabel.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20; -fx-font-size: 14px; -fx-font-style: italic;");
-            teamList.getChildren().add(noTeamLabel);
+            Label lbl = new Label("No teams yet in #" + channelName + ". Be the first!");
+            lbl.setStyle("-fx-text-fill:#64748b; -fx-padding:20; -fx-font-size:14px; -fx-font-style:italic;");
+            teamList.getChildren().add(lbl);
+            return;
         }
-        
-        for (CollaborationService.Post post : posts) {
+
+        for (var post : posts) {
             VBox card = new VBox(10);
-            card.setStyle("-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 12; "
-                + "-fx-border-color: #e2e8f0; -fx-border-radius: 12; "
-                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 8, 0, 0, 3);");
-            
-            card.setOnMouseEntered(e -> card.setStyle(card.getStyle().replace("-fx-background-color: white", "-fx-background-color: #f8fafc").replace("rgba(0,0,0,0.04)", "rgba(59,130,246,0.15)")));
-            card.setOnMouseExited(e -> card.setStyle(card.getStyle().replace("-fx-background-color: #f8fafc", "-fx-background-color: white").replace("rgba(59,130,246,0.15)", "rgba(0,0,0,0.04)")));
+            card.setStyle(teamCardStyle(false));
+            card.setOnMouseEntered(e -> card.setStyle(teamCardStyle(true)));
+            card.setOnMouseExited(e  -> card.setStyle(teamCardStyle(false)));
 
             Label title = new Label("🚀 " + post.title());
-            title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1e293b;");
-            
-            Label desc = new Label(post.desc() == null || post.desc().isEmpty() ? "No description provided." : post.desc());
-            desc.setWrapText(true); 
-            desc.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
-            
-            HBox metaRow = new HBox(15);
-            metaRow.setAlignment(Pos.CENTER_LEFT);
-            Label members = new Label("👥 Max Members: " + post.maxMembers());
-            members.setStyle("-fx-font-size: 12px; -fx-text-fill: #059669; -fx-font-weight: bold; -fx-background-color: #d1fae5; -fx-padding: 4 8; -fx-background-radius: 6;");
-            
-            Label statusBadge = new Label(post.status());
-            statusBadge.setStyle("-fx-font-size: 12px; -fx-text-fill: #d97706; -fx-font-weight: bold; -fx-background-color: #fef3c7; -fx-padding: 4 8; -fx-background-radius: 6;");
-            
-            metaRow.getChildren().addAll(members, statusBadge);
+            title.setStyle("-fx-font-weight:bold; -fx-font-size:16px; -fx-text-fill:#e2e8f0;");
+
+            Label desc = new Label(post.desc() == null || post.desc().isEmpty()
+                    ? "No description." : post.desc());
+            desc.setWrapText(true);
+            desc.setStyle("-fx-text-fill:#94a3b8; -fx-font-size:13px;");
+
+            HBox meta = new HBox(10);
+            meta.setAlignment(Pos.CENTER_LEFT);
+            meta.getChildren().addAll(
+                badge("👥 Max: " + post.maxMembers(), "#34d399", "rgba(52,211,153,0.15)"),
+                badge(post.status(),
+                    "OPEN".equals(post.status()) ? "#34d399" : "#fbbf24",
+                    "OPEN".equals(post.status()) ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.15)")
+            );
 
             Button viewBtn = new Button("View Workspace →");
             viewBtn.setMaxWidth(Double.MAX_VALUE);
-            viewBtn.setStyle("-fx-background-color: linear-gradient(to right, #6366f1, #8b5cf6); -fx-text-fill: white; "
-                + "-fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8;");
+            viewBtn.setStyle("-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6); "
+                    + "-fx-text-fill:white; -fx-cursor:hand; -fx-font-weight:bold; "
+                    + "-fx-background-radius:8; -fx-padding:8;");
             viewBtn.setOnAction(e -> teamWorkspaceController.loadRoomView(post, roomContainer));
-            
-            card.getChildren().addAll(title, desc, metaRow, viewBtn);
+
+            card.getChildren().addAll(title, desc, meta, viewBtn);
             teamList.getChildren().add(card);
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CREATE TEAM
+    // ─────────────────────────────────────────────────────────────────────────
+
     @FXML
     public void onCreatePost() {
         if (currentChannelId == -1) {
-            showError("Please select a channel from the left first!");
+            PopupHelper.showError(getWindow(), "No Channel Selected",
+                    "Please select a channel from the left first.");
             return;
         }
 
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("🚀 Create Team");
-        dialog.setHeaderText("Create a new team in #" + currentChannelName);
-        
-        VBox content = new VBox(12);
-        content.setPadding(new Insets(10));
-        
-        TextField titleField = new TextField(); titleField.setPromptText("E.g. Java Hackathon Team");
-        titleField.setStyle("-fx-padding: 8; -fx-background-radius: 6; -fx-border-color: #cbd5e1; -fx-border-radius: 6;");
-        
-        TextArea descField = new TextArea(); descField.setPromptText("Describe your team's goal..."); 
-        descField.setPrefRowCount(3); descField.setWrapText(true);
-        descField.setStyle("-fx-padding: 5; -fx-background-radius: 6; -fx-border-color: #cbd5e1; -fx-border-radius: 6;");
-        
-        Spinner<Integer> spinner = new Spinner<>(2, 20, 4);
-        
-        VBox qBox = new VBox(8); 
-        List<TextField> qFields = new ArrayList<>();
-        Button addQ = new Button("+ Add Join Question");
-        addQ.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-cursor: hand; -fx-font-weight: bold; -fx-border-color: #cbd5e1; -fx-border-radius: 6; -fx-background-radius: 6;");
-        addQ.setOnAction(e -> {
-            TextField tf = new TextField(); tf.setPromptText("E.g. What is your tech stack?");
-            tf.setStyle("-fx-padding: 8; -fx-background-radius: 6; -fx-border-color: #cbd5e1; -fx-border-radius: 6;");
-            qFields.add(tf); qBox.getChildren().add(tf);
-        });
-        
-        content.getChildren().addAll(
-            new Label("Team Name:"), titleField,
-            new Label("Description:"), descField,
-            new Label("Max Members:"), spinner,
-            new Label("Questions for Applicants (Optional):"), qBox, addQ);
-            
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.showAndWait().ifPresent(type -> {
-            if (type == ButtonType.OK) {
-                String title = titleField.getText().trim();
-                String desc = descField.getText().trim();
-
-                if (title.isEmpty() || desc.isEmpty()) {
-                    showError("Team Name and Description cannot be empty!");
-                    return;
+        // Check one-team-per-channel asynchronously
+        executor.submit(() -> {
+            boolean alreadyIn = collaborationService.isUserInAnyTeamUnderChannel(currentChannelId);
+            Platform.runLater(() -> {
+                if (alreadyIn) {
+                    PopupHelper.showError(getWindow(), "Already in a Team",
+                            "You are already in a team under #" + currentChannelName
+                            + ".\nYou can only join one team per channel.");
+                } else {
+                    showCreateTeamPopup();
                 }
-
-                List<String> qs = qFields.stream().map(TextField::getText).filter(s -> !s.trim().isEmpty()).toList();
-                int maxMem = spinner.getValue();
-                
-                new Thread(() -> {
-                    boolean success = collaborationService.createPostWithRequirements(
-                        currentChannelId, title, desc, maxMem, qs);
-                    
-                    Platform.runLater(() -> {
-                        if (success) {
-                            showSuccess("Team Created Successfully! 🚀");
-                            loadTeamsForChannel(currentChannelId, currentChannelName);
-                        } else {
-                            showError("Failed to create team. Database error occurred.");
-                        }
-                    });
-                }).start();
-            }
+            });
         });
     }
+
+    private void showCreateTeamPopup() {
+        VBox content = new VBox(12);
+        content.setPadding(new Insets(20));
+        content.setStyle("-fx-background-color:#13151f;");
+
+        Label heading = new Label("🚀 Create Team in #" + currentChannelName);
+        heading.setStyle("-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;");
+        heading.setWrapText(true);
+
+        TextField titleField = darkField("E.g. Java Hackathon Team");
+        TextArea  descField  = darkArea("Describe your team's goal…", 3);
+        Spinner<Integer> spinner = new Spinner<>(2, 20, 4);
+        spinner.setStyle("-fx-background-color:#1e2235; -fx-border-color:#2d3150; -fx-border-radius:8;");
+        spinner.setEditable(true);
+
+        VBox qBox = new VBox(8);
+        List<TextField> qFields = new ArrayList<>();
+        Button addQ = new Button("+ Add Join Question");
+        addQ.setStyle("-fx-background-color:#23263a; -fx-text-fill:#818cf8; -fx-cursor:hand; "
+                + "-fx-font-weight:bold; -fx-border-color:#2d3150; -fx-border-radius:8; "
+                + "-fx-background-radius:8; -fx-padding:8 14;");
+        addQ.setOnAction(e -> {
+            TextField tf = darkField("E.g. What is your tech stack?");
+            qFields.add(tf);
+            qBox.getChildren().add(tf);
+        });
+
+        HBox btnRow = new HBox(10);
+        btnRow.setAlignment(Pos.CENTER_RIGHT);
+        Button cancelBtn = new Button("Cancel");  cancelBtn.setStyle(ghostBtn());
+        Button createBtn = new Button("🚀 Create"); createBtn.setStyle(primaryBtn());
+        btnRow.getChildren().addAll(cancelBtn, createBtn);
+
+        content.getChildren().addAll(
+            heading,
+            fieldLabel("Team Name:"),   titleField,
+            fieldLabel("Description:"), descField,
+            fieldLabel("Max Members:"), spinner,
+            fieldLabel("Join Questions (Optional):"), qBox, addQ,
+            btnRow
+        );
+
+        Stage popup = PopupHelper.create(getWindow(), "Create Team",
+                content, 400, 480, 500, 560);
+
+        cancelBtn.setOnAction(e -> popup.close());
+        createBtn.setOnAction(e -> {
+            String t = titleField.getText().trim();
+            String d = descField.getText().trim();
+            if (t.isEmpty() || d.isEmpty()) {
+                PopupHelper.showError(popup, "Missing Fields",
+                        "Team name and description cannot be empty.");
+                return;
+            }
+            List<String> qs = qFields.stream()
+                    .map(TextField::getText).filter(s -> !s.isBlank()).toList();
+            int maxMem = spinner.getValue();
+            popup.close();
+
+            executor.submit(() -> {
+                boolean ok = collaborationService.createPostWithRequirements(
+                        currentChannelId, t, d, maxMem, qs);
+                Platform.runLater(() -> {
+                    if (ok) {
+                        PopupHelper.showInfo(getWindow(), "Team Created",
+                                "Your team was created successfully! 🚀");
+                        loadTeamsForChannelAsync(currentChannelId, currentChannelName);
+                    } else {
+                        PopupHelper.showError(getWindow(), "Failed",
+                                "Could not create team. Please try again.");
+                    }
+                });
+            });
+        });
+
+        popup.show();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CREATE CHANNEL (Admin only)
+    // ─────────────────────────────────────────────────────────────────────────
 
     @FXML
     public void onCreateChannel() {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("📁 Create New Channel");
-        dialog.setHeaderText("Create a global event or topic channel");
+        // Double-guard: only admins should reach this, but just in case
+        if (!isAdmin()) {
+            PopupHelper.showError(getWindow(), "Access Denied",
+                    "Only admins can create channels.");
+            return;
+        }
 
         VBox content = new VBox(12);
-        content.setPadding(new Insets(10));
-        
-        TextField nameField = new TextField(); 
-        nameField.setPromptText("E.g. Codeforces Grind");
-        nameField.setStyle("-fx-padding: 8; -fx-background-radius: 6; -fx-border-color: #cbd5e1; -fx-border-radius: 6;");
-        
-        TextArea descField = new TextArea(); 
-        descField.setPromptText("Provide information about this channel. Users will see this when they click it.");
-        descField.setPrefRowCount(4); 
-        descField.setWrapText(true);
-        descField.setStyle("-fx-padding: 5; -fx-background-radius: 6; -fx-border-color: #cbd5e1; -fx-border-radius: 6;");
+        content.setPadding(new Insets(20));
+        content.setStyle("-fx-background-color:#13151f;");
 
-        content.getChildren().addAll(new Label("Channel Name:"), nameField, new Label("Channel Information / Message:"), descField);
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        Label heading = new Label("📁 New Channel");
+        heading.setStyle("-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;");
 
-        dialog.showAndWait().ifPresent(type -> {
-            if (type == ButtonType.OK && !nameField.getText().trim().isEmpty()) {
-                
-                // 🌟 FIX: Calls Service, NO RAW SQL here!
-                boolean success = collaborationService.createChannel(
-                    nameField.getText().trim(), 
-                    descField.getText().trim()
-                );
-                
-                if (success) {
-                    showSuccess("Channel Created Successfully! 🎉");
-                    loadChannels(); 
-                } else {
-                    showError("Failed to create channel.");
-                }
+        TextField nameField = darkField("E.g. Codeforces Grind");
+        TextArea  descField = darkArea("Describe this channel…", 4);
+
+        HBox btnRow = new HBox(10);
+        btnRow.setAlignment(Pos.CENTER_RIGHT);
+        Button cancelBtn = new Button("Cancel");    cancelBtn.setStyle(ghostBtn());
+        Button createBtn = new Button("➕ Create"); createBtn.setStyle(primaryBtn());
+        btnRow.getChildren().addAll(cancelBtn, createBtn);
+
+        content.getChildren().addAll(
+            heading,
+            fieldLabel("Channel Name:"),   nameField,
+            fieldLabel("Description:"),    descField,
+            btnRow
+        );
+
+        Stage popup = PopupHelper.create(getWindow(), "Create Channel",
+                content, 380, 320, 460, 360);
+
+        cancelBtn.setOnAction(e -> popup.close());
+        createBtn.setOnAction(e -> {
+            if (nameField.getText().isBlank()) {
+                PopupHelper.showError(popup, "Missing Name", "Channel name cannot be empty.");
+                return;
             }
+            String name = nameField.getText().trim();
+            String desc = descField.getText().trim();
+            popup.close();
+
+            executor.submit(() -> {
+                boolean ok = collaborationService.createChannel(name, desc);
+                Platform.runLater(() -> {
+                    if (ok) {
+                        PopupHelper.showInfo(getWindow(), "Channel Created",
+                                "Channel \"" + name + "\" created successfully! 🎉");
+                        loadChannelsAsync();
+                    } else {
+                        PopupHelper.showError(getWindow(), "Failed",
+                                "Could not create channel. Please try again.");
+                    }
+                });
+            });
         });
+
+        popup.show();
     }
 
-    private void showSuccess(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setContentText(msg); a.show(); });
+    // ─────────────────────────────────────────────────────────────────────────
+    // WINDOW HELPER
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private Window getWindow() {
+        try {
+            if (roomContainer != null && roomContainer.getScene() != null)
+                return roomContainer.getScene().getWindow();
+            if (channelList != null && channelList.getScene() != null)
+                return channelList.getScene().getWindow();
+        } catch (Exception ignored) {}
+        return null;
     }
-    private void showError(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.ERROR); a.setContentText(msg); a.showAndWait(); });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STYLE HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private String channelBtnStyle(boolean active) {
+        return active
+            ? "-fx-background-color:#4f46e5; -fx-text-fill:white; -fx-font-size:14px; "
+              + "-fx-font-weight:bold; -fx-cursor:hand; -fx-padding:10 15; -fx-background-radius:8;"
+            : "-fx-background-color:transparent; -fx-text-fill:#94a3b8; -fx-font-size:14px; "
+              + "-fx-font-weight:bold; -fx-cursor:hand; -fx-padding:10 15; -fx-background-radius:8;";
+    }
+
+    private String channelBtnHover() {
+        return "-fx-background-color:rgba(99,102,241,0.15); -fx-text-fill:#c7d2fe; "
+                + "-fx-font-size:14px; -fx-font-weight:bold; -fx-cursor:hand; "
+                + "-fx-padding:10 15; -fx-background-radius:8;";
+    }
+
+    private String teamCardStyle(boolean hover) {
+        return hover
+            ? "-fx-background-color:#1e2235; -fx-padding:18; -fx-background-radius:14; "
+              + "-fx-border-color:#6366f1; -fx-border-radius:14; "
+              + "-fx-effect:dropshadow(gaussian,rgba(99,102,241,0.2),10,0,0,3);"
+            : "-fx-background-color:#1a1d27; -fx-padding:18; -fx-background-radius:14; "
+              + "-fx-border-color:#2d3150; -fx-border-radius:14; "
+              + "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.25),8,0,0,3);";
+    }
+
+    private Label badge(String text, String color, String bg) {
+        Label l = new Label(text);
+        l.setStyle("-fx-font-size:12px; -fx-text-fill:" + color + "; -fx-font-weight:bold; "
+                + "-fx-background-color:" + bg + "; -fx-padding:4 8; -fx-background-radius:6;");
+        return l;
+    }
+
+    private TextField darkField(String prompt) {
+        TextField tf = new TextField();
+        tf.setPromptText(prompt);
+        tf.setStyle("-fx-background-color:#1e2235; -fx-text-fill:#e2e8f0; "
+                + "-fx-prompt-text-fill:#64748b; -fx-border-color:#2d3150; "
+                + "-fx-border-radius:8; -fx-background-radius:8; -fx-padding:9;");
+        return tf;
+    }
+
+    private TextArea darkArea(String prompt, int rows) {
+        TextArea ta = new TextArea();
+        ta.setPromptText(prompt);
+        ta.setPrefRowCount(rows);
+        ta.setWrapText(true);
+        ta.setStyle("-fx-background-color:#1e2235; -fx-text-fill:#e2e8f0; "
+                + "-fx-prompt-text-fill:#64748b; -fx-border-color:#2d3150; "
+                + "-fx-border-radius:8; -fx-background-radius:8; -fx-padding:8;");
+        return ta;
+    }
+
+    private Label fieldLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle("-fx-text-fill:#94a3b8; -fx-font-size:12px; -fx-font-weight:bold;");
+        return l;
+    }
+
+    private String primaryBtn() {
+        return "-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6); "
+                + "-fx-text-fill:white; -fx-font-weight:bold; "
+                + "-fx-background-radius:8; -fx-padding:8 20; -fx-cursor:hand;";
+    }
+
+    private String ghostBtn() {
+        return "-fx-background-color:#23263a; -fx-text-fill:#94a3b8; "
+                + "-fx-background-radius:8; -fx-border-color:#2d3150; -fx-border-radius:8; "
+                + "-fx-padding:8 20; -fx-cursor:hand;";
     }
 }

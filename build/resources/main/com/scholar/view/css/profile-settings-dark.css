@@ -1,0 +1,235 @@
+/* ================================================================
+   profile-settings-dark.css
+   Path: src/main/resources/com/scholar/view/css/profile-settings-dark.css
+   Dark-theme stylesheet for profile_settings.fxml
+   ================================================================ */
+
+/* ── Root scroll pane ─────────────────────────────────────────── */
+.scroll-pane {
+    -fx-background-color: #0d0f1a;
+    -fx-border-color: transparent;
+}
+.scroll-pane > .viewport {
+    -fx-background-color: #0d0f1a;
+}
+.scroll-pane .scroll-bar:vertical {
+    -fx-background-color: #1a1d2e;
+    -fx-pref-width: 6;
+}
+.scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #3d4268;
+    -fx-background-radius: 3;
+}
+
+/* ── Body root VBox ───────────────────────────────────────────── */
+#profileRoot {
+    -fx-background-color: #0d0f1a;
+}
+
+/* ── Hero header ─────────────────────────────────────────────── */
+#heroHeader {
+    -fx-background-color: linear-gradient(to right, #1e1b4b, #312e81);
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.45), 20, 0, 0, 6);
+}
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.profile-card {
+    -fx-background-color: #13151f;
+    -fx-border-color: #1e2235;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+    -fx-padding: 22 24 22 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 12, 0, 0, 3);
+}
+
+/* ── Card section labels ─────────────────────────────────────── */
+.profile-card > .label {
+    -fx-text-fill: #e2e8f0;
+}
+
+/* ── Row labels (left column) ────────────────────────────────── */
+.pf-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* ── Text fields ─────────────────────────────────────────────── */
+.pf-field {
+    -fx-background-color: #1e2235;
+    -fx-text-fill: #e2e8f0;
+    -fx-prompt-text-fill: #475569;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+.pf-field:focused {
+    -fx-border-color: #6366f1;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.35), 8, 0, 0, 0);
+}
+
+/* ── Save buttons ────────────────────────────────────────────── */
+.pf-btn-primary {
+    -fx-background-color: linear-gradient(to right, #4f46e5, #7c3aed);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 10;
+    -fx-padding: 10 28;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.4), 10, 0, 0, 3);
+}
+.pf-btn-primary:hover {
+    -fx-background-color: linear-gradient(to right, #6366f1, #8b5cf6);
+    -fx-effect: dropshadow(gaussian, rgba(139,92,246,0.55), 14, 0, 0, 4);
+}
+.pf-btn-primary:pressed {
+    -fx-background-color: #3730a3;
+}
+
+/* ── Small toggle buttons (Phone Public, theme) ───────────────── */
+.pf-toggle-sm {
+    -fx-background-color: #1e2235;
+    -fx-text-fill: #94a3b8;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+    -fx-padding: 5 14;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.pf-toggle-sm:selected {
+    -fx-background-color: linear-gradient(to right, #4f46e5, #7c3aed);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+.pf-toggle-sm:hover {
+    -fx-border-color: #6366f1;
+    -fx-text-fill: #c7d2fe;
+}
+
+/* ── Privacy toggle ──────────────────────────────────────────── */
+#togglePrivacy {
+    -fx-background-color: #22c55e;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-padding: 5 16;
+    -fx-cursor: hand;
+}
+#togglePrivacy:selected {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+}
+
+/* ── Privacy warning box ─────────────────────────────────────── */
+#privacyBox {
+    -fx-background-color: #1f1010;
+    -fx-background-radius: 10;
+    -fx-padding: 12;
+    -fx-border-color: #7f1d1d;
+    -fx-border-radius: 10;
+}
+#privacyBox .label {
+    -fx-text-fill: #fca5a5;
+}
+#privacySubLabel {
+    -fx-text-fill: #f87171;
+    -fx-font-size: 11px;
+}
+
+/* ── Separators ──────────────────────────────────────────────── */
+.separator .line {
+    -fx-border-color: #1e2235;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ── CheckBox ────────────────────────────────────────────────── */
+.check-box .label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+}
+.check-box .box {
+    -fx-background-color: #1e2235;
+    -fx-border-color: #3d4268;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.check-box:selected .box {
+    -fx-background-color: #4f46e5;
+    -fx-border-color: #4f46e5;
+}
+.check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+/* ── ComboBox ────────────────────────────────────────────────── */
+.combo-box {
+    -fx-background-color: #1e2235;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.combo-box .list-cell {
+    -fx-text-fill: #e2e8f0;
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+}
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+.combo-box .arrow {
+    -fx-background-color: #6366f1;
+}
+.combo-box-popup .list-view {
+    -fx-background-color: #1a1d2e;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #23263a;
+    -fx-text-fill: #c7d2fe;
+}
+
+/* ── ColorPicker ─────────────────────────────────────────────── */
+.color-picker {
+    -fx-background-color: #1e2235;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #e2e8f0;
+}
+.color-picker .color-picker-label {
+    -fx-text-fill: #e2e8f0;
+}
+
+/* ── Progress bar (completion) ───────────────────────────────── */
+.progress-bar {
+    -fx-background-color: #ffffff33;
+    -fx-background-radius: 4;
+}
+.progress-bar .bar {
+    -fx-background-color: #a5f3fc;
+    -fx-background-radius: 4;
+    -fx-background-insets: 0;
+}
+.progress-bar .track {
+    -fx-background-color: transparent;
+}
+
+/* ── Avatar ring ─────────────────────────────────────────────── */
+#avatarRing {
+    -fx-fill: rgba(255,255,255,0.1);
+    -fx-stroke: rgba(255,255,255,0.6);
+    -fx-stroke-width: 2.5;
+}
+
+/* ── Tip label ───────────────────────────────────────────────── */
+.pf-tip {
+    -fx-text-fill: #475569;
+    -fx-font-size: 11px;
+}

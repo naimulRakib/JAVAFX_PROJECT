@@ -2,7 +2,7 @@ package com.scholar.controller.dashboard;
 
 import com.scholar.service.*;
 import com.scholar.model.StudyTask;
-import com.scholar.service.*;
+import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -10,8 +10,10 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import javafx.stage.*;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -63,9 +65,14 @@ public class AdminBroadcastController {
         dialog.showAndWait().ifPresent(response -> {
             if (response == broadcastBtn && !inputArea.getText().trim().isEmpty()) {
                 String rawText = inputArea.getText().trim();
-                Alert loadingMsg = new Alert(Alert.AlertType.INFORMATION,
-                    "🤖 AI is reading and organizing the data... Please wait.");
-                loadingMsg.show();
+
+                // Show non-blocking dark loading popup instead of Alert
+                Stage loadingPopup = PopupHelper.create(
+                    resolveOwner(), "Processing",
+                    buildLoadingPane(),
+                    300, 150, 360, 160
+                );
+                loadingPopup.show();
 
                 new Thread(() -> {
                     RoutineManager routineManager = new RoutineManager();
@@ -89,9 +96,9 @@ public class AdminBroadcastController {
                     if (!generatedTasks.isEmpty()) dataService.saveTasks(generatedTasks);
 
                     Platform.runLater(() -> {
-                        loadingMsg.close();
+                        loadingPopup.close();
                         if (generatedTasks.isEmpty()) {
-                            showError("❌ AI couldn't understand the text. Please format it clearly.");
+                            showError("AI couldn't understand the text. Please format it clearly.");
                         } else {
                             allTasks.addAll(generatedTasks);
                             if (onAfterBroadcast != null) onAfterBroadcast.run();
@@ -114,23 +121,54 @@ public class AdminBroadcastController {
             List<String[]> pendingMembers = channelService.getPendingMembers(AuthService.CURRENT_CHANNEL_ID);
             Platform.runLater(() -> {
                 if (pendingMembers.isEmpty()) {
-                    pendingListContainer.getChildren().add(new Label("No pending requests."));
+                    Label emptyLbl = new Label("No pending requests.");
+                    emptyLbl.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
+                    pendingListContainer.getChildren().add(emptyLbl);
                     return;
                 }
                 for (String[] student : pendingMembers) {
                     HBox row = new HBox(20);
                     row.setAlignment(Pos.CENTER_LEFT);
-                    row.setStyle("-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8; "
-                        + "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 0);");
+                    row.setStyle(
+                        "-fx-background-color: #13151f; " +
+                        "-fx-padding: 15; " +
+                        "-fx-background-radius: 10; " +
+                        "-fx-border-color: #1e2540; " +
+                        "-fx-border-radius: 10; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 2);"
+                    );
+
                     Label emailLabel = new Label(student[1]);
                     emailLabel.setPrefWidth(300);
                     emailLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+                    emailLabel.setStyle("-fx-text-fill: #e2e8f0;");
+
                     Button approveBtn = new Button("Approve ✅");
-                    approveBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand;");
+                    approveBtn.setStyle(
+                        "-fx-background-color: #166534; " +
+                        "-fx-text-fill: #86efac; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-background-radius: 8; " +
+                        "-fx-border-color: #14532d; " +
+                        "-fx-border-radius: 8; " +
+                        "-fx-padding: 6 16; " +
+                        "-fx-cursor: hand;"
+                    );
                     approveBtn.setOnAction(e -> handleAction(student[0], "approved"));
+
                     Button rejectBtn = new Button("Reject ❌");
-                    rejectBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-cursor: hand;");
+                    rejectBtn.setStyle(
+                        "-fx-background-color: #7f1d1d; " +
+                        "-fx-text-fill: #fca5a5; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-background-radius: 8; " +
+                        "-fx-border-color: #991b1b; " +
+                        "-fx-border-radius: 8; " +
+                        "-fx-padding: 6 16; " +
+                        "-fx-cursor: hand;"
+                    );
                     rejectBtn.setOnAction(e -> handleAction(student[0], "rejected"));
+
                     row.getChildren().addAll(emailLabel, approveBtn, rejectBtn);
                     pendingListContainer.getChildren().add(row);
                 }
@@ -148,10 +186,44 @@ public class AdminBroadcastController {
     // ----------------------------------------------------------
     // HELPERS
     // ----------------------------------------------------------
-    private void showSuccess(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setContentText(msg); a.show(); });
+
+    /** Builds the VBox content shown inside the loading popup. */
+    private javafx.scene.layout.VBox buildLoadingPane() {
+        javafx.scene.layout.VBox pane = new javafx.scene.layout.VBox(14);
+        pane.setAlignment(javafx.geometry.Pos.CENTER);
+        pane.setPadding(new javafx.geometry.Insets(28, 32, 28, 32));
+        pane.setStyle("-fx-background-color: #13151f;");
+
+        javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+        spinner.setPrefSize(38, 38);
+        spinner.setStyle("-fx-accent: #6366f1;");
+
+        Label lbl = new Label("🤖  AI is reading and organizing the data…");
+        lbl.setStyle(
+            "-fx-text-fill: #94a3b8; " +
+            "-fx-font-size: 13px; " +
+            "-fx-wrap-text: true;"
+        );
+        lbl.setWrapText(true);
+        lbl.setMaxWidth(280);
+        lbl.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
+        pane.getChildren().addAll(spinner, lbl);
+        return pane;
     }
+
+    private void showSuccess(String msg) {
+        PopupHelper.showInfo(resolveOwner(), "Broadcast Complete", msg);
+    }
+
     private void showError(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.ERROR); a.setContentText(msg); a.showAndWait(); });
+        PopupHelper.showError(resolveOwner(), "Broadcast Failed", msg);
+    }
+
+    /** Resolves the best available Window for PopupHelper. */
+    private Window resolveOwner() {
+        if (pendingListContainer != null && pendingListContainer.getScene() != null)
+            return pendingListContainer.getScene().getWindow();
+        return null;
     }
 }

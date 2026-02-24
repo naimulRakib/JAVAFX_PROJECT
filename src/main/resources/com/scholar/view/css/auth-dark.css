@@ -1,0 +1,295 @@
+/* ================================================================
+   auth-dark.css
+   Path: src/main/resources/com/scholar/view/css/auth-dark.css
+
+   Shared dark-theme stylesheet for:
+     • login.fxml      (LoginController)
+     • lobby.fxml      (LobbyController)
+
+   Aesthetic: deep-space obsidian — near-black panels, indigo-violet
+   accent glow, crisp white text, sharp geometric details.
+   ================================================================ */
+
+/* ── Root / Scene background ──────────────────────────────────── */
+.root {
+    -fx-background-color: #080a12;
+    -fx-font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+/* ── Outer wrapper (fills scene) ─────────────────────────────── */
+#authRoot {
+    -fx-background-color: #080a12;
+}
+
+/* ── Glass card panel ────────────────────────────────────────── */
+.auth-card {
+    -fx-background-color: #0f1220;
+    -fx-background-radius: 18;
+    -fx-border-color: #1e2540;
+    -fx-border-radius: 18;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.25), 30, 0, 0, 8);
+    -fx-padding: 36 40 36 40;
+}
+
+/* ── Brand / logo label ──────────────────────────────────────── */
+.auth-brand {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(139,92,246,0.6), 12, 0, 0, 0);
+}
+
+.auth-brand-sub {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6366f1;
+    -fx-letter-spacing: 3;
+}
+
+/* ── Section headings inside card ────────────────────────────── */
+.auth-heading {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e2e8f0;
+}
+
+.auth-subheading {
+    -fx-font-size: 13px;
+    -fx-text-fill: #64748b;
+}
+
+/* ── Divider line ────────────────────────────────────────────── */
+.auth-divider .line {
+    -fx-border-color: #1e2540;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ── Field labels ────────────────────────────────────────────── */
+.auth-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* ── Text fields / PasswordFields ────────────────────────────── */
+.auth-field {
+    -fx-background-color: #0d0f1d;
+    -fx-text-fill: #e2e8f0;
+    -fx-prompt-text-fill: #334155;
+    -fx-border-color: #1e2540;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 10 14;
+    -fx-font-size: 13px;
+    -fx-pref-height: 40;
+}
+.auth-field:focused {
+    -fx-border-color: #6366f1;
+    -fx-background-color: #11132b;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.4), 10, 0, 0, 0);
+}
+
+/* ── Primary action button ───────────────────────────────────── */
+.auth-btn-primary {
+    -fx-background-color: linear-gradient(to right, #4f46e5, #7c3aed);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 10;
+    -fx-padding: 11 0;
+    -fx-cursor: hand;
+    -fx-pref-height: 42;
+    -fx-max-width: Infinity;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.45), 12, 0, 0, 4);
+}
+.auth-btn-primary:hover {
+    -fx-background-color: linear-gradient(to right, #6366f1, #8b5cf6);
+    -fx-effect: dropshadow(gaussian, rgba(139,92,246,0.6), 16, 0, 0, 5);
+}
+.auth-btn-primary:pressed {
+    -fx-background-color: #3730a3;
+    -fx-effect: none;
+}
+.auth-btn-primary:disabled {
+    -fx-background-color: #1e2235;
+    -fx-text-fill: #475569;
+    -fx-effect: none;
+}
+
+/* ── Secondary / outline button ─────────────────────────────── */
+.auth-btn-secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: #818cf8;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 10;
+    -fx-border-color: #2d3150;
+    -fx-border-radius: 10;
+    -fx-padding: 10 0;
+    -fx-cursor: hand;
+    -fx-pref-height: 42;
+    -fx-max-width: Infinity;
+}
+.auth-btn-secondary:hover {
+    -fx-background-color: #1a1d35;
+    -fx-border-color: #6366f1;
+    -fx-text-fill: #c7d2fe;
+}
+.auth-btn-secondary:pressed {
+    -fx-background-color: #111327;
+}
+
+/* ── Role toggle buttons (Student / Admin) ───────────────────── */
+.auth-toggle {
+    -fx-background-color: #0d0f1d;
+    -fx-text-fill: #64748b;
+    -fx-border-color: #1e2540;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 7 20;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+.auth-toggle:selected {
+    -fx-background-color: linear-gradient(to right, #312e81, #4c1d95);
+    -fx-text-fill: #c7d2fe;
+    -fx-border-color: #6366f1;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.4), 8, 0, 0, 2);
+}
+
+
+/* ── Status label states ──────────────────────────────────────
+   Controller calls:
+     statusLabel.getStyleClass().setAll("auth-status", "auth-status--error")
+     statusLabel.getStyleClass().setAll("auth-status", "auth-status--success")
+     statusLabel.getStyleClass().setAll("auth-status", "auth-status--warn")
+     statusLabel.getStyleClass().setAll("auth-status", "auth-status--info")
+   ──────────────────────────────────────────────────────────── */
+.auth-status {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 14;
+    -fx-background-radius: 8;
+    -fx-background-color: transparent;
+    -fx-text-fill: transparent; /* base — overridden by modifier */
+    -fx-alignment: CENTER;
+    -fx-wrap-text: true;
+}
+.auth-status--error {
+    -fx-text-fill: #fca5a5;
+    -fx-background-color: #1f0a0a;
+    -fx-border-color: #7f1d1d;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+.auth-status--success {
+    -fx-text-fill: #86efac;
+    -fx-background-color: #052e16;
+    -fx-border-color: #14532d;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+.auth-status--warn {
+    -fx-text-fill: #fde68a;
+    -fx-background-color: #1a1100;
+    -fx-border-color: #713f12;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+.auth-status--info {
+    -fx-text-fill: #93c5fd;
+    -fx-background-color: #0c1a2e;
+    -fx-border-color: #1e3a5f;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+/* Hidden — no message yet */
+.auth-status--hidden {
+    -fx-text-fill: transparent;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+/* ── Tab pane (Login / Sign Up tabs) ─────────────────────────── */
+.tab-pane {
+    -fx-background-color: transparent;
+}
+.tab-pane > .tab-header-area {
+    -fx-background-color: transparent;
+    -fx-padding: 0 0 4 0;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #1e2540 transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 8 20;
+    -fx-cursor: hand;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #475569;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent #6366f1 transparent;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: #c7d2fe;
+}
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+.tab-pane > .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* ── ScrollPane (sign-up form) ───────────────────────────────── */
+.auth-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.auth-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+.auth-scroll .scroll-bar:vertical {
+    -fx-pref-width: 5;
+    -fx-background-color: transparent;
+}
+.auth-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #2d3150;
+    -fx-background-radius: 3;
+}
+
+/* ── Lobby-specific: two-panel split ────────────────────────── */
+.lobby-panel {
+    -fx-background-color: #0f1220;
+    -fx-background-radius: 14;
+    -fx-border-color: #1e2540;
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-padding: 28 28 28 28;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 14, 0, 0, 4);
+}
+
+.lobby-panel-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e2e8f0;
+}
+
+.lobby-panel-hint {
+    -fx-font-size: 11px;
+    -fx-text-fill: #475569;
+    -fx-wrap-text: true;
+}
+
+/* ── Accent glow separator ───────────────────────────────────── */
+.glow-sep {
+    -fx-background-color: linear-gradient(to right, transparent, #4f46e5, transparent);
+    -fx-pref-height: 1;
+    -fx-max-height: 1;
+    -fx-opacity: 0.6;
+}

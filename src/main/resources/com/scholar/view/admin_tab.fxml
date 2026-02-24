@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<?import javafx.scene.control.CheckBox?>
+
+
+<Tab fx:id="adminTab" text="🛡️ Admin"
+     xmlns:fx="http://javafx.com/fxml">
+    <content>
+        <ScrollPane fitToWidth="true"
+                    style="-fx-background-color: #f8fafc; -fx-background: #f8fafc;">
+            <VBox spacing="20" style="-fx-padding: 28 40;">
+
+                <!-- ══ PAGE HEADER ══════════════════════════════════════ -->
+                <VBox spacing="4">
+                    <Label text="Admin Control Panel"
+                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
+                    <Label text="Manage platform settings, member requests, and social features."
+                           style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+                    <Separator style="-fx-padding: 4 0 0 0;"/>
+                </VBox>
+
+                <!-- ══ INNER TAB PANE (Admin sub-sections) ═════════════ -->
+                <TabPane tabClosingPolicy="UNAVAILABLE"
+                         style="-fx-background-color: transparent; -fx-tab-min-height: 36px;">
+
+                    <!-- ─────────────────────────────────────────────────
+                         TAB 1 — GENERAL CONTROLS
+                    ───────────────────────────────────────────────────── -->
+                    <Tab text="⚙️  General">
+                        <content>
+                            <VBox spacing="20" style="-fx-padding: 20 0 0 0;">
+
+                                <!-- Chat Controls -->
+                                <VBox fx:id="adminControlsBox" spacing="12">
+                                    <Label text="⚙️  Chat Controls"
+                                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
+                                    <!-- Card injected by AdminChatToggleController -->
+                                </VBox>
+
+                                <Separator/>
+
+                                <!-- Pending Member Requests -->
+                                <VBox spacing="12">
+                                    <HBox alignment="CENTER_LEFT" spacing="12">
+                                        <Label text="👥  Pending Member Requests"
+                                               style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"
+                                               HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                                        <Button text="🔄 Refresh" onAction="#loadPendingRequests"
+                                                style="-fx-background-color: #2563eb; -fx-text-fill: white;
+                                                       -fx-font-weight: bold; -fx-background-radius: 8;
+                                                       -fx-padding: 8 16; -fx-cursor: hand;"/>
+                                    </HBox>
+                                    <VBox fx:id="pendingListContainer" spacing="10">
+                                        <Label text="Click Refresh to load pending requests."
+                                               style="-fx-text-fill: #9ca3af; -fx-font-size: 13px;"/>
+                                    </VBox>
+                                </VBox>
+
+                                <Separator/>
+
+                                <!-- Broadcast Tools -->
+                                <VBox spacing="12">
+                                    <Label text="📢  Broadcast Tools"
+                                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
+                                    <HBox spacing="12">
+                                        <Button text="📅 Broadcast Varsity Routine"
+                                                onAction="#onBroadcastRoutine"
+                                                style="-fx-background-color: #7c3aed; -fx-text-fill: white;
+                                                       -fx-font-weight: bold; -fx-background-radius: 8;
+                                                       -fx-padding: 10 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                        <Button text="📢 Broadcast Official Notice"
+                                                onAction="#onBroadcastNotice"
+                                                style="-fx-background-color: #0891b2; -fx-text-fill: white;
+                                                       -fx-font-weight: bold; -fx-background-radius: 8;
+                                                       -fx-padding: 10 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                    </HBox>
+                                </VBox>
+
+                            </VBox>
+                        </content>
+                    </Tab>
+
+                    <!-- ─────────────────────────────────────────────────
+                         TAB 2 — CHANNEL MERGE
+                    ───────────────────────────────────────────────────── -->
+                    <Tab text="🔗  Channel Merge">
+                        <content>
+                            <ScrollPane fitToWidth="true"
+                                        style="-fx-background-color: transparent; -fx-background: transparent;">
+                                <VBox spacing="24" style="-fx-padding: 20 4 20 4;">
+
+                                    <!-- Section header -->
+                                    <VBox spacing="3">
+                                        <Label text="Channel Merge Manager"
+                                               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
+                                        <Label text="Enable merging, discover channels, manage requests and active hubs."
+                                               style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                    </VBox>
+
+                                    <!-- ══════════════════════════════════════════
+                                         CARD 1 — MERGE SETTINGS
+                                    ══════════════════════════════════════════ -->
+                                    <VBox spacing="14"
+                                          style="-fx-background-color: white;
+                                                 -fx-border-color: #e5e7eb;
+                                                 -fx-border-radius: 12;
+                                                 -fx-background-radius: 12;
+                                                 -fx-padding: 20;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);">
+
+                                        <HBox alignment="CENTER_LEFT" spacing="8">
+                                            <Label text="🔧"  style="-fx-font-size: 16px;"/>
+                                            <Label text="Merge Settings"
+                                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                                        </HBox>
+                                        <Separator/>
+
+                                        <!-- Allow merge toggle -->
+                                        <HBox alignment="CENTER_LEFT" spacing="12">
+                                            <CheckBox fx:id="allowMergeCheck"
+                                                      text="Allow other channels to discover &amp; request merge with my channel"
+                                                      style="-fx-font-size: 13px; -fx-text-fill: #374151;"/>
+                                        </HBox>
+
+                                        <!-- Privacy mode -->
+                                        <HBox alignment="CENTER_LEFT" spacing="12">
+                                            <Label text="User Privacy in Merged Hub:"
+                                                   style="-fx-font-size: 13px; -fx-text-fill: #374151;
+                                                          -fx-min-width: 200;"/>
+                                            <ComboBox fx:id="privacyCombo" prefWidth="160"
+                                                      style="-fx-font-size: 13px;"/>
+                                            <Label text="PUBLIC = real names shown  |  ANONYMOUS = identities hidden"
+                                                   style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;"/>
+                                        </HBox>
+
+                                        <!-- Save button + status -->
+                                        <HBox alignment="CENTER_LEFT" spacing="14">
+                                            <Button text="💾 Save Settings" onAction="#onSaveSettings"
+                                                    style="-fx-background-color: #2563eb; -fx-text-fill: white;
+                                                           -fx-font-weight: bold; -fx-background-radius: 8;
+                                                           -fx-padding: 9 22; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                            <Label fx:id="settingsStatusLabel" text=""
+                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                        </HBox>
+                                    </VBox>
+
+                                    <!-- ══════════════════════════════════════════
+                                         CARD 2 — DISCOVER & SEND REQUEST
+                                    ══════════════════════════════════════════ -->
+                                    <VBox spacing="14"
+                                          style="-fx-background-color: white;
+                                                 -fx-border-color: #e5e7eb;
+                                                 -fx-border-radius: 12;
+                                                 -fx-background-radius: 12;
+                                                 -fx-padding: 20;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);">
+
+                                        <HBox alignment="CENTER_LEFT" spacing="8">
+                                            <Label text="🔍"  style="-fx-font-size: 16px;"/>
+                                            <Label text="Discover Channels &amp; Send Merge Request"
+                                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                                        </HBox>
+                                        <Separator/>
+
+                                        <!-- Merge type + duration -->
+                                        <HBox alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Merge Type"
+                                                       style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                                <ComboBox fx:id="mergeTypeCombo" prefWidth="150"
+                                                          style="-fx-font-size: 13px;"/>
+                                            </VBox>
+                                            <VBox spacing="4">
+                                                <Label text="Duration (days)"
+                                                       style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                                <TextField fx:id="durationField"
+                                                           promptText="e.g. 7"
+                                                           prefWidth="110"
+                                                           style="-fx-font-size: 13px;
+                                                                  -fx-background-radius: 8;
+                                                                  -fx-border-color: #d1d5db;
+                                                                  -fx-border-radius: 8;
+                                                                  -fx-padding: 6 10;"/>
+                                            </VBox>
+                                            <VBox spacing="4">
+                                                <Label text=" " style="-fx-font-size: 12px;"/>
+                                                <Button text="🔄 Refresh List" onAction="#onLoadChannels"
+                                                        style="-fx-background-color: #f3f4f6;
+                                                               -fx-text-fill: #374151;
+                                                               -fx-font-weight: bold;
+                                                               -fx-background-radius: 8;
+                                                               -fx-border-color: #d1d5db;
+                                                               -fx-border-radius: 8;
+                                                               -fx-padding: 7 16; -fx-cursor: hand;"/>
+                                            </VBox>
+                                        </HBox>
+
+                                        <!-- Available channels list -->
+                                        <Label text="Channels open for merging:"
+                                               style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                        <ListView fx:id="availableChannelsList"
+                                                  prefHeight="130"
+                                                  style="-fx-background-radius: 8;
+                                                         -fx-border-color: #d1d5db;
+                                                         -fx-border-radius: 8;
+                                                         -fx-font-size: 13px;"/>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="14">
+                                            <Button text="📨 Send Merge Request" onAction="#onSendRequest"
+                                                    style="-fx-background-color: #059669; -fx-text-fill: white;
+                                                           -fx-font-weight: bold; -fx-background-radius: 8;
+                                                           -fx-padding: 9 22; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                            <Label fx:id="discoverStatusLabel" text="Select a channel above, then send a request."
+                                                   style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;"/>
+                                        </HBox>
+                                    </VBox>
+
+                                    <!-- ══════════════════════════════════════════
+                                         CARD 3 — INCOMING MERGE REQUESTS
+                                    ══════════════════════════════════════════ -->
+                                    <VBox spacing="14"
+                                          style="-fx-background-color: white;
+                                                 -fx-border-color: #e5e7eb;
+                                                 -fx-border-radius: 12;
+                                                 -fx-background-radius: 12;
+                                                 -fx-padding: 20;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);">
+
+                                        <HBox alignment="CENTER_LEFT" spacing="8">
+                                            <Label text="📬"  style="-fx-font-size: 16px;"/>
+                                            <Label text="Incoming Merge Requests"
+                                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Button text="🔄 Refresh" onAction="#onLoadRequests"
+                                                    style="-fx-background-color: #f3f4f6;
+                                                           -fx-text-fill: #374151;
+                                                           -fx-font-weight: bold;
+                                                           -fx-background-radius: 8;
+                                                           -fx-border-color: #d1d5db;
+                                                           -fx-border-radius: 8;
+                                                           -fx-padding: 6 14; -fx-cursor: hand;"/>
+                                        </HBox>
+                                        <Separator/>
+
+                                        <ListView fx:id="pendingRequestsList"
+                                                  prefHeight="130"
+                                                  style="-fx-background-radius: 8;
+                                                         -fx-border-color: #d1d5db;
+                                                         -fx-border-radius: 8;
+                                                         -fx-font-size: 13px;"/>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10">
+                                            <Button text="✅ Accept &amp; Set Hub Name" onAction="#onAcceptRequest"
+                                                    style="-fx-background-color: #2563eb; -fx-text-fill: white;
+                                                           -fx-font-weight: bold; -fx-background-radius: 8;
+                                                           -fx-padding: 9 18; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                            <Button text="❌ Reject" onAction="#onRejectRequest"
+                                                    style="-fx-background-color: #dc2626; -fx-text-fill: white;
+                                                           -fx-font-weight: bold; -fx-background-radius: 8;
+                                                           -fx-padding: 9 18; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                            <Label fx:id="requestStatusLabel" text=""
+                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                        </HBox>
+
+                                        <!-- Accept popup note -->
+                                        <Label text="ℹ️  On Accept: you will be prompted to name the new merged hub. Both admins become hub admins automatically."
+                                               style="-fx-font-size: 11px; -fx-text-fill: #9ca3af; -fx-wrap-text: true;"/>
+                                    </VBox>
+
+                                    <!-- ══════════════════════════════════════════
+                                         CARD 4 — ACTIVE MERGED HUBS
+                                    ══════════════════════════════════════════ -->
+                                    <VBox spacing="14"
+                                          style="-fx-background-color: white;
+                                                 -fx-border-color: #e5e7eb;
+                                                 -fx-border-radius: 12;
+                                                 -fx-background-radius: 12;
+                                                 -fx-padding: 20;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);">
+
+                                        <HBox alignment="CENTER_LEFT" spacing="8">
+                                            <Label text="🔗"  style="-fx-font-size: 16px;"/>
+                                            <Label text="Active Merged Hubs"
+                                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Button text="🔄 Refresh" onAction="#onLoadActiveMerges"
+                                                    style="-fx-background-color: #f3f4f6;
+                                                           -fx-text-fill: #374151;
+                                                           -fx-font-weight: bold;
+                                                           -fx-background-radius: 8;
+                                                           -fx-border-color: #d1d5db;
+                                                           -fx-border-radius: 8;
+                                                           -fx-padding: 6 14; -fx-cursor: hand;"/>
+                                        </HBox>
+                                        <Separator/>
+
+                                        <Label text="Hubs your channel is currently part of (multi-merge supported):"
+                                               style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+
+                                        <ListView fx:id="activeHubsList"
+                                                  prefHeight="140"
+                                                  style="-fx-background-radius: 8;
+                                                         -fx-border-color: #d1d5db;
+                                                         -fx-border-radius: 8;
+                                                         -fx-font-size: 13px;"/>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="14">
+                                            <Button text="🚪 Leave This Hub (Instant Unmerge)" onAction="#onInstantUnmerge"
+                                                    style="-fx-background-color: #b45309; -fx-text-fill: white;
+                                                           -fx-font-weight: bold; -fx-background-radius: 8;
+                                                           -fx-padding: 9 18; -fx-cursor: hand; -fx-font-size: 13px;"/>
+                                            <Label fx:id="hubStatusLabel" text=""
+                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                        </HBox>
+
+                                        <Label text="⚠️  Leaving a hub instantly removes ALL your users from it. If only 1 channel remains, the hub is automatically destroyed."
+                                               style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;
+                                                      -fx-wrap-text: true;"/>
+                                    </VBox>
+
+                                </VBox>
+                            </ScrollPane>
+                        </content>
+                    </Tab>
+
+                </TabPane>
+                <!-- end inner TabPane -->
+
+            </VBox>
+        </ScrollPane>
+    </content>
+</Tab>

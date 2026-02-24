@@ -68,6 +68,10 @@ public class DashboardController {
     @Autowired private AITutorController          aiTutorController;
     @Autowired private ECAController              ecaController;
     @Autowired private ProfileController          profileController;
+@Autowired private AdminMergeController adminMergeController;
+
+
+
 
     // =========================================================
     // SERVICES
@@ -173,6 +177,31 @@ public class DashboardController {
     // FXML — Tab 9: Question Bank
     @FXML private Tab questionBankTab;
 
+
+    // ── Merge tab delegates ──────────────────────────────────
+@FXML public void onSaveSettings()      { adminMergeController.onSaveSettings(); }
+@FXML public void onLoadChannels()      { adminMergeController.onLoadChannels(); }
+@FXML public void onSendRequest()       { adminMergeController.onSendRequest(); }
+@FXML public void onLoadRequests()      { adminMergeController.onLoadRequests(); }
+@FXML public void onAcceptRequest()     { adminMergeController.onAcceptRequest(); }
+@FXML public void onRejectRequest()     { adminMergeController.onRejectRequest(); }
+@FXML public void onLoadActiveMerges()  { adminMergeController.onLoadActiveMerges(); }
+@FXML public void onInstantUnmerge()    { adminMergeController.onInstantUnmerge(); }
+
+@FXML private CheckBox allowMergeCheck;
+@FXML private ComboBox<String> privacyCombo;
+@FXML private ComboBox<String> mergeTypeCombo;
+@FXML private TextField durationField;
+@FXML private ListView<String> availableChannelsList;
+@FXML private ListView<String> pendingRequestsList;
+@FXML private ListView<String> activeHubsList;
+@FXML private Label settingsStatusLabel;
+@FXML private Label discoverStatusLabel;
+@FXML private Label requestStatusLabel;
+@FXML private Label hubStatusLabel;
+
+
+
     // =========================================================
     // INITIALIZE
     // =========================================================
@@ -201,6 +230,8 @@ public class DashboardController {
         });
         calendarController.drawCalendar(selectedDate);
 
+        adminMergeController.myChannelId = AuthService.CURRENT_CHANNEL_ID;
+
         // ── Routine ───────────────────────────────────────────
         routineController.init(routineGrid, announcementList);
 
@@ -209,6 +240,25 @@ public class DashboardController {
             taskController.refreshTimeline();
             calendarController.drawCalendar(selectedDate);
         });
+
+
+
+
+        //admin merge 
+         // Wire merge controller fields
+    adminMergeController.allowMergeCheck       = allowMergeCheck;
+    adminMergeController.privacyCombo          = privacyCombo;
+    adminMergeController.mergeTypeCombo        = mergeTypeCombo;
+    adminMergeController.durationField         = durationField;
+    adminMergeController.availableChannelsList = availableChannelsList;
+    adminMergeController.pendingRequestsList   = pendingRequestsList;
+    adminMergeController.activeHubsList        = activeHubsList;
+    adminMergeController.settingsStatusLabel   = settingsStatusLabel;
+    adminMergeController.discoverStatusLabel   = discoverStatusLabel;
+    adminMergeController.requestStatusLabel    = requestStatusLabel;
+    adminMergeController.hubStatusLabel        = hubStatusLabel;
+   
+    adminMergeController.initialize();
 
         // ── Channel setup ─────────────────────────────────────
         if (AuthService.CURRENT_CHANNEL_ID != -1) {
@@ -232,6 +282,9 @@ public class DashboardController {
         if ("admin".equals(AuthService.CURRENT_USER_ROLE) && adminControlsBox != null) {
             adminChatToggleController.init(adminControlsBox);
         }
+
+
+
 
         // ── Community ─────────────────────────────────────────
         if (communityTree != null) {
@@ -448,13 +501,7 @@ public class DashboardController {
                     Button b = new Button(item.title());
                     b.setMaxWidth(Double.MAX_VALUE);
                     b.setStyle("-fx-alignment: center-left; -fx-background-color: white; -fx-border-color: #bdc3c7;");
-                    b.setOnAction(e -> {
-                        Alert a = new Alert(Alert.AlertType.INFORMATION);
-                        a.setHeaderText(item.title());
-                        a.setContentText(item.content());
-                        a.initOwner(resolveOwner());
-                        a.show();
-                    });
+                    b.setOnAction(e -> PopupHelper.showInfo(resolveOwner(), item.title(), item.content()));
                     resourceList.getChildren().add(b);
                 }
             });
@@ -507,18 +554,10 @@ public class DashboardController {
     }
 
     private void showSuccess(String msg) {
-        Platform.runLater(() -> {
-            Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
-            a.initOwner(resolveOwner());
-            a.show();
-        });
+        Platform.runLater(() -> PopupHelper.showInfo(resolveOwner(), "Success", msg));
     }
 
     private void showError(String msg) {
-        Platform.runLater(() -> {
-            Alert a = new Alert(Alert.AlertType.ERROR, msg);
-            a.initOwner(resolveOwner());
-            a.showAndWait();
-        });
+        Platform.runLater(() -> PopupHelper.showError(resolveOwner(), "Error", msg));
     }
 }
