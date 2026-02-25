@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * STUDY ROOM CONTROLLER — Full study room system
+ * STUDY ROOM CONTROLLER — Public & Private Rooms
  * Path: src/main/java/com/scholar/controller/StudyRoomController.java
  */
 @Controller
@@ -49,7 +49,7 @@ public class StudyRoomController {
 
     // ── Session state ────────────────────────────────────────
     private StudyRoom   currentRoom;
-    private String      currentParticipantId = null; // 🌟 FIX: int থেকে String করা হলো
+    private String      currentParticipantId = null;
     private Timeline    pomodoroTimer;
     private Timeline    boardRefreshTimer;
     private Timeline    chatRefreshTimer;
@@ -64,24 +64,17 @@ public class StudyRoomController {
     private Button  modeToggleBtn;
     private VBox    activeUsersList;
 
-    // ══════════════════════════════════════════════════════════
-    // INITIALIZE
-    // ══════════════════════════════════════════════════════════
     @FXML
     public void initialize() {
         loadStreakAndXP();
         loadPublicRooms();
-       
         loadHistory();
         loadAnalytics();
+        loadLeaderboard(); // Automatically load the global leaderboard
     }
 
-    // ══════════════════════════════════════════════════════════
-    // STREAK & XP HEADER
-    // ══════════════════════════════════════════════════════════
     private void loadStreakAndXP() {
         new Thread(() -> {
-            // 🌟 FIX: ID কে String এ রূপান্তর করা হলো
             int streak = roomService.getStreak(AuthService.CURRENT_USER_ID.toString());
             Platform.runLater(() -> {
                 if (streakLabel != null)
@@ -90,9 +83,6 @@ public class StudyRoomController {
         }).start();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // PUBLIC ROOM LIST
-    // ══════════════════════════════════════════════════════════
     public void loadPublicRooms() {
         if (publicRoomList == null) return;
         publicRoomList.getChildren().clear();
@@ -101,7 +91,7 @@ public class StudyRoomController {
             List<StudyRoom> rooms = roomService.getPublicRooms();
             Platform.runLater(() -> {
                 if (rooms.isEmpty()) {
-                    Label empty = new Label("No active study rooms yet.\nCreate one to get started!");
+                    Label empty = new Label("No active public rooms yet.\nCreate one to get started!");
                     empty.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px; -fx-text-alignment: center;");
                     empty.setWrapText(true);
                     publicRoomList.getChildren().add(empty);
@@ -126,34 +116,23 @@ public class StudyRoomController {
             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 12, 0, 0, 4);
         """);
 
-        // Room type badge color
-        String badgeColor = switch (room.type()) {
-            case "DEPARTMENT" -> "#f0fdf4; -fx-text-fill: #16a34a";
-            case "PRIVATE"    -> "#fdf4ff; -fx-text-fill: #9333ea";
-            default           -> "#eff6ff; -fx-text-fill: #2563eb";
-        };
-
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Circle dot = new Circle(5, Color.web("#10b981")); // green = active
+        Circle dot = new Circle(5, Color.web("#10b981")); 
 
         Label nameLabel = new Label(room.roomName());
         nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1e293b;");
         nameLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(nameLabel, Priority.ALWAYS);
 
-        Label badge = new Label(room.type());
-        badge.setStyle("-fx-background-color: #" + badgeColor + "; " +
-            "-fx-background-radius: 8; -fx-padding: 3 10; -fx-font-size: 10px; -fx-font-weight: bold;");
+        Label badge = new Label("PUBLIC");
+        badge.setStyle("-fx-background-color: #eff6ff; -fx-text-fill: #2563eb; -fx-background-radius: 8; -fx-padding: 3 10; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         Label modeBadge = new Label(room.mode().equals("SILENT") ? "🔇 Silent" : "💬 Group");
         modeBadge.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
 
         header.getChildren().addAll(dot, nameLabel, modeBadge, badge);
-
-        Label deptLabel = new Label(room.department() != null ? "🏛 " + room.department() : "");
-        deptLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b;");
 
         Button joinBtn = new Button("Join Room →");
         joinBtn.setMaxWidth(Double.MAX_VALUE);
@@ -165,19 +144,34 @@ public class StudyRoomController {
         """);
         joinBtn.setOnAction(e -> showJoinDialog(room));
 
-        // Hover effect
-        card.setOnMouseEntered(e -> card.setStyle(card.getStyle()
-            .replace("-fx-background-color: white", "-fx-background-color: #f8faff")));
-        card.setOnMouseExited(e -> card.setStyle(card.getStyle()
-            .replace("-fx-background-color: #f8faff", "-fx-background-color: white")));
+        card.setOnMouseEntered(e -> card.setStyle(card.getStyle().replace("-fx-background-color: white", "-fx-background-color: #f8faff")));
+        card.setOnMouseExited(e -> card.setStyle(card.getStyle().replace("-fx-background-color: #f8faff", "-fx-background-color: white")));
 
-        card.getChildren().addAll(header, deptLabel, joinBtn);
+        card.getChildren().addAll(header, joinBtn);
         return card;
     }
 
     // ══════════════════════════════════════════════════════════
-    // JOIN DIALOG
+    // PRIVATE ROOM LAUNCHER
     // ══════════════════════════════════════════════════════════
+    @FXML
+    public void openMyPrivateRoom() {
+        String userId = AuthService.CURRENT_USER_ID.toString();
+        new Thread(() -> {
+            StudyRoom myRoom = roomService.getMyPrivateRoom(userId);
+            if (myRoom == null) {
+                // If the user doesn't have a private room yet, create one for them instantly
+                String id = roomService.createRoom("My Focus Space", "PRIVATE", userId, "SILENT");
+                myRoom = roomService.getMyPrivateRoom(userId);
+            }
+            StudyRoom finalRoom = myRoom;
+            Platform.runLater(() -> {
+                if (finalRoom != null) showJoinDialog(finalRoom);
+                else showError("Could not launch your private room.");
+            });
+        }).start();
+    }
+
     private void showJoinDialog(StudyRoom room) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Join: " + room.roomName());
@@ -190,7 +184,7 @@ public class StudyRoomController {
         grid.setHgap(15); grid.setVgap(15); grid.setPadding(new Insets(20));
 
         TextField topicField = new TextField();
-        topicField.setPromptText("What are you studying? e.g. Calculus Integrals");
+        topicField.setPromptText("What are you studying? e.g. Calculus");
         topicField.setStyle("-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;");
 
         TextArea taskField = new TextArea();
@@ -215,25 +209,19 @@ public class StudyRoomController {
         });
     }
 
-    // ══════════════════════════════════════════════════════════
-    // ENTER ROOM & BUILD UI
-    // ══════════════════════════════════════════════════════════
     private void enterRoom(StudyRoom room, String topic, String task, int minutes) {
         stopAllTimers();
         this.currentRoom = room;
         totalSessionSeconds = minutes * 60;
         secondsRemaining.set(totalSessionSeconds);
 
-        // 🌟 FIX: int এর বদলে String ব্যবহার করা হলো
         String pid = roomService.joinRoom(room.id(), AuthService.CURRENT_USER_ID.toString(),
             AuthService.CURRENT_USER_NAME, topic, task, minutes);
         currentParticipantId = pid;
 
-        // XP for joining public room
         if ("PUBLIC".equals(room.type()))
             new Thread(() -> roomService.addXP(AuthService.CURRENT_USER_ID.toString(), 5)).start();
 
-        // Build the room UI
         Platform.runLater(() -> buildRoomUI(room, topic, task, minutes));
     }
 
@@ -241,7 +229,6 @@ public class StudyRoomController {
         if (roomContentPane == null) return;
         roomContentPane.getChildren().clear();
 
-        // ── TOP BAR ────────────────────────────────────────
         HBox topBar = new HBox(14);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(14, 20, 14, 20));
@@ -250,7 +237,7 @@ public class StudyRoomController {
             -fx-background-radius: 14 14 0 0;
         """);
 
-        Label roomNameLbl = new Label("📖 " + room.roomName());
+        Label roomNameLbl = new Label("📖 " + room.roomName() + ("PRIVATE".equals(room.type()) ? " (Private)" : ""));
         roomNameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 18px; -fx-text-fill: white;");
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -265,16 +252,6 @@ public class StudyRoomController {
         """);
         modeToggleBtn.setOnAction(e -> toggleRoomMode(room));
 
-        Button challengeBtn = new Button("🎯 Challenge");
-        challengeBtn.setStyle("""
-            -fx-background-color: rgba(251,191,36,0.2);
-            -fx-text-fill: #fbbf24;
-            -fx-border-color: rgba(251,191,36,0.4);
-            -fx-border-radius: 20; -fx-background-radius: 20;
-            -fx-cursor: hand; -fx-padding: 6 16;
-        """);
-        challengeBtn.setOnAction(e -> showChallengeDialog(room));
-
         Button leaveBtn = new Button("Leave ✗");
         leaveBtn.setStyle("""
             -fx-background-color: rgba(239,68,68,0.2);
@@ -285,33 +262,26 @@ public class StudyRoomController {
         """);
         leaveBtn.setOnAction(e -> leaveCurrentRoom());
 
-        topBar.getChildren().addAll(roomNameLbl, spacer, modeToggleBtn, challengeBtn, leaveBtn);
+        topBar.getChildren().addAll(roomNameLbl, spacer, modeToggleBtn, leaveBtn);
 
-        // ── MAIN SPLIT ─────────────────────────────────────
         SplitPane split = new SplitPane();
         split.setDividerPositions(0.22, 0.60);
         VBox.setVgrow(split, Priority.ALWAYS);
 
-        // LEFT: Active users
         VBox leftPane = buildActiveUsersPane();
-
-        // CENTER: Timer + task + board
         VBox centerPane = buildCenterPane(topic, task, minutes, room);
-
-        // RIGHT: Chat
         VBox rightPane = buildChatPane(room);
 
         split.getItems().addAll(leftPane, centerPane, rightPane);
         roomContentPane.getChildren().addAll(topBar, split);
 
-        // Start timers
         startPomodoroTimer(minutes);
         startBoardRefresh(room.id());
-        if ("GROUP".equals(room.mode()))
+        if ("GROUP".equals(room.mode()) && "PUBLIC".equals(room.type())) {
             startChatRefresh(room.id());
+        }
     }
 
-    // ── LEFT PANE: Active users ─────────────────────────────
     private VBox buildActiveUsersPane() {
         VBox pane = new VBox(12);
         pane.setPadding(new Insets(16));
@@ -330,13 +300,11 @@ public class StudyRoomController {
         return pane;
     }
 
-    // ── CENTER PANE: Timer + task + board ──────────────────
     private VBox buildCenterPane(String topic, String task, int minutes, StudyRoom room) {
         VBox pane = new VBox(16);
         pane.setPadding(new Insets(20));
         pane.setStyle("-fx-background-color: white;");
 
-        // Timer card
         VBox timerCard = new VBox(8);
         timerCard.setAlignment(Pos.CENTER);
         timerCard.setPadding(new Insets(24));
@@ -380,7 +348,6 @@ public class StudyRoomController {
         timerControls.getChildren().addAll(pauseBtn, finishBtn);
         timerCard.getChildren().addAll(topicLbl, timerLabel, taskLbl, timerControls);
 
-        // Study board table
         Label boardTitle = new Label("📊 Live Study Board");
         boardTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #1e293b;");
 
@@ -431,13 +398,12 @@ public class StudyRoomController {
         return table;
     }
 
-    // ── RIGHT PANE: Chat ────────────────────────────────────
     private VBox buildChatPane(StudyRoom room) {
         VBox pane = new VBox(10);
         pane.setPadding(new Insets(16));
         pane.setStyle("-fx-background-color: #f8faff;");
 
-        Label title = new Label("💬 Group Chat");
+        Label title = new Label("💬 Room Chat");
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #1e293b;");
 
         chatBox = new VBox(8);
@@ -451,9 +417,9 @@ public class StudyRoomController {
         msgInput.setStyle("-fx-background-radius: 20; -fx-padding: 9 14; -fx-border-color: #e2e8f0; -fx-border-radius: 20;");
         HBox.setHgrow(msgInput, Priority.ALWAYS);
 
-        boolean isSilent = "SILENT".equals(room.mode());
+        boolean isSilent = "SILENT".equals(room.mode()) || "PRIVATE".equals(room.type());
         msgInput.setDisable(isSilent);
-        msgInput.setPromptText(isSilent ? "🔇 Silent mode — chat disabled" : "Type a message...");
+        msgInput.setPromptText(isSilent ? "🔇 Silent mode / Private room" : "Type a message...");
 
         Button sendBtn = new Button("Send");
         sendBtn.setDisable(isSilent);
@@ -461,7 +427,6 @@ public class StudyRoomController {
         sendBtn.setOnAction(e -> {
             String msg = msgInput.getText().trim();
             if (!msg.isEmpty()) {
-                // 🌟 FIX: User ID কে String এ রূপান্তর
                 new Thread(() -> roomService.sendChatMessage(room.id(),
                     AuthService.CURRENT_USER_ID.toString(), AuthService.CURRENT_USER_NAME, msg)).start();
                 msgInput.clear();
@@ -476,9 +441,6 @@ public class StudyRoomController {
         return pane;
     }
 
-    // ══════════════════════════════════════════════════════════
-    // POMODORO TIMER
-    // ══════════════════════════════════════════════════════════
     private void startPomodoroTimer(int minutes) {
         secondsRemaining.set(minutes * 60);
         pomodoroTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
@@ -501,19 +463,16 @@ public class StudyRoomController {
         return String.format("%02d:%02d", m, s);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // FINISH / LEAVE SESSION
-    // ══════════════════════════════════════════════════════════
     private void finishSession(boolean early) {
         stopAllTimers();
         int elapsed = (totalSessionSeconds - secondsRemaining.get()) / 60;
-        int xpEarned = elapsed * 2 + 20; // 2 XP/min + 20 bonus
+        int xpEarned = elapsed * 2 + 20; 
 
-        if (currentParticipantId != null && currentRoom != null) { // 🌟 FIX: != -1 এর বদলে != null
+        if (currentParticipantId != null && currentRoom != null) {
             new Thread(() -> {
                 roomService.completeSession(currentParticipantId, elapsed);
                 roomService.saveHistory(AuthService.CURRENT_USER_ID.toString(), currentRoom.id(),
-                    "", "", totalSessionSeconds / 60, elapsed);
+                    "", "", totalSessionSeconds / 60, elapsed, xpEarned);
                 roomService.addXP(AuthService.CURRENT_USER_ID.toString(), xpEarned);
                 roomService.updateStreak(AuthService.CURRENT_USER_ID.toString());
                 Platform.runLater(() -> {
@@ -523,7 +482,7 @@ public class StudyRoomController {
                 });
             }).start();
         }
-        currentParticipantId = null; // 🌟 FIX
+        currentParticipantId = null; 
     }
 
     private void leaveCurrentRoom() {
@@ -533,11 +492,11 @@ public class StudyRoomController {
         confirm.showAndWait().ifPresent(r -> {
             if (r == ButtonType.YES) {
                 stopAllTimers();
-                if (currentParticipantId != null) { // 🌟 FIX
+                if (currentParticipantId != null) { 
                     new Thread(() -> roomService.leaveRoom(
                         currentRoom.id(), AuthService.CURRENT_USER_ID.toString())).start();
                 }
-                currentParticipantId = null; // 🌟 FIX
+                currentParticipantId = null;
                 currentRoom = null;
                 showRoomSelector();
             }
@@ -565,11 +524,7 @@ public class StudyRoomController {
         loadPublicRooms();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // MODE TOGGLE
-    // ══════════════════════════════════════════════════════════
     private void toggleRoomMode(StudyRoom room) {
-        // 🌟 FIX: String comparison
         if (!room.createdBy().equals(AuthService.CURRENT_USER_ID.toString())
             && !"admin".equals(AuthService.CURRENT_USER_ROLE)) {
             showError("Only the room creator can toggle mode.");
@@ -584,48 +539,6 @@ public class StudyRoomController {
                 showSuccess("Mode switched to " + newMode);
             });
         }).start();
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // CHALLENGE / GOOGLE MEET
-    // ══════════════════════════════════════════════════════════
-    private void showChallengeDialog(StudyRoom room) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("🎯 Study Challenge");
-        dialog.setHeaderText("Link a Google Meet for a group study challenge");
-
-        ButtonType saveBtn = new ButtonType("Save & Join 🚀", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(15); grid.setVgap(15); grid.setPadding(new Insets(20));
-
-        TextField nameField = new TextField(); nameField.setPromptText("Challenge name");
-        TextField linkField = new TextField(); linkField.setPromptText("Paste Google Meet link...");
-
-        // Check if existing link
-        new Thread(() -> {
-            String existing = roomService.getChallengeMeetLink(room.id());
-            if (existing != null) Platform.runLater(() -> linkField.setText(existing));
-        }).start();
-
-        grid.add(new Label("Challenge Name:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("Meet Link:"),       0, 1); grid.add(linkField, 1, 1);
-        dialog.getDialogPane().setContent(grid);
-
-        dialog.showAndWait().ifPresent(response -> {
-            if (response == saveBtn) {
-                String link = linkField.getText().trim();
-                String name = nameField.getText().trim();
-                if (!link.isEmpty()) {
-                    // 🌟 FIX: User ID String
-                    new Thread(() -> roomService.saveChallenge(
-                        room.id(), link, name, AuthService.CURRENT_USER_ID.toString())).start();
-                    try { java.awt.Desktop.getDesktop().browse(new URI(link)); }
-                    catch (Exception ex) { showError("Could not open browser."); }
-                }
-            }
-        });
     }
 
     // ══════════════════════════════════════════════════════════
@@ -644,27 +557,25 @@ public class StudyRoomController {
         grid.setHgap(15); grid.setVgrow(grid, Priority.ALWAYS);
         grid.setVgap(15); grid.setPadding(new Insets(20));
 
-        TextField nameField = new TextField(); nameField.setPromptText("Room name (e.g. CSE Sprint 🚀)");
+        TextField nameField = new TextField(); nameField.setPromptText("Room name (e.g. Code Sprint 🚀)");
         ComboBox<String> typeBox = new ComboBox<>();
-        typeBox.getItems().addAll("PUBLIC", "PRIVATE", "DEPARTMENT"); typeBox.setValue("PUBLIC");
-        TextField deptField = new TextField(); deptField.setPromptText("e.g. CSE (only for DEPARTMENT type)");
+        typeBox.getItems().addAll("PUBLIC", "PRIVATE"); 
+        typeBox.setValue("PUBLIC");
+        
         ComboBox<String> modeBox = new ComboBox<>();
         modeBox.getItems().addAll("GROUP", "SILENT"); modeBox.setValue("GROUP");
 
         grid.add(new Label("Room Name:"), 0, 0); grid.add(nameField, 1, 0);
         grid.add(new Label("Type:"),      0, 1); grid.add(typeBox, 1, 1);
-        grid.add(new Label("Dept:"),      0, 2); grid.add(deptField, 1, 2);
-        grid.add(new Label("Mode:"),      0, 3); grid.add(modeBox, 1, 3);
+        grid.add(new Label("Mode:"),      0, 2); grid.add(modeBox, 1, 2);
         dialog.getDialogPane().setContent(grid);
 
         dialog.showAndWait().ifPresent(response -> {
             if (response == createBtn && !nameField.getText().trim().isEmpty()) {
                 new Thread(() -> {
-                    // 🌟 FIX: return type is String
                     String id = roomService.createRoom(
                         nameField.getText().trim(), typeBox.getValue(),
-                        deptField.getText().trim(), AuthService.CURRENT_USER_ID.toString(),
-                        modeBox.getValue());
+                        AuthService.CURRENT_USER_ID.toString(), modeBox.getValue());
                     Platform.runLater(() -> {
                         if (id != null) { loadPublicRooms(); showSuccess("Room created! 🎉"); }
                         else showError("Failed to create room.");
@@ -674,10 +585,6 @@ public class StudyRoomController {
         });
     }
 
-    // ══════════════════════════════════════════════════════════
-    // AUTO REFRESH TIMERS
-    // ══════════════════════════════════════════════════════════
-    // 🌟 FIX: String roomId
     private void startBoardRefresh(String roomId) {
         boardRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(4), e -> {
             new Thread(() -> {
@@ -685,7 +592,6 @@ public class StudyRoomController {
                 Platform.runLater(() -> {
                     if (boardTable != null)
                         boardTable.getItems().setAll(sessions);
-                    // Refresh user list
                     if (activeUsersList != null) {
                         activeUsersList.getChildren().clear();
                         for (StudySession s : sessions) {
@@ -711,7 +617,6 @@ public class StudyRoomController {
         boardRefreshTimer.play();
     }
 
-    // 🌟 FIX: String roomId
     private void startChatRefresh(String roomId) {
         chatRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
             new Thread(() -> {
@@ -745,16 +650,11 @@ public class StudyRoomController {
         if (chatRefreshTimer  != null) chatRefreshTimer.stop();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // ANALYTICS TAB
-    // ══════════════════════════════════════════════════════════
     private void loadAnalytics() {
         new Thread(() -> {
-            // 🌟 FIX: String ID
             Map<String, Integer> weekly = roomService.getWeeklyStats(AuthService.CURRENT_USER_ID.toString());
             Map<String, Integer> topics = roomService.getTopicStats(AuthService.CURRENT_USER_ID.toString());
             Platform.runLater(() -> {
-                // Weekly bar chart
                 if (weeklyChart != null) {
                     weeklyChart.getData().clear();
                     XYChart.Series<String, Number> series = new XYChart.Series<>();
@@ -763,7 +663,6 @@ public class StudyRoomController {
                         new XYChart.Data<>(day, mins)));
                     weeklyChart.getData().add(series);
                 }
-                // Topic pie chart
                 if (topicPieChart != null) {
                     topicPieChart.getData().clear();
                     topics.forEach((topic, mins) ->
@@ -773,12 +672,9 @@ public class StudyRoomController {
         }).start();
     }
 
-  
-
     private void loadHistory() {
         if (historyContainer == null) return;
         new Thread(() -> {
-            // 🌟 FIX: String ID
             var history = roomService.getHistory(AuthService.CURRENT_USER_ID.toString());
             Platform.runLater(() -> {
                 historyContainer.getChildren().clear();
@@ -806,9 +702,44 @@ public class StudyRoomController {
         }).start();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // HELPERS
-    // ══════════════════════════════════════════════════════════
+    private void loadLeaderboard() {
+        if (leaderboardContainer == null) return;
+        new Thread(() -> {
+            List<String[]> board = roomService.getGlobalLeaderboard();
+            Platform.runLater(() -> {
+                leaderboardContainer.getChildren().clear();
+                int rank = 1;
+                for (String[] row : board) {
+                    HBox box = new HBox(15);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    box.setPadding(new Insets(12));
+                    box.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e8eeff; -fx-border-radius: 8;");
+                    
+                    Label rLbl = new Label("#" + rank);
+                    rLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: " + (rank <= 3 ? "#d97706" : "#64748b") + ";");
+                    
+                    Label nLbl = new Label("👤 " + row[0]);
+                    nLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                    
+                    Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+                    
+                    Label sLbl = new Label("🔥 " + row[2] + " Streak");
+                    sLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 12px;");
+                    
+                    Label xLbl = new Label("⭐ " + row[1] + " XP");
+                    xLbl.setStyle("-fx-text-fill: #8b5cf6; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+                    box.getChildren().addAll(rLbl, nLbl, sp, sLbl, xLbl);
+                    leaderboardContainer.getChildren().add(box);
+                    rank++;
+                }
+                if (board.isEmpty()) {
+                    leaderboardContainer.getChildren().add(new Label("Leaderboard is empty right now."));
+                }
+            });
+        }).start();
+    }
+
     private String btnStyle(String bg, String text, String border) {
         return "-fx-background-color: " + bg + "; -fx-text-fill: " + text + "; " +
                "-fx-border-color: " + border + "; -fx-border-radius: 10; " +

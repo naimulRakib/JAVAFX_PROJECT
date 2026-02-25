@@ -13,16 +13,16 @@ import java.util.List;
 public class StudyRoomService {
 
     // ══════════════════════════════════════════════════════════
-    // ROOM CRUD (UUID & PostgreSQL Fixed)
+    // ROOM CRUD (Only PUBLIC & PRIVATE)
     // ══════════════════════════════════════════════════════════
 
     public List<StudyRoom> getPublicRooms() {
         List<StudyRoom> rooms = new ArrayList<>();
-        // JOIN করে Creator Name এবং Active User Count বের করা হচ্ছে
+        // Fetch ONLY PUBLIC rooms
         String sql = "SELECT r.*, u.username as creator_name, " +
                      "(SELECT COUNT(*) FROM room_participants p WHERE p.room_id = r.id AND p.status='STUDYING') as active_users " +
                      "FROM study_rooms r LEFT JOIN users u ON r.created_by = u.id " +
-                     "WHERE r.type IN ('PUBLIC','DEPARTMENT') AND r.active_status = TRUE ORDER BY r.created_at DESC";
+                     "WHERE r.type = 'PUBLIC' AND r.active_status = TRUE ORDER BY r.created_at DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -32,7 +32,8 @@ public class StudyRoomService {
     }
 
     public StudyRoom getMyPrivateRoom(String userId) {
-        String sql = "SELECT r.*, u.username as creator_name, 0 as active_users " +
+        String sql = "SELECT r.*, u.username as creator_name, " +
+                     "(SELECT COUNT(*) FROM room_participants p WHERE p.room_id = r.id AND p.status='STUDYING') as active_users " +
                      "FROM study_rooms r LEFT JOIN users u ON r.created_by = u.id " +
                      "WHERE r.type='PRIVATE' AND r.created_by=?::uuid LIMIT 1";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -44,16 +45,16 @@ public class StudyRoomService {
         return null;
     }
 
-    public String createRoom(String roomName, String type, String department, String createdBy, String mode) {
+    public String createRoom(String roomName, String type, String createdBy, String mode) {
+        // Department is set to empty string "" to avoid DB schema conflict
         String sql = "INSERT INTO study_rooms (room_name, type, department, created_by, mode) " +
-                     "VALUES (?, ?, ?, ?::uuid, ?) RETURNING id";
+                     "VALUES (?, ?, '', ?::uuid, ?) RETURNING id";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, roomName);
             ps.setString(2, type);
-            ps.setString(3, department);
-            ps.setString(4, createdBy);
-            ps.setString(5, mode);
+            ps.setString(3, createdBy);
+            ps.setString(4, mode);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getString(1);
         } catch (SQLException e) { e.printStackTrace(); }
@@ -93,11 +94,11 @@ public class StudyRoomService {
     }
 
     public boolean completeSession(String participantId, int actualMinutes) {
-        // Step 1A schema uses 'status' not 'completion_status'
-        String sql = "UPDATE room_participants SET status='COMPLETED' WHERE id=?::uuid";
+        String sql = "UPDATE room_participants SET status='COMPLETED', actual_study_time=? WHERE id=?::uuid";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, participantId);
+            ps.setInt(1, actualMinutes);
+            ps.setString(2, participantId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -115,7 +116,6 @@ public class StudyRoomService {
 
     public List<StudySession> getAllSessions(String roomId) {
         List<StudySession> sessions = new ArrayList<>();
-        // JOIN users to get the username
         String sql = "SELECT p.*, u.username as user_name FROM room_participants p " +
                      "JOIN users u ON p.user_id = u.id " +
                      "WHERE p.room_id=?::uuid ORDER BY p.start_time DESC LIMIT 50";
@@ -132,9 +132,9 @@ public class StudyRoomService {
     // STUDY HISTORY & STATS
     // ══════════════════════════════════════════════════════════
 
-    public boolean saveHistory(String userId, String roomId, String topic, String task, int planned, int completed) {
-        String sql = "INSERT INTO study_history (user_id, room_id, topic, task, planned_time, completed_time) " +
-                     "VALUES (?::uuid, ?::uuid, ?, ?, ?, ?)";
+    public boolean saveHistory(String userId, String roomId, String topic, String task, int planned, int completed, int xp) {
+        String sql = "INSERT INTO study_history (user_id, room_id, topic, task, planned_time, completed_time, earned_xp) " +
+                     "VALUES (?::uuid, ?::uuid, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, userId);
@@ -143,6 +143,7 @@ public class StudyRoomService {
             ps.setString(4, task);
             ps.setInt(5, planned);
             ps.setInt(6, completed);
+            ps.setInt(7, xp);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -199,7 +200,7 @@ public class StudyRoomService {
     }
 
     // ══════════════════════════════════════════════════════════
-    // XP & STREAK
+    // XP & STREAK & GLOBAL LEADERBOARD
     // ══════════════════════════════════════════════════════════
 
     public void updateStreak(String userId) {
@@ -236,14 +237,14 @@ public class StudyRoomService {
         return 0;
     }
 
-    public List<String[]> getLeaderboard(String department) {
+    public List<String[]> getGlobalLeaderboard() {
         List<String[]> board = new ArrayList<>();
+        // Removed Department - this is now a Global Leaderboard
         String sql = "SELECT username, COALESCE(total_xp,0) as xp, COALESCE(study_streak,0) as streak " +
-                     "FROM users WHERE department=? ORDER BY xp DESC LIMIT 10";
+                     "FROM users ORDER BY xp DESC LIMIT 10";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, department);
-            ResultSet rs = ps.executeQuery();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next())
                 board.add(new String[]{rs.getString("username"), String.valueOf(rs.getInt("xp")), String.valueOf(rs.getInt("streak"))});
         } catch (SQLException e) { e.printStackTrace(); }
@@ -301,7 +302,7 @@ public class StudyRoomService {
     }
 
     // ══════════════════════════════════════════════════════════
-    // MAPPERS (Matches Models perfectly)
+    // MAPPERS
     // ══════════════════════════════════════════════════════════
 
     private StudyRoom mapRoom(ResultSet rs) throws SQLException {
