@@ -45,7 +45,7 @@ public class ResourceService {
                     rs.getString("title"),
                     rs.getString("link"),
                     rs.getString("type"),
-                    rs.getString("content")
+                    rs.getString("description")
                 ));
             }
         } catch (Exception e) {

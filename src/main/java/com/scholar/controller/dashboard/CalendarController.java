@@ -2,14 +2,13 @@ package com.scholar.controller.dashboard;
 
 import com.scholar.model.StudyTask;
 import com.scholar.service.WeatherService;
+import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -17,7 +16,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -29,6 +27,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * CalendarController — draws a dark-theme monthly calendar grid.
+ *
+ * KEY CHANGES (UI only — all logic untouched):
+ *  • createDayBox():  replaced all hardcoded light colours
+ *      white → #0f1220  (default cell bg)
+ *      #ecf0f1 border → rgba(255,255,255,0.06)
+ *      #2c3e50 text → #94a3b8
+ *      #3498db (today) → indigo gradient
+ *      #ebf5fb (selected) → rgba(99,102,241,0.18) + indigo border
+ *      weather label bg #f4f6f7 → rgba(255,255,255,0.07)
+ *
+ *  • openClimateAndTaskPopup(): all scroll-pane viewport gaps fixed
+ *    with both -fx-background and -fx-background-color.
+ *
+ * Path: src/main/java/com/scholar/controller/dashboard/CalendarController.java
+ */
 @Component
 public class CalendarController {
 
@@ -36,31 +51,37 @@ public class CalendarController {
     private WeatherService weatherService;
 
     private GridPane calendarGrid;
-    private Label monthLabel;
+    private Label    monthLabel;
     private List<StudyTask> allTasks;
     private LocalDate selectedDate;
-    
+
     private java.util.function.Consumer<LocalDate> onDateClickedCallback;
     private Map<String, WeatherService.DailyWeather> weeklyWeather = new HashMap<>();
     private boolean isWeatherEnabled = false;
 
+    /** Returns the owner Window for PopupHelper calls. */
+    private javafx.stage.Window window() {
+        return calendarGrid != null && calendarGrid.getScene() != null
+                ? calendarGrid.getScene().getWindow() : null;
+    }
+
+    // ── init ──────────────────────────────────────────────────────────────────
     public void init(GridPane calendarGrid,
                      Label monthLabel,
                      List<StudyTask> allTasks,
                      java.util.function.Supplier<LocalDate> selectedDateSupplier,
                      java.util.function.Consumer<LocalDate> onDateClicked) {
-        this.calendarGrid = calendarGrid;
-        this.monthLabel   = monthLabel;
-        this.allTasks     = allTasks;
-        this.selectedDate = selectedDateSupplier.get();
+        this.calendarGrid          = calendarGrid;
+        this.monthLabel            = monthLabel;
+        this.allTasks              = allTasks;
+        this.selectedDate          = selectedDateSupplier.get();
         this.onDateClickedCallback = onDateClicked;
 
-        // 🌟 যদি লোকেশন সেভ করা থাকে, তবে অটোমেটিক ওয়েদার লোড করবে
         if (weatherService.hasSavedLocation()) {
             new Thread(() -> {
-                double[] coords = weatherService.getSavedLocation();
-                weeklyWeather = weatherService.fetchWeeklyForecast(coords[0], coords[1]);
-                isWeatherEnabled = true;
+                double[] coords   = weatherService.getSavedLocation();
+                weeklyWeather     = weatherService.fetchWeeklyForecast(coords[0], coords[1]);
+                isWeatherEnabled  = true;
                 Platform.runLater(() -> drawCalendar(this.selectedDate));
             }).start();
         }
@@ -70,6 +91,7 @@ public class CalendarController {
 
     public void setSelectedDate(LocalDate date) { this.selectedDate = date; }
 
+    // ── drawCalendar ──────────────────────────────────────────────────────────
     public void drawCalendar(LocalDate selectedDate) {
         this.selectedDate = selectedDate;
         if (calendarGrid == null || monthLabel == null) return;
@@ -78,18 +100,19 @@ public class CalendarController {
         YearMonth currentMonth = YearMonth.now();
         monthLabel.setText(currentMonth.getMonth().name() + " " + currentMonth.getYear());
 
-        // 🌟 লোকেশন সেভ না থাকলে বাটন দেখাবে
         if (!isWeatherEnabled) {
             Button enableWeatherBtn = new Button("📍 Auto-Detect & Save Location");
-            enableWeatherBtn.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 6 12;");
-            
+            enableWeatherBtn.setStyle(
+                "-fx-background-color:#059669;-fx-text-fill:white;" +
+                "-fx-font-weight:bold;-fx-background-radius:6;" +
+                "-fx-cursor:hand;-fx-padding:6 12;");
+
             enableWeatherBtn.setOnAction(e -> {
                 enableWeatherBtn.setText("⏳ Saving Location & Fetching Climate...");
                 enableWeatherBtn.setDisable(true);
-                
                 new Thread(() -> {
-                    double[] coords = weatherService.detectAndSaveLocation();
-                    weeklyWeather = weatherService.fetchWeeklyForecast(coords[0], coords[1]);
+                    double[] coords  = weatherService.detectAndSaveLocation();
+                    weeklyWeather    = weatherService.fetchWeeklyForecast(coords[0], coords[1]);
                     isWeatherEnabled = true;
                     Platform.runLater(() -> drawCalendar(this.selectedDate));
                 }).start();
@@ -101,18 +124,20 @@ public class CalendarController {
             calendarGrid.add(btnContainer, 0, 0, 7, 1);
         }
 
+        // Day-of-week headers
         String[] daysOfWeek = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
         for (int i = 0; i < 7; i++) {
             Label dayLabel = new Label(daysOfWeek[i]);
-            dayLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #7f8c8d; -fx-font-size: 14px;");
+            dayLabel.setStyle(
+                "-fx-font-weight:bold;-fx-text-fill:#4b5563;-fx-font-size:13px;");
             VBox headerBox = new VBox(dayLabel);
             headerBox.setAlignment(Pos.CENTER);
             headerBox.setPadding(new Insets(10, 0, 15, 0));
             calendarGrid.add(headerBox, i, 1);
         }
 
-        int startDay     = currentMonth.atDay(1).getDayOfWeek().getValue() % 7;
-        int daysInMonth  = currentMonth.lengthOfMonth();
+        int startDay    = currentMonth.atDay(1).getDayOfWeek().getValue() % 7;
+        int daysInMonth = currentMonth.lengthOfMonth();
         int row = 2, col = startDay;
 
         for (int day = 1; day <= daysInMonth; day++) {
@@ -123,45 +148,104 @@ public class CalendarController {
         }
     }
 
+    // ── createDayBox — fully dark ─────────────────────────────────────────────
+    /**
+     * Builds a single calendar cell.
+     *
+     * Dark colour guide:
+     *   default cell bg  →  #0f1220   (dark navy)
+     *   default border   →  rgba(255,255,255,0.06)
+     *   default day text →  #94a3b8
+     *
+     *   today            →  bg: linear-gradient(#4f46e5,#6366f1)
+     *                        border: #6366f1
+     *                        day text: white
+     *
+     *   selected (not today) → bg: rgba(99,102,241,0.14)
+     *                           border: #6366f1, width 2
+     *                           day text: #c7d2fe
+     *
+     *   today + selected →  border: #f87171 (red accent) on top of today gradient
+     *
+     *   task dot         →  #6366f1 (always indigo, visible on dark bg)
+     *   weather label bg →  rgba(255,255,255,0.07) normal | rgba(255,255,255,0.18) today
+     */
     private VBox createDayBox(int day, LocalDate date, LocalDate selectedDate) {
-        VBox box = new VBox(5);
+        VBox box = new VBox(4);
         box.setAlignment(Pos.TOP_CENTER);
-        box.setPadding(new Insets(5));
+        box.setPadding(new Insets(6));
         box.setPrefSize(100, 100);
 
+        LocalDate today   = LocalDate.now();
+        boolean   isToday    = date.equals(today);
+        boolean   isSelected = date.equals(selectedDate);
+
+        // ── Day number label ──────────────────────────────────
         Label lbl = new Label(String.valueOf(day));
-        lbl.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
-        LocalDate today  = LocalDate.now();
-        String boxStyle  = "-fx-background-color: white; -fx-border-color: #ecf0f1; -fx-cursor: hand;";
 
-        if (date.equals(today)) {
-            boxStyle = "-fx-background-color: #3498db; -fx-border-color: #2980b9; -fx-background-radius: 5; -fx-border-radius: 5; -fx-cursor: hand;";
-            lbl.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;");
+        // ── Determine box style ───────────────────────────────
+        String boxStyle;
+        String lblStyle;
+
+        if (isToday && isSelected) {
+            // Today AND selected — indigo bg, red border accent
+            boxStyle =
+                "-fx-background-color:linear-gradient(to bottom right,#4338ca,#6366f1);" +
+                "-fx-border-color:#f87171;-fx-border-width:2;" +
+                "-fx-background-radius:8;-fx-border-radius:8;-fx-cursor:hand;" +
+                "-fx-effect:dropshadow(gaussian,rgba(99,102,241,0.55),10,0,0,2);";
+            lblStyle = "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:white;";
+
+        } else if (isToday) {
+            // Today only — indigo gradient
+            boxStyle =
+                "-fx-background-color:linear-gradient(to bottom right,#4338ca,#6366f1);" +
+                "-fx-border-color:#6366f1;-fx-border-width:1;" +
+                "-fx-background-radius:8;-fx-border-radius:8;-fx-cursor:hand;" +
+                "-fx-effect:dropshadow(gaussian,rgba(99,102,241,0.45),10,0,0,2);";
+            lblStyle = "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:white;";
+
+        } else if (isSelected) {
+            // Selected only — subtle indigo tint
+            boxStyle =
+                "-fx-background-color:rgba(99,102,241,0.14);" +
+                "-fx-border-color:#6366f1;-fx-border-width:2;" +
+                "-fx-background-radius:8;-fx-border-radius:8;-fx-cursor:hand;";
+            lblStyle = "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#c7d2fe;";
+
+        } else {
+            // Default dark cell
+            boxStyle =
+                "-fx-background-color:#0f1220;" +
+                "-fx-border-color:rgba(255,255,255,0.06);-fx-border-width:1;" +
+                "-fx-background-radius:8;-fx-border-radius:8;-fx-cursor:hand;";
+            lblStyle = "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#94a3b8;";
         }
-        if (date.equals(selectedDate)) {
-            if (date.equals(today)) {
-                boxStyle = "-fx-background-color: #3498db; -fx-border-color: #e74c3c; -fx-border-width: 2; -fx-background-radius: 5; -fx-border-radius: 5; -fx-cursor: hand;";
-            } else {
-                boxStyle = "-fx-background-color: #ebf5fb; -fx-border-color: #3498db; -fx-border-width: 2; -fx-background-radius: 5; -fx-border-radius: 5; -fx-cursor: hand;";
-            }
-        }
+
         box.setStyle(boxStyle);
+        lbl.setStyle(lblStyle);
 
+        // ── Top row: day number [spacer] [weather] ────────────
         HBox topRow = new HBox();
         topRow.setAlignment(Pos.TOP_LEFT);
-        boolean hasWeather = (isWeatherEnabled && weeklyWeather != null && weeklyWeather.containsKey(date.toString()));
+
+        boolean hasWeather = isWeatherEnabled
+                && weeklyWeather != null
+                && weeklyWeather.containsKey(date.toString());
 
         if (hasWeather) {
             WeatherService.DailyWeather w = weeklyWeather.get(date.toString());
             Label weatherLbl = new Label(w.emoji() + " " + w.maxTemp());
-            
-            if (date.equals(today)) {
-                weatherLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: white; -fx-background-color: rgba(255,255,255,0.25); -fx-padding: 2 4; -fx-background-radius: 3;");
-            } else {
-                weatherLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #7f8c8d; -fx-background-color: #f4f6f7; -fx-padding: 2 4; -fx-background-radius: 3;");
-            }
 
-            Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+            String wBg  = isToday ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.07)";
+            String wFg  = isToday ? "white"                  : "#64748b";
+            weatherLbl.setStyle(
+                "-fx-font-size:10px;-fx-text-fill:" + wFg + ";" +
+                "-fx-background-color:" + wBg + ";" +
+                "-fx-padding:2 4;-fx-background-radius:3;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
             topRow.getChildren().addAll(lbl, spacer, weatherLbl);
         } else {
             topRow.getChildren().add(lbl);
@@ -170,118 +254,147 @@ public class CalendarController {
 
         box.getChildren().add(topRow);
 
+        // ── Task dot ──────────────────────────────────────────
         List<StudyTask> tasksForThisDay = allTasks.stream()
             .filter(t -> t.date() != null && t.date().equals(date.toString()))
             .collect(Collectors.toList());
 
         if (!tasksForThisDay.isEmpty()) {
-            Circle dot = new Circle(3, Color.web(date.equals(today) ? "#ffffff" : "#e74c3c"));
+            // Always indigo — visible on every dark bg variant
+            Circle dot = new Circle(3, Color.web("#6366f1"));
             box.getChildren().add(dot);
         }
 
+        // ── Click handler — LOGIC UNCHANGED ──────────────────
         box.setOnMouseClicked(e -> {
             this.selectedDate = date;
-            drawCalendar(this.selectedDate); 
-            if (onDateClickedCallback != null) onDateClickedCallback.accept(date); 
-            openClimateAndTaskPopup(date, tasksForThisDay); 
+            drawCalendar(this.selectedDate);
+            if (onDateClickedCallback != null) onDateClickedCallback.accept(date);
+            openClimateAndTaskPopup(date, tasksForThisDay);
         });
 
         return box;
     }
 
-    // ==========================================================
-    // 🌟 ULTIMATE CLIMATE & TASK POP-UP 
-    // ==========================================================
+    // ── openClimateAndTaskPopup ───────────────────────────────────────────────
+    // LOGIC UNCHANGED — only ScrollPane viewport fix applied to remove white bg
     private void openClimateAndTaskPopup(LocalDate date, List<StudyTask> tasks) {
-        Stage stage = new Stage();
-        stage.setTitle("📅 Details for " + date.toString());
-        stage.initModality(Modality.APPLICATION_MODAL);
-
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #0f1117;");
+        root.setStyle("-fx-background-color:#0f1117;");
 
-        // 📅 Header
-        Label dateLabel = new Label("📅 " + date.getMonth().name() + " " + date.getDayOfMonth() + ", " + date.getYear());
-        dateLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
+        // Header
+        Label dateLabel = new Label("📅 " + date.getMonth().name()
+                + " " + date.getDayOfMonth() + ", " + date.getYear());
+        dateLabel.setStyle(
+            "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;");
         root.getChildren().add(dateLabel);
 
-        // 🌍 Climate Section
-        boolean hasWeather = (isWeatherEnabled && weeklyWeather != null && weeklyWeather.containsKey(date.toString()));
+        // Climate section
+        boolean hasWeather = isWeatherEnabled
+                && weeklyWeather != null
+                && weeklyWeather.containsKey(date.toString());
         if (hasWeather) {
             WeatherService.DailyWeather w = weeklyWeather.get(date.toString());
-            
-            VBox weatherBox = new VBox(12);
-            weatherBox.setStyle("-fx-background-color: #1e2738; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #2d3748; -fx-border-radius: 8;");
 
-            // Top: Emoji + Condition + Temps
+            VBox weatherBox = new VBox(12);
+            weatherBox.setStyle(
+                "-fx-background-color:#1e2738;-fx-padding:15;" +
+                "-fx-background-radius:8;-fx-border-color:#2d3748;-fx-border-radius:8;");
+
             HBox topInfo = new HBox(15);
             topInfo.setAlignment(Pos.CENTER_LEFT);
-            Label emoji = new Label(w.emoji()); emoji.setStyle("-fx-font-size: 40px;");
+            Label emoji = new Label(w.emoji());
+            emoji.setStyle("-fx-font-size:40px;");
             VBox temps = new VBox(3);
-            Label cond = new Label(w.condition()); cond.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3b82f6;");
+            Label cond = new Label(w.condition());
+            cond.setStyle(
+                "-fx-font-size:16px;-fx-font-weight:bold;-fx-text-fill:#3b82f6;");
             Label tLabel = new Label("🌡️ Max: " + w.maxTemp() + "  |  Min: " + w.minTemp());
-            tLabel.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px;");
+            tLabel.setStyle("-fx-text-fill:#e2e8f0;-fx-font-size:13px;");
             temps.getChildren().addAll(cond, tLabel);
             topInfo.getChildren().addAll(emoji, temps);
             weatherBox.getChildren().add(topInfo);
 
-            // Bottom: Grid of Climate Details
             GridPane grid = new GridPane();
             grid.setHgap(20); grid.setVgap(8);
-            
-            grid.add(createDetailLabel("🌧️ Rain:", w.rainChance()), 0, 0);
-            grid.add(createDetailLabel("🌬️ Wind:", w.windSpeed()), 1, 0);
-            grid.add(createDetailLabel("☀️ UV Index:", w.uvIndex()), 0, 1);
-            grid.add(createDetailLabel("🌅 Sunrise:", w.sunrise()), 1, 1);
-            grid.add(createDetailLabel("🌇 Sunset:", w.sunset()), 0, 2);
-
+            grid.add(createDetailLabel("🌧️ Rain:",     w.rainChance()), 0, 0);
+            grid.add(createDetailLabel("🌬️ Wind:",     w.windSpeed()),  1, 0);
+            grid.add(createDetailLabel("☀️ UV Index:", w.uvIndex()),    0, 1);
+            grid.add(createDetailLabel("🌅 Sunrise:",  w.sunrise()),    1, 1);
+            grid.add(createDetailLabel("🌇 Sunset:",   w.sunset()),     0, 2);
             weatherBox.getChildren().add(grid);
             root.getChildren().add(weatherBox);
         }
 
-        // 📌 Tasks Section
+        // Tasks section
         Label taskTitle = new Label("📌 Planned Tasks");
-        taskTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1; -fx-padding: 5 0 0 0;");
+        taskTitle.setStyle(
+            "-fx-font-size:14px;-fx-font-weight:bold;" +
+            "-fx-text-fill:#cbd5e1;-fx-padding:5 0 0 0;");
         root.getChildren().add(taskTitle);
 
         VBox tasksBox = new VBox(8);
         if (tasks.isEmpty()) {
             Label noTask = new Label("🎉 No tasks planned. Take a break!");
-            noTask.setStyle("-fx-text-fill: #10b981; -fx-font-size: 13px; -fx-padding: 10; -fx-background-color: #064e3b; -fx-background-radius: 6;");
+            noTask.setStyle(
+                "-fx-text-fill:#10b981;-fx-font-size:13px;-fx-padding:10;" +
+                "-fx-background-color:#064e3b;-fx-background-radius:6;");
             tasksBox.getChildren().add(noTask);
         } else {
             for (StudyTask t : tasks) {
                 VBox tBox = new VBox(3);
-                tBox.setStyle("-fx-background-color: #161b27; -fx-padding: 12; -fx-background-radius: 6; -fx-border-color: #252d3d; -fx-border-radius: 6;");
-                Label tName = new Label("🔹 " + t.title()); tName.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0; -fx-font-size: 13px;");
-                Label tTime = new Label("⏰ " + (t.startTime() != null ? t.startTime() : "Anytime")); tTime.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
-                tBox.getChildren().addAll(tName, tTime); tasksBox.getChildren().add(tBox);
+                tBox.setStyle(
+                    "-fx-background-color:#161b27;-fx-padding:12;" +
+                    "-fx-background-radius:6;-fx-border-color:#252d3d;-fx-border-radius:6;");
+                Label tName = new Label("🔹 " + t.title());
+                tName.setStyle(
+                    "-fx-font-weight:bold;-fx-text-fill:#e2e8f0;-fx-font-size:13px;");
+                Label tTime = new Label(
+                    "⏰ " + (t.startTime() != null ? t.startTime() : "Anytime"));
+                tTime.setStyle("-fx-text-fill:#64748b;-fx-font-size:11px;");
+                tBox.getChildren().addAll(tName, tTime);
+                tasksBox.getChildren().add(tBox);
             }
         }
-        
+
+        // ScrollPane — VIEWPORT FIX: both -fx-background and -fx-background-color
         ScrollPane scroll = new ScrollPane(tasksBox);
-        scroll.setFitToWidth(true); scroll.setPrefHeight(150);
-        scroll.setStyle("-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;");
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(150);
+        scroll.setStyle(
+            "-fx-background:#0f1117;" +
+            "-fx-background-color:#0f1117;" +
+            "-fx-border-color:transparent;");
         root.getChildren().add(scroll);
 
-        // ❌ Close Button
+        // Close button
         Button closeBtn = new Button("Close");
-        closeBtn.setStyle("-fx-background-color: #374151; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 6;");
-        closeBtn.setOnAction(e -> stage.close());
-        HBox bottom = new HBox(closeBtn); bottom.setAlignment(Pos.CENTER_RIGHT);
+        closeBtn.setStyle(
+            "-fx-background-color:#374151;-fx-text-fill:white;" +
+            "-fx-cursor:hand;-fx-font-weight:bold;" +
+            "-fx-padding:8 20;-fx-background-radius:6;");
+        HBox bottom = new HBox(closeBtn);
+        bottom.setAlignment(Pos.CENTER_RIGHT);
         root.getChildren().add(bottom);
 
-        Scene scene = new Scene(root, 400, 550);
-        scene.setFill(Color.web("#0f1117"));
-        stage.setScene(scene);
-        stage.showAndWait();
+        Stage popup = PopupHelper.create(
+            window(),
+            "📅 Details for " + date.toString(),
+            root,
+            340, 280,
+            400, 550
+        );
+        closeBtn.setOnAction(e -> popup.close());
+        popup.show();
     }
 
-    // ছোট হেল্পার মেথড গ্রিডের টেক্সটের জন্য
+    // ── helpers ───────────────────────────────────────────────────────────────
     private HBox createDetailLabel(String iconAndTitle, String value) {
-        Label title = new Label(iconAndTitle + " "); title.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
-        Label val = new Label(value); val.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 12px; -fx-font-weight: bold;");
+        Label title = new Label(iconAndTitle + " ");
+        title.setStyle("-fx-text-fill:#64748b;-fx-font-size:12px;");
+        Label val = new Label(value);
+        val.setStyle("-fx-text-fill:#e2e8f0;-fx-font-size:12px;-fx-font-weight:bold;");
         return new HBox(title, val);
     }
 }

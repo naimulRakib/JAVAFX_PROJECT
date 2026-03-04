@@ -1,0 +1,141 @@
+/**
+ * Dark Theme for WebView Content
+ * Makes web pages dark by default, including Gemini AI interface
+ */
+
+/* Force dark background on all elements */
+* {
+    background-color: #0d0f1a !important;
+    color: #e2e8f0 !important;
+}
+
+/* Main page background */
+body, html {
+    background-color: #0d0f1a !important;
+    color: #e2e8f0 !important;
+}
+
+/* Links */
+a {
+    color: #60a5fa !important;
+}
+
+a:hover {
+    color: #93c5fd !important;
+}
+
+/* Form inputs */
+input, textarea, select, button {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #475569 !important;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #6366f1 !important;
+    outline-color: #6366f1 !important;
+}
+
+/* Code blocks */
+pre, code {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #475569 !important;
+}
+
+/* Tables */
+table {
+    background-color: #0d0f1a !important;
+    border-color: #334155 !important;
+}
+
+th, td {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: #f1f5f9 !important;
+}
+
+/* Dividers */
+hr {
+    border-color: #334155 !important;
+}
+
+/* Buttons */
+button {
+    background-color: #6366f1 !important;
+    color: white !important;
+}
+
+button:hover {
+    background-color: #818cf8 !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0d0f1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Override white backgrounds specifically */
+[style*="background: white"],
+[style*="background-color: white"],
+[style*="background: #fff"],
+[style*="background-color: #fff"],
+[style*="background: #ffffff"],
+[style*="background-color: #ffffff"] {
+    background-color: #0d0f1a !important;
+}
+
+/* Override black text specifically */
+[style*="color: black"],
+[style*="color: #000"],
+[style*="color: #000000"] {
+    color: #e2e8f0 !important;
+}
+
+/* Images - keep original colors */
+img {
+    filter: brightness(0.9);
+}
+
+/* Specific for Gemini/Google AI interface */
+.conversation-container,
+.chat-container,
+.message-container,
+.response-container {
+    background-color: #0d0f1a !important;
+}
+
+.user-message {
+    background-color: #1e293b !important;
+}
+
+.ai-message {
+    background-color: #1e293b !important;
+}
+
+/* Material Design components */
+.mat-card, .mdc-card {
+    background-color: #1e293b !important;
+}
+
+.mat-toolbar, .mdc-toolbar {
+    background-color: #0d0f1a !important;
+}

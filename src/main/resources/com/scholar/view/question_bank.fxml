@@ -39,7 +39,7 @@
                 <Button fx:id="downloadBtn" text="💾 Save &amp; Upload" onAction="#onDownloadPdfClick"
                         style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
             </HBox>
-
+ 
             <Label text="📚 Generated Resources:" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;"/>
             <TableView fx:id="resourceTable" VBox.vgrow="ALWAYS">
                 <columns>

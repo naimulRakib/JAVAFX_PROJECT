@@ -10,11 +10,12 @@ import java.util.UUID;
 @Service
 public class CollaborationService {
 
+    
     // ── Records ───────────────────────────────────────────────────────────────
     public record Channel(int id, String title, String desc) {}
     public record Post(int id, String title, String desc, String status, int maxMembers, String ownerId) {}
     public record Requirement(int id, String question) {}
-    public record Application(int id, String userId, String username, String status, List<String> answers) {}
+    public record Application(int id, String userId, String username, String status, List<String> answers, String profilePictureUrl) {}
     public record TeamResource(int id, String title, String url, String type, String desc, String fileId, String addedBy) {}
     public record Message(String sender, String content, String time) {}
 
@@ -22,7 +23,7 @@ public class CollaborationService {
     public record Plan(int id, int postId, String title, String status, String completedAt) {}
     public record PlanStep(int id, int planId, String description, String status, String completedBy, String completedAt) {}
     public record PlanHistory(int planId, String planTitle, String completedAt, List<String> completedSteps) {}
-    public record TeamMember(String userId, String username, String role, String status) {}
+   public record TeamMember(String userId, String username, String role, String status, String profilePictureUrl) {}
 
     // ==========================================
     // 1. CHANNELS (stored in routes table)
@@ -263,12 +264,14 @@ public class CollaborationService {
     // 5. MEMBER MANAGEMENT
     // ==========================================
 
-    public List<TeamMember> getTeamMembers(int postId) {
+ public List<TeamMember> getTeamMembers(int postId) {
         List<TeamMember> list = new ArrayList<>();
+        // 🌟 FIX: JOIN profiles to get avatars
         String sql = """
-            SELECT tm.user_id, u.username, tm.role, tm.status
+            SELECT tm.user_id, u.username, tm.role, tm.status, p.profile_picture_url
             FROM team_members tm
             JOIN users u ON tm.user_id = u.id
+            LEFT JOIN profiles p ON u.id = p.user_id
             WHERE tm.post_id = ?
             ORDER BY tm.role ASC, u.username ASC
         """;
@@ -278,21 +281,25 @@ public class CollaborationService {
             ResultSet rs = p.executeQuery();
             while (rs.next())
                 list.add(new TeamMember(rs.getString("user_id"), rs.getString("username"),
-                        rs.getString("role"), rs.getString("status")));
+                        rs.getString("role"), rs.getString("status"), rs.getString("profile_picture_url")));
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
-    public List<Application> getApplicationsForPost(int postId) {
+
+
+   public List<Application> getApplicationsForPost(int postId) {
         List<Application> applications = new ArrayList<>();
+        // 🌟 FIX: JOIN profiles to get avatars
         String sql = """
-            SELECT tm.user_id, u.username, tm.status,
+            SELECT tm.user_id, u.username, tm.status, p.profile_picture_url,
                    (SELECT STRING_AGG(q.question || ': ' || a.answer, E'\\n')
                     FROM application_answers a
                     JOIN post_requirements q ON a.question_id = q.id
                     WHERE a.user_id = tm.user_id AND a.post_id = tm.post_id) as qna
             FROM team_members tm
             JOIN users u ON tm.user_id = u.id
+            LEFT JOIN profiles p ON u.id = p.user_id
             WHERE tm.post_id = ? AND tm.role = 'MEMBER'
         """;
         try (Connection conn = DatabaseConnection.getConnection();
@@ -303,12 +310,14 @@ public class CollaborationService {
                 String qna = rs.getString("qna");
                 List<String> qaList = (qna != null) ? List.of(qna.split("\n")) : new ArrayList<>();
                 applications.add(new Application(0, rs.getString("user_id"),
-                        rs.getString("username"), rs.getString("status"), qaList));
+                        rs.getString("username"), rs.getString("status"), qaList, rs.getString("profile_picture_url")));
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return applications;
     }
 
+
+    
     /**
      * Approve only if still PENDING — prevents duplicate rows.
      */

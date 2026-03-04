@@ -273,18 +273,26 @@ public class CollaborationController {
     // CREATE TEAM
     // ─────────────────────────────────────────────────────────────────────────
 
-    @FXML
-    public void onCreatePost() {
+ @FXML
+    public void onCreatePost(javafx.event.ActionEvent event) {
         if (currentChannelId == -1) {
             PopupHelper.showError(getWindow(), "No Channel Selected",
                     "Please select a channel from the left first.");
             return;
         }
 
+        // 🌟 ANTI-SPAM: বাটনটি ধরে সাথে সাথে Disable করে দিন
+        javafx.scene.Node sourceButton = (javafx.scene.Node) event.getSource();
+        sourceButton.setDisable(true);
+
         // Check one-team-per-channel asynchronously
         executor.submit(() -> {
             boolean alreadyIn = collaborationService.isUserInAnyTeamUnderChannel(currentChannelId);
             Platform.runLater(() -> {
+                
+                // 🌟 চেক শেষ হওয়ার পর বাটনটি আবার Enable করে দিন
+                sourceButton.setDisable(false);
+                
                 if (alreadyIn) {
                     PopupHelper.showError(getWindow(), "Already in a Team",
                             "You are already in a team under #" + currentChannelName

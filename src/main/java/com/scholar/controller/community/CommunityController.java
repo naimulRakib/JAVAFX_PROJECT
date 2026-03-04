@@ -1,6 +1,7 @@
 package com.scholar.controller.community;
 
 import com.scholar.service.CourseService;
+import com.scholar.util.PopupHelper;                          // ← ADD THIS IMPORT
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -20,37 +21,39 @@ public class CommunityController {
 
     @Autowired private CourseService courseService;
 
-    // TreeView tracking maps — shared with ResourceTableController
     public final Map<TreeItem<String>, Integer> courseMap  = new HashMap<>();
     public final Map<TreeItem<String>, Integer> segmentMap = new HashMap<>();
     public final Map<TreeItem<String>, Integer> topicMap   = new HashMap<>();
 
     private TreeView<String> communityTree;
     private Label currentFolderLabel;
-    private java.util.function.Consumer<Integer> onTopicSelected; // → loadResourcesForTopic
+    private java.util.function.Consumer<Integer> onTopicSelected;
+
+    /** Returns the owner Window for PopupHelper calls. */
+    private javafx.stage.Window window() {
+        return communityTree != null && communityTree.getScene() != null
+                ? communityTree.getScene().getWindow() : null;
+    }
 
     public void init(TreeView<String> communityTree,
                      Label currentFolderLabel,
                      java.util.function.Consumer<Integer> onTopicSelected) {
-        this.communityTree     = communityTree;
+        this.communityTree      = communityTree;
         this.currentFolderLabel = currentFolderLabel;
-        this.onTopicSelected   = onTopicSelected;
+        this.onTopicSelected    = onTopicSelected;
 
         communityTree.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 if (currentFolderLabel != null) currentFolderLabel.setText(newVal.getValue());
-                if (topicMap.containsKey(newVal)) {
-                    onTopicSelected.accept(topicMap.get(newVal));
-                } else {
-                    onTopicSelected.accept(null);
-                }
+                if (topicMap.containsKey(newVal)) onTopicSelected.accept(topicMap.get(newVal));
+                else                              onTopicSelected.accept(null);
             }
         });
     }
 
-    // ----------------------------------------------------------
+    // ──────────────────────────────────────────────────────────
     // REFRESH COMMUNITY TREE
-    // ----------------------------------------------------------
+    // ──────────────────────────────────────────────────────────
     @FXML
     public void onRefreshCommunity() {
         if (communityTree == null) return;
@@ -109,9 +112,9 @@ public class CommunityController {
         }).start();
     }
 
-    // ----------------------------------------------------------
+    // ──────────────────────────────────────────────────────────
     // ADD FOLDER / TOPIC
-    // ----------------------------------------------------------
+    // ──────────────────────────────────────────────────────────
     @FXML
     public void onAddNewFolder() {
         TreeItem<String> selected = communityTree.getSelectionModel().getSelectedItem();
@@ -130,11 +133,13 @@ public class CommunityController {
                     Platform.runLater(this::onRefreshCommunity);
             }).start());
         } else {
-            showError("❌ Please select 'University Courses' to add a Course, or a sub-folder to add a Topic.");
+            // BEFORE: private showError(msg) → new Alert(Alert.AlertType.ERROR).showAndWait()
+            // AFTER:
+            PopupHelper.showError(window(),
+                "Invalid Selection",
+                "Please select 'University Courses' to add a Course,\nor a sub-folder to add a Topic.");
         }
     }
 
-    private void showError(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.ERROR); a.setContentText(msg); a.showAndWait(); });
-    }
+    // REMOVED: showError() private method — replaced by PopupHelper.showError()
 }

@@ -10,13 +10,15 @@
 <?import java.lang.String?>
 
 <!--
-  profile_settings.fxml  —  DARK THEME
-  Path: src/main/resources/com/scholar/view/profile_settings.fxml
-  Controller: com.scholar.controller.settings.ProfileController
-  Stylesheet: /com/scholar/view/css/profile-settings-dark.css
+  profile_settings.fxml — RESPONSIVE dark-theme rewrite
+  Key fixes:
+    • ScrollPane root: fitToWidth="true" — fills available width
+    • GridPane column 1 uses hgrow="ALWAYS" — fields stretch to fill space
+    • All cards use maxWidth="Infinity" — no fixed-width cutting
+    • Removed all hardcoded prefWidth on cards
 -->
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER"
-            style="-fx-background-color:#0d0f1a; -fx-border-color:transparent;"
+            style="-fx-background-color:#0d0f1a;-fx-border-color:transparent;"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.scholar.controller.settings.ProfileController">
 
@@ -24,291 +26,383 @@
         <String fx:value="/com/scholar/view/css/profile-settings-dark.css"/>
     </stylesheets>
 
-<VBox spacing="0" fx:id="profileRoot"
-      style="-fx-background-color: #0d0f1a;">
+<VBox spacing="0" fx:id="profileRoot" style="-fx-background-color:#0d0f1a;">
 
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!--  HERO HEADER — Avatar + Name + Completion             -->
-    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ══ HERO HEADER ══════════════════════════════════════ -->
     <VBox fx:id="heroHeader" alignment="CENTER" spacing="12"
-          style="-fx-padding: 36 40 28 40;
-                 -fx-background-color: linear-gradient(to right, #1e1b4b, #312e81);
-                 -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.45), 20, 0, 0, 6);">
+          style="-fx-padding:32 40 26 40;
+                 -fx-background-color:linear-gradient(to right,#1e1b4b,#312e81);
+                 -fx-border-color:rgba(99,102,241,0.3);-fx-border-width:0 0 1 0;">
 
-        <!-- Circular Avatar — 100×100 with ring -->
         <StackPane maxWidth="108" maxHeight="108" minWidth="108" minHeight="108">
-            <Circle radius="54"
-                    fill="rgba(255,255,255,0.08)"
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="2.5"/>
-            <!-- fitWidth/fitHeight must equal 2×clip-radius = 100 -->
-            <ImageView fx:id="avatarView"
-                       fitWidth="100" fitHeight="100"
-                       preserveRatio="false">
-                <!-- Clip applied programmatically in applyCircleClip() -->
-            </ImageView>
+            <Circle radius="54" fill="rgba(255,255,255,0.06)"
+                    stroke="rgba(255,255,255,0.45)" strokeWidth="2.5"/>
+            <ImageView fx:id="avatarView" fitWidth="100" fitHeight="100"
+                       preserveRatio="false"/>
         </StackPane>
 
         <Label fx:id="userNameLabel" text="Scholar"
-               style="-fx-font-size:20; -fx-font-weight:bold; -fx-text-fill:white;"/>
-
+               style="-fx-font-size:19;-fx-font-weight:bold;-fx-text-fill:white;"/>
         <Label text="Student Profile"
-               style="-fx-font-size:12; -fx-text-fill:#c7d2fe;"/>
+               style="-fx-font-size:11;-fx-text-fill:#c7d2fe;"/>
 
-        <!-- Completion badge -->
         <HBox alignment="CENTER" spacing="10">
             <ProgressBar fx:id="completionBar" prefWidth="220" prefHeight="7"
                          progress="0.0"
-                         style="-fx-accent:#a5f3fc; -fx-background-color:#ffffff22;
+                         style="-fx-accent:#a5f3fc;-fx-background-color:#ffffff1a;
                                 -fx-background-radius:4;"/>
             <Label fx:id="completionLabel" text="0% complete"
-                   style="-fx-text-fill:#c7d2fe; -fx-font-size:11;"/>
+                   style="-fx-text-fill:#c7d2fe;-fx-font-size:11;"/>
         </HBox>
 
-        <Button text="📷  Change Photo" onAction="#onUploadAvatar"
-                style="-fx-background-color:#ffffff18; -fx-text-fill:white;
-                       -fx-border-color:#ffffff44; -fx-border-radius:20;
-                       -fx-background-radius:20; -fx-padding:5 18;
-                       -fx-cursor:hand; -fx-font-size:12;"/>
+        <Button text="📷 Change Photo" onAction="#onUploadAvatar"
+                style="-fx-background-color:rgba(255,255,255,0.1);-fx-text-fill:white;
+                       -fx-border-color:rgba(255,255,255,0.3);-fx-border-radius:20;
+                       -fx-background-radius:20;-fx-padding:6 18;-fx-cursor:hand;-fx-font-size:12;"/>
     </VBox>
 
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!--  BODY — Cards inside a padded VBox                    -->
-    <!-- ══════════════════════════════════════════════════════ -->
-    <VBox spacing="20" style="-fx-padding: 24 32 32 32; -fx-background-color:#0d0f1a;">
+    <!-- ══ BODY ══════════════════════════════════════════════ -->
+    <VBox spacing="18" style="-fx-padding:22 28 28 28;-fx-background-color:#0d0f1a;">
 
-        <!-- ── CARD: Basic Identity ──────────────────────── -->
-        <VBox styleClass="profile-card" spacing="16">
-            <Label text="👤  Basic Identity"
-                   style="-fx-font-size:15; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
-            <Separator opacity="0.25"/>
+        <!-- Shared card style applied inline — using CSS class via stylesheet for radius/bg -->
 
-            <GridPane hgap="16" vgap="14">
-                <Label text="Full Name" styleClass="pf-label"
-                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfFullName" promptText="Your full name"
-                           styleClass="pf-field"
+        <!-- ── Basic Identity ──────────────────────────────── -->
+        <VBox spacing="14"
+              style="-fx-background-color:#141828;-fx-background-radius:14;-fx-padding:20;
+                     -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+            <Label text="👤 Basic Identity"
+                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Separator style="-fx-opacity:0.12;"/>
+            <GridPane hgap="14" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="95" maxWidth="115"/>
+                    <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                </columnConstraints>
+                 <Label text="User Name" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfUsername" promptText="Enter your unique nickname: "
                            GridPane.rowIndex="0" GridPane.columnIndex="1"
-                           GridPane.hgrow="ALWAYS"/>
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Student ID" styleClass="pf-label"
-                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+
+
+                <Label text="Full Name" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfFullName" promptText="Your full name"
+                           GridPane.rowIndex="0" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+
+                <Label text="Student ID" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfStudentId" promptText="2021-1-60-001"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="1" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="University" styleClass="pf-label"
-                       GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <Label text="University" GridPane.rowIndex="2" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfUniversity" promptText="University name"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="2" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Department" styleClass="pf-label"
-                       GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <Label text="Department" GridPane.rowIndex="3" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfDepartment" promptText="CSE, EEE…"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="3" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Batch / Sem" styleClass="pf-label"
-                       GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <Label text="Batch / Sem" GridPane.rowIndex="4" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfBatchSemester" promptText="52A / 8th"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="4" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Email" styleClass="pf-label"
-                       GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                <Label text="Email" GridPane.rowIndex="5" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfEmail" promptText="you@example.com"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="5" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Phone" styleClass="pf-label"
-                       GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                <Label text="Phone" GridPane.rowIndex="6" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <HBox spacing="8" GridPane.rowIndex="6" GridPane.columnIndex="1">
                     <TextField fx:id="tfPhone" promptText="+880 1XXXXXXXXX"
-                               styleClass="pf-field" HBox.hgrow="ALWAYS"/>
+                               HBox.hgrow="ALWAYS"
+                               style="-fx-padding:9;-fx-background-radius:9;
+                                      -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                      -fx-prompt-text-fill:#334155;
+                                      -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
                     <ToggleButton fx:id="togglePhonePublic" text="Public"
-                                  styleClass="pf-toggle-sm"/>
+                                  style="-fx-background-color:rgba(99,102,241,0.12);-fx-text-fill:#818cf8;
+                                         -fx-border-color:rgba(99,102,241,0.3);-fx-border-radius:9;
+                                         -fx-background-radius:9;-fx-padding:6 14;-fx-cursor:hand;"/>
                 </HBox>
-
-                <columnConstraints>
-                    <ColumnConstraints minWidth="90" maxWidth="110"/>
-                    <ColumnConstraints hgrow="ALWAYS"/>
-                </columnConstraints>
             </GridPane>
-
-            <Button text="💾  Save Identity" onAction="#onSaveBasic"
-                    styleClass="pf-btn-primary"/>
+            <Button text="💾 Save Identity" onAction="#onSaveBasic"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:10 24;
+                           -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
         </VBox>
 
-        <!-- ── CARD: Academic Info ───────────────────────── -->
-        <VBox styleClass="profile-card" spacing="16">
-            <Label text="🎓  Academic Info"
-                   style="-fx-font-size:15; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
-            <Separator opacity="0.25"/>
+        <!-- ── Academic Info ───────────────────────────────── -->
+        <VBox spacing="14"
+              style="-fx-background-color:#141828;-fx-background-radius:14;-fx-padding:20;
+                     -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+            <Label text="🎓 Academic Info"
+                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Separator style="-fx-opacity:0.12;"/>
+            <GridPane hgap="14" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="95" maxWidth="115"/>
+                    <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                </columnConstraints>
 
-            <GridPane hgap="16" vgap="14">
-                <Label text="CGPA" styleClass="pf-label"
-                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <Label text="CGPA" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <HBox spacing="12" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
-                    <TextField fx:id="tfCgpa" promptText="3.75"
-                               styleClass="pf-field" prefWidth="100"/>
-                    <CheckBox fx:id="cbCgpaVisible" text="Show publicly"
-                              selected="true"
-                              style="-fx-text-fill:#94a3b8; -fx-font-size:12;"/>
+                    <TextField fx:id="tfCgpa" promptText="3.75" prefWidth="100"
+                               style="-fx-padding:9;-fx-background-radius:9;
+                                      -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                      -fx-prompt-text-fill:#334155;
+                                      -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+                    <CheckBox fx:id="cbCgpaVisible" text="Show publicly" selected="true"
+                              style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 </HBox>
 
-                <Label text="Credits" styleClass="pf-label"
-                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfCredits" promptText="120"
-                           styleClass="pf-field" prefWidth="100"
-                           GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                <Label text="Credits" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfCredits" promptText="120" prefWidth="100"
+                           GridPane.rowIndex="1" GridPane.columnIndex="1"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Thesis / Project" styleClass="pf-label"
-                       GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <Label text="Thesis / Project" GridPane.rowIndex="2" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfThesis" promptText="Optional"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="2" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Interests" styleClass="pf-label"
-                       GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <Label text="Interests" GridPane.rowIndex="3" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfInterests" promptText="AI, Web Dev, Research"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="3" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Courses" styleClass="pf-label"
-                       GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <Label text="Courses" GridPane.rowIndex="4" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfCourses" promptText="CSE301, CSE315"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-
-                <columnConstraints>
-                    <ColumnConstraints minWidth="90" maxWidth="110"/>
-                    <ColumnConstraints hgrow="ALWAYS"/>
-                </columnConstraints>
+                           GridPane.rowIndex="4" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
             </GridPane>
-
-            <Button text="💾  Save Academic" onAction="#onSaveAcademic"
-                    styleClass="pf-btn-primary"/>
+            <Button text="💾 Save Academic" onAction="#onSaveAcademic"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:10 24;
+                           -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
         </VBox>
 
-        <!-- ── CARD: Skills ──────────────────────────────── -->
-        <VBox styleClass="profile-card" spacing="16">
-            <Label text="⭐  Skills &amp; Tech Stack"
-                   style="-fx-font-size:15; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
-            <Separator opacity="0.25"/>
+        <!-- ── Skills ──────────────────────────────────────── -->
+        <VBox spacing="14"
+              style="-fx-background-color:#141828;-fx-background-radius:14;-fx-padding:20;
+                     -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+            <Label text="⭐ Skills &amp; Tech Stack"
+                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Separator style="-fx-opacity:0.12;"/>
+            <GridPane hgap="14" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="95" maxWidth="115"/>
+                    <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                </columnConstraints>
 
-            <GridPane hgap="16" vgap="14">
-                <Label text="Languages" styleClass="pf-label"
-                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <Label text="Languages" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfProgLangs" promptText="Java, Python, C, C++"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="0" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Frameworks" styleClass="pf-label"
-                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <Label text="Frameworks" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfFrameworks" promptText="JavaFX, Spring Boot, Git"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                           GridPane.rowIndex="1" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
 
-                <Label text="Soft Skills" styleClass="pf-label"
-                       GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <Label text="Soft Skills" GridPane.rowIndex="2" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <TextField fx:id="tfSoftSkills" promptText="Teamwork, Leadership"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-                <columnConstraints>
-                    <ColumnConstraints minWidth="90" maxWidth="110"/>
-                    <ColumnConstraints hgrow="ALWAYS"/>
-                </columnConstraints>
+                           GridPane.rowIndex="2" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
             </GridPane>
-
             <Label text="Tip: separate each item with a comma"
-                   style="-fx-text-fill:#475569; -fx-font-size:11;" styleClass="pf-tip"/>
-            <Button text="💾  Save Skills" onAction="#onSaveSkills"
-                    styleClass="pf-btn-primary"/>
+                   style="-fx-text-fill:#334155;-fx-font-size:11;"/>
+            <Button text="💾 Save Skills" onAction="#onSaveSkills"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:10 24;
+                           -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
         </VBox>
 
-        <!-- ── CARD: Social Links ────────────────────────── -->
-        <VBox styleClass="profile-card" spacing="16">
-            <Label text="🔗  Social &amp; Career Links"
-                   style="-fx-font-size:15; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
-            <Separator opacity="0.25"/>
-
-            <GridPane hgap="16" vgap="14">
-                <Label text="GitHub" styleClass="pf-label"
-                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfGithub" promptText="https://github.com/username"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                <Label text="LinkedIn" styleClass="pf-label"
-                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfLinkedin" promptText="https://linkedin.com/in/..."
-                           styleClass="pf-field"
-                           GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-                <Label text="Portfolio" styleClass="pf-label"
-                       GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfPortfolio" promptText="https://yoursite.com"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-                <Label text="Codeforces" styleClass="pf-label"
-                       GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfCodeforces" promptText="handle"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-
-                <Label text="LeetCode" styleClass="pf-label"
-                       GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                <TextField fx:id="tfLeetcode" promptText="handle"
-                           styleClass="pf-field"
-                           GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-
+        <!-- ── Social Links ────────────────────────────────── -->
+        <VBox spacing="14"
+              style="-fx-background-color:#141828;-fx-background-radius:14;-fx-padding:20;
+                     -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+            <Label text="🔗 Social &amp; Career Links"
+                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Separator style="-fx-opacity:0.12;"/>
+            <GridPane hgap="14" vgap="12">
                 <columnConstraints>
-                    <ColumnConstraints minWidth="90" maxWidth="110"/>
-                    <ColumnConstraints hgrow="ALWAYS"/>
+                    <ColumnConstraints minWidth="95" maxWidth="115"/>
+                    <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
                 </columnConstraints>
-            </GridPane>
 
-            <Button text="💾  Save Links" onAction="#onSaveLinks"
-                    styleClass="pf-btn-primary"/>
+                <Label text="GitHub" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfGithub" promptText="https://github.com/username"
+                           GridPane.rowIndex="0" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+
+                <Label text="LinkedIn" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfLinkedin" promptText="https://linkedin.com/in/..."
+                           GridPane.rowIndex="1" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+
+                <Label text="Portfolio" GridPane.rowIndex="2" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfPortfolio" promptText="https://yoursite.com"
+                           GridPane.rowIndex="2" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+
+                <Label text="Codeforces" GridPane.rowIndex="3" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfCodeforces" promptText="handle"
+                           GridPane.rowIndex="3" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+
+                <Label text="LeetCode" GridPane.rowIndex="4" GridPane.columnIndex="0"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <TextField fx:id="tfLeetcode" promptText="handle"
+                           GridPane.rowIndex="4" GridPane.columnIndex="1"
+                           maxWidth="Infinity"
+                           style="-fx-padding:9;-fx-background-radius:9;
+                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                  -fx-prompt-text-fill:#334155;
+                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:9;"/>
+            </GridPane>
+            <Button text="💾 Save Links" onAction="#onSaveLinks"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:10 24;
+                           -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
         </VBox>
 
-        <!-- ── CARD: Privacy & Settings ─────────────────── -->
-        <VBox styleClass="profile-card" spacing="16">
-            <Label text="🔒  Privacy &amp; Settings"
-                   style="-fx-font-size:15; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
-            <Separator opacity="0.25"/>
+        <!-- ── Privacy & Settings ──────────────────────────── -->
+        <VBox spacing="14"
+              style="-fx-background-color:#141828;-fx-background-radius:14;-fx-padding:20;
+                     -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+            <Label text="🔒 Privacy &amp; Settings"
+                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Separator style="-fx-opacity:0.12;"/>
 
-            <!-- Theme -->
             <HBox spacing="12" alignment="CENTER_LEFT">
-                <Label text="Theme" styleClass="pf-label" minWidth="90"/>
-                <ToggleButton text="🌙 Dark" userData="DARK" styleClass="pf-toggle-sm"
-                              selected="true">
+                <Label text="Theme" minWidth="90"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                <ToggleButton text="🌙 Dark" userData="DARK" selected="true"
+                              style="-fx-background-color:rgba(99,102,241,0.2);-fx-text-fill:#818cf8;
+                                     -fx-border-color:rgba(99,102,241,0.3);-fx-border-radius:9;
+                                     -fx-background-radius:9;-fx-padding:6 14;-fx-cursor:hand;">
                     <toggleGroup><ToggleGroup fx:id="themeGroup"/></toggleGroup>
                 </ToggleButton>
-                <ToggleButton text="☀ Light" userData="LIGHT" styleClass="pf-toggle-sm"
-                              toggleGroup="$themeGroup"/>
-                <ToggleButton text="⚙ System" userData="SYSTEM" styleClass="pf-toggle-sm"
-                              toggleGroup="$themeGroup"/>
+                <ToggleButton text="☀ Light" userData="LIGHT" toggleGroup="$themeGroup"
+                              style="-fx-background-color:rgba(255,255,255,0.06);-fx-text-fill:#94a3b8;
+                                     -fx-border-color:rgba(255,255,255,0.1);-fx-border-radius:9;
+                                     -fx-background-radius:9;-fx-padding:6 14;-fx-cursor:hand;"/>
+                <ToggleButton text="⚙ System" userData="SYSTEM" toggleGroup="$themeGroup"
+                              style="-fx-background-color:rgba(255,255,255,0.06);-fx-text-fill:#94a3b8;
+                                     -fx-border-color:rgba(255,255,255,0.1);-fx-border-radius:9;
+                                     -fx-background-radius:9;-fx-padding:6 14;-fx-cursor:hand;"/>
             </HBox>
 
-            <!-- Accent -->
             <HBox spacing="12" alignment="CENTER_LEFT">
-                <Label text="Accent" styleClass="pf-label" minWidth="90"/>
+                <Label text="Accent" minWidth="90"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <ColorPicker fx:id="accentPicker"
-                             style="-fx-background-color:#1e2235; -fx-border-color:#2d3150;
-                                    -fx-border-radius:8; -fx-background-radius:8;"/>
+                             style="-fx-background-color:#1e2235;-fx-border-color:rgba(99,102,241,0.25);
+                                    -fx-border-radius:9;-fx-background-radius:9;"/>
             </HBox>
 
-            <!-- Font -->
             <HBox spacing="12" alignment="CENTER_LEFT">
-                <Label text="Font Size" styleClass="pf-label" minWidth="90"/>
+                <Label text="Font Size" minWidth="90"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <ComboBox fx:id="cbFontSize" value="Medium"
-                          style="-fx-background-color:#1e2235; -fx-border-color:#2d3150;
-                                 -fx-border-radius:8; -fx-background-radius:8; -fx-min-width:130;">
+                          style="-fx-background-color:#1e2235;-fx-border-color:rgba(99,102,241,0.25);
+                                 -fx-border-radius:9;-fx-background-radius:9;-fx-min-width:130;">
                     <items>
                         <FXCollections fx:factory="observableArrayList">
                             <String fx:value="Small"/>
@@ -319,12 +413,12 @@
                 </ComboBox>
             </HBox>
 
-            <!-- Language -->
             <HBox spacing="12" alignment="CENTER_LEFT">
-                <Label text="Language" styleClass="pf-label" minWidth="90"/>
+                <Label text="Language" minWidth="90"
+                       style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
                 <ComboBox fx:id="cbLanguage" value="EN"
-                          style="-fx-background-color:#1e2235; -fx-border-color:#2d3150;
-                                 -fx-border-radius:8; -fx-background-radius:8; -fx-min-width:130;">
+                          style="-fx-background-color:#1e2235;-fx-border-color:rgba(99,102,241,0.25);
+                                 -fx-border-radius:9;-fx-background-radius:9;-fx-min-width:130;">
                     <items>
                         <FXCollections fx:factory="observableArrayList">
                             <String fx:value="EN"/>
@@ -334,33 +428,28 @@
                 </ComboBox>
             </HBox>
 
-            <!-- Profile Visibility — toggle wired via selectedProperty listener in initialize() -->
+            <!-- Profile Visibility -->
             <HBox fx:id="privacyBox" spacing="12" alignment="CENTER_LEFT"
-                  style="-fx-background-color:#1a0e0e; -fx-background-radius:10;
-                         -fx-padding:12; -fx-border-color:#7f1d1d;
-                         -fx-border-radius:10;">
-                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                  style="-fx-background-color:rgba(127,29,29,0.3);-fx-background-radius:10;
+                         -fx-padding:12;-fx-border-color:rgba(127,29,29,0.5);-fx-border-radius:10;">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
                     <Label text="Profile Visibility"
-                           style="-fx-font-weight:bold; -fx-text-fill:#fca5a5; -fx-font-size:13;"/>
-                    <Label fx:id="privacySubLabel"
-                           text="Private = no one can view your profile"
-                           style="-fx-text-fill:#f87171; -fx-font-size:11;"/>
+                           style="-fx-font-weight:bold;-fx-text-fill:#fca5a5;-fx-font-size:13;"/>
+                    <Label fx:id="privacySubLabel" text="Private = no one can view your profile"
+                           style="-fx-text-fill:#f87171;-fx-font-size:11;"/>
                 </VBox>
-                <!--
-                    fx:id="togglePrivacy"
-                    Initial text/style set by updatePrivacyToggleAppearance() in initialize().
-                    Do NOT set selected="true" here — default is PUBLIC (not selected).
-                -->
                 <ToggleButton fx:id="togglePrivacy" text="🌐 Public"
-                              style="-fx-background-color:#22c55e; -fx-text-fill:white;
-                                     -fx-font-weight:bold; -fx-background-radius:20;
-                                     -fx-border-radius:20; -fx-padding:5 16; -fx-cursor:hand;"/>
+                              style="-fx-background-color:#22c55e;-fx-text-fill:white;
+                                     -fx-font-weight:bold;-fx-background-radius:20;
+                                     -fx-border-radius:20;-fx-padding:5 16;-fx-cursor:hand;"/>
             </HBox>
 
-            <Button text="💾  Save Settings" onAction="#onSaveSettings"
-                    styleClass="pf-btn-primary"/>
+            <Button text="💾 Save Settings" onAction="#onSaveSettings"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:10 24;
+                           -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
         </VBox>
 
-    </VBox><!-- end body VBox -->
-</VBox><!-- end root VBox -->
+    </VBox>
+</VBox>
 </ScrollPane>

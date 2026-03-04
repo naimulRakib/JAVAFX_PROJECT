@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<SplitPane dividerPositions="0.25"
+           style="-fx-background-color:#0d0f1a; -fx-padding:12;"
+           xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.scholar.controller.GameZoneController">
+
+    <VBox spacing="14"
+          style="-fx-padding:16; -fx-background-color:#141828; -fx-background-radius:14;
+                 -fx-border-color:rgba(99,102,241,0.2); -fx-border-radius:14;">
+        
+        <Label text="🎮 GAME ZONE"
+               style="-fx-font-weight:bold; -fx-font-size:14px; -fx-letter-spacing:1.5; -fx-text-fill:#818cf8;"/>
+               
+        <Button text="📤 Upload Game (.jar)" onAction="#onUploadGameClick" maxWidth="Infinity"
+                style="-fx-background-color:linear-gradient(to right,#10b981,#06b6d4); 
+                       -fx-text-fill:white; -fx-font-weight:bold; -fx-padding:10; 
+                       -fx-cursor:hand; -fx-background-radius:8; -fx-font-size:12px;"/>
+                       
+        <Separator style="-fx-opacity:0.1;"/>
+        
+        <Label text="INSTALLED GAMES" style="-fx-font-size:11px; -fx-text-fill:#64748b;"/>
+        
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background:#141828; -fx-background-color:transparent; -fx-border-color:transparent;">
+            <VBox fx:id="installedGamesList" spacing="8" style="-fx-background-color:#141828;"/>
+        </ScrollPane>
+    </VBox>
+
+    <VBox spacing="0"
+          style="-fx-background-color:#0f1117; -fx-background-radius:14;
+                 -fx-border-color:rgba(99,102,241,0.2); -fx-border-radius:14;">
+        
+        <HBox alignment="CENTER_LEFT" spacing="12"
+              style="-fx-padding:14 20; -fx-background-color:#161b27; -fx-background-radius:14 14 0 0; -fx-border-color:#2d3150; -fx-border-width:0 0 1 0;">
+            <Label fx:id="activeGameNameLbl" text="No Game Selected"
+                   style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="stopGameBtn" text="⏹ Stop Game" onAction="#onStopGameClick" visible="false"
+                    style="-fx-background-color:rgba(239,68,68,0.15); -fx-text-fill:#f87171; 
+                           -fx-font-weight:bold; -fx-cursor:hand; -fx-background-radius:8; -fx-padding:6 14;"/>
+        </HBox>
+
+        <StackPane fx:id="gamePlayContainer" VBox.vgrow="ALWAYS" style="-fx-padding:20;">
+            <VBox alignment="CENTER" spacing="10">
+                <Label text="🕹️" style="-fx-font-size:40px;"/>
+                <Label text="Select a game from the left to start playing." 
+                       style="-fx-text-fill:#64748b; -fx-font-size:14px;"/>
+            </VBox>
+        </StackPane>
+    </VBox>
+</SplitPane>

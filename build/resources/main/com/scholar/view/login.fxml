@@ -5,60 +5,165 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #2c3e50; -fx-padding: 40;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.scholar.controller.LoginController">
+<!--
+  login.fxml — RESPONSIVE dark-theme rewrite
+  Key fixes:
+    • Root VBox fills window naturally (no fixed sizes blocking resize)
+    • Card VBox uses maxWidth="480" + alignment="CENTER" for centered layout
+    • TabPane/fields use maxWidth="Infinity" within their card
+-->
+<VBox alignment="CENTER" spacing="0"
+      style="-fx-background-color:#080a14;"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.scholar.controller.LoginController">
 
-   <Label text="Study Easy" textFill="WHITE">
-      <font><Font name="System Bold" size="36.0" /></font>
-   </Label>
+    <!-- Full-size centering wrapper -->
+    <VBox alignment="CENTER" spacing="28" VBox.vgrow="ALWAYS"
+          style="-fx-padding:40;">
 
-   <TabPane fx:id="mainTabPane" maxWidth="400.0" prefHeight="450.0" style="-fx-background-color: white; -fx-background-radius: 10; -fx-tab-min-width: 180;" tabClosingPolicy="UNAVAILABLE">
-     <tabs>
-       
-       <Tab text="Login">
-         <VBox spacing="15.0" style="-fx-padding: 30;">
-            <Label text="Welcome Back!" textFill="#2c3e50">
-               <font><Font name="System Bold" size="18.0" /></font>
-            </Label>
-            <TextField fx:id="emailField" promptText="Email (Gmail)" style="-fx-padding: 12;" />
-            <PasswordField fx:id="passwordField" promptText="Password" style="-fx-padding: 12;" />
-            <Button fx:id="loginBtn" maxWidth="Infinity" onAction="#onLoginClick" style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12; -fx-cursor: hand;" text="Sign In" />
-         </VBox>
-       </Tab>
+        <!-- Logo -->
+        <VBox alignment="CENTER" spacing="6">
+            <Label text="ScholarGrid"
+                   style="-fx-font-size:38;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+            <Label text="Your Intelligent Study Hub"
+                   style="-fx-font-size:13;-fx-text-fill:#6366f1;"/>
+        </VBox>
 
-       <Tab text="Sign Up">
-         <VBox spacing="10.0" style="-fx-padding: 20;">
-            <Label text="Choose Your Role" textFill="#7f8c8d" />
-            <HBox spacing="10">
-               <ToggleButton fx:id="studentToggle" maxWidth="Infinity" HBox.hgrow="ALWAYS" selected="true" text="I am a Student">
-                  <toggleGroup><ToggleGroup fx:id="roleGroup"/></toggleGroup>
-               </ToggleButton>
-               <ToggleButton fx:id="adminToggle" maxWidth="Infinity" HBox.hgrow="ALWAYS" text="I am an Admin/CR" toggleGroup="$roleGroup" />
-            </HBox>
+        <!-- Card -->
+        <VBox maxWidth="440" spacing="0"
+              style="-fx-background-color:#141828;-fx-background-radius:16;
+                     -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:16;
+                     -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.25),30,0,0,8);">
 
-            <Separator />
+            <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE"
+                     style="-fx-background-color:transparent;-fx-tab-min-width:180;
+                            -fx-tab-min-height:44;">
+                <tabs>
 
-            <TextField fx:id="regNameField" promptText="Full Name" />
-            <TextField fx:id="regEmailField" promptText="Gmail Address" />
-            <PasswordField fx:id="regPassField" promptText="Create Password" />
+                    <!-- Login tab -->
+                    <Tab text="Login">
+                        <VBox spacing="16" style="-fx-padding:28 32 32 32;">
+                            <Label text="Welcome Back!"
+                                   style="-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                            <TextField fx:id="emailField" promptText="Email (Gmail)"
+                                       maxWidth="Infinity"
+                                       style="-fx-padding:13;-fx-background-radius:10;
+                                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+                            <PasswordField fx:id="passwordField" promptText="Password"
+                                           maxWidth="Infinity"
+                                           style="-fx-padding:13;-fx-background-radius:10;
+                                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                                  -fx-prompt-text-fill:#334155;
+                                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+                            <Button fx:id="loginBtn" maxWidth="Infinity" onAction="#onLoginClick"
+                                    text="Sign In →"
+                                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:13;
+                                           -fx-cursor:hand;-fx-background-radius:10;-fx-font-size:14;
+                                           -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.5),12,0,0,4);"/>
+                        </VBox>
+                    </Tab>
 
-            <StackPane>
-               <VBox fx:id="studentFields" spacing="10">
-                  <Label text="Classroom Access:" style="-fx-font-size: 11;" />
-                  <TextField fx:id="channelUuidField" promptText="Enter Classroom UUID (Ask your CR)" style="-fx-border-color: #e67e22; -fx-border-radius: 3;" />
-                  <Button maxWidth="Infinity" onAction="#onStudentSignupClick" style="-fx-background-color: #e67e22; -fx-text-fill: white;" text="Join Classroom" />
-               </VBox>
-               
-               <VBox fx:id="adminFields" spacing="10" visible="false">
-                  <Label text="Channel Creation:" style="-fx-font-size: 11;" />
-                  <TextField fx:id="newChannelNameField" promptText="Department Name (e.g. BUET CSE)" />
-                  <TextField fx:id="newChannelCodeField" promptText="Custom Short Code (e.g. CSE24)" />
-                  <Button maxWidth="Infinity" onAction="#onAdminSignupClick" style="-fx-background-color: #27ae60; -fx-text-fill: white;" text="Create &amp; Register" />
-               </VBox>
-            </StackPane>
-         </VBox>
-       </Tab>
-     </tabs>
-   </TabPane>
+                    <!-- Sign Up tab -->
+                    <Tab text="Sign Up">
+                        <VBox spacing="12" style="-fx-padding:24 32 32 32;">
+                            <Label text="Choose Your Role"
+                                   style="-fx-text-fill:#64748b;-fx-font-size:12;"/>
+                            <HBox spacing="10">
+                                <ToggleButton fx:id="studentToggle" maxWidth="Infinity"
+                                              HBox.hgrow="ALWAYS" selected="true"
+                                              text="🎓 I am a Student"
+                                              style="-fx-background-color:rgba(99,102,241,0.2);
+                                                     -fx-text-fill:#818cf8;-fx-font-weight:bold;
+                                                     -fx-background-radius:10;-fx-padding:10;
+                                                     -fx-border-color:rgba(99,102,241,0.35);
+                                                     -fx-border-radius:10;-fx-cursor:hand;">
+                                    <toggleGroup><ToggleGroup fx:id="roleGroup"/></toggleGroup>
+                                </ToggleButton>
+                                <ToggleButton fx:id="adminToggle" maxWidth="Infinity"
+                                              HBox.hgrow="ALWAYS"
+                                              text="🛡️ I am an Admin/CR"
+                                              toggleGroup="$roleGroup"
+                                              style="-fx-background-color:rgba(251,191,36,0.1);
+                                                     -fx-text-fill:#fbbf24;-fx-font-weight:bold;
+                                                     -fx-background-radius:10;-fx-padding:10;
+                                                     -fx-border-color:rgba(251,191,36,0.25);
+                                                     -fx-border-radius:10;-fx-cursor:hand;"/>
+                            </HBox>
 
-   <Label fx:id="statusLabel" textFill="#e74c3c" />
+                            <Separator style="-fx-opacity:0.12;"/>
+
+                            <TextField fx:id="regNameField" promptText="Full Name"
+                                       maxWidth="Infinity"
+                                       style="-fx-padding:11;-fx-background-radius:10;
+                                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+                            <TextField fx:id="regEmailField" promptText="Gmail Address"
+                                       maxWidth="Infinity"
+                                       style="-fx-padding:11;-fx-background-radius:10;
+                                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+                            <PasswordField fx:id="regPassField" promptText="Create Password"
+                                           maxWidth="Infinity"
+                                           style="-fx-padding:11;-fx-background-radius:10;
+                                                  -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                                  -fx-prompt-text-fill:#334155;
+                                                  -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+
+                            <StackPane>
+                                <VBox fx:id="studentFields" spacing="10">
+                                    <Label text="Classroom Access:"
+                                           style="-fx-font-size:11;-fx-text-fill:#475569;"/>
+                                    <TextField fx:id="channelUuidField"
+                                               promptText="Enter Classroom UUID (Ask your CR)"
+                                               maxWidth="Infinity"
+                                               style="-fx-padding:11;-fx-background-radius:10;
+                                                      -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                                      -fx-prompt-text-fill:#334155;
+                                                      -fx-border-color:rgba(251,191,36,0.3);-fx-border-radius:10;"/>
+                                    <Button maxWidth="Infinity" onAction="#onStudentSignupClick"
+                                            text="Join Classroom 🚀"
+                                            style="-fx-background-color:linear-gradient(to right,#d97706,#f59e0b);
+                                                   -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:12;
+                                                   -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
+                                </VBox>
+
+                                <VBox fx:id="adminFields" spacing="10" visible="false">
+                                    <Label text="Channel Creation:"
+                                           style="-fx-font-size:11;-fx-text-fill:#475569;"/>
+                                    <TextField fx:id="newChannelNameField"
+                                               promptText="Department Name (e.g. BUET CSE)"
+                                               maxWidth="Infinity"
+                                               style="-fx-padding:11;-fx-background-radius:10;
+                                                      -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                                      -fx-prompt-text-fill:#334155;
+                                                      -fx-border-color:rgba(16,185,129,0.3);-fx-border-radius:10;"/>
+                                    <TextField fx:id="newChannelCodeField"
+                                               promptText="Custom Short Code (e.g. CSE24)"
+                                               maxWidth="Infinity"
+                                               style="-fx-padding:11;-fx-background-radius:10;
+                                                      -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                                      -fx-prompt-text-fill:#334155;
+                                                      -fx-border-color:rgba(16,185,129,0.3);-fx-border-radius:10;"/>
+                                    <Button maxWidth="Infinity" onAction="#onAdminSignupClick"
+                                            text="Create &amp; Register 🛡️"
+                                            style="-fx-background-color:linear-gradient(to right,#059669,#10b981);
+                                                   -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:12;
+                                                   -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:13;"/>
+                                </VBox>
+                            </StackPane>
+                        </VBox>
+                    </Tab>
+                </tabs>
+            </TabPane>
+        </VBox>
+
+        <Label fx:id="statusLabel"
+               style="-fx-text-fill:#f87171;-fx-font-size:13;"/>
+    </VBox>
 </VBox>

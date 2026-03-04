@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
+<?import javafx.geometry.*?>
+
+<!--
+  latex_renderer.fxml
+  Full LaTeX + mixed-text renderer.
+
+  Controller : com.scholar.controller.ai.LaTeXRendererController
+  Namespace  : JavaFX 21  (matches parent ai_resource_studio.fxml)
+
+  Features:
+   • Paste any AI output (Bengali text + $$...$$  or $...$  LaTeX) → renders perfectly
+   • "Paste & Render" button reads system clipboard directly
+   • "Export PDF" → iText PDF (math blocks as PNG images — no font errors)
+   • "Copy as Image" → full preview to clipboard
+-->
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.scholar.controller.ai.LaTeXRendererController"
+      fx:id="rootVBox"
+      spacing="0"
+      style="-fx-background-color:#0f1117;"
+      SplitPane.resizableWithParent="true">
+
+    <!-- ══ TOOLBAR ═══════════════════════════════════════════════════════════ -->
+    <HBox style="-fx-background-color:#161827; -fx-padding:8 14;
+                 -fx-border-color:#2d3150; -fx-border-width:0 0 1 0;"
+          spacing="10" alignment="CENTER_LEFT">
+
+        <Label text="𝛴  LaTeX Renderer"
+               style="-fx-text-fill:#a5b4fc; -fx-font-size:13px; -fx-font-weight:bold;"/>
+
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <Label text="Size:" style="-fx-text-fill:#94a3b8; -fx-font-size:11px;"/>
+        <ComboBox fx:id="fontSizeCombo" prefWidth="64"
+                  style="-fx-background-color:#1e2235;-fx-background-radius:6;
+                         -fx-border-color:#3d4268;-fx-border-radius:6;-fx-font-size:11px;"/>
+
+        <!-- Paste from clipboard directly -->
+        <Button text="📋 Paste &amp; Render"
+                onAction="#pasteAndRender"
+                style="-fx-background-color:rgba(99,102,241,0.18);-fx-text-fill:#818cf8;
+                       -fx-border-color:#6366f1;-fx-border-radius:7;-fx-background-radius:7;
+                       -fx-padding:5 12;-fx-cursor:hand;-fx-font-size:11px;-fx-font-weight:bold;"/>
+    </HBox>
+
+    <!-- ══ SPLIT: INPUT (top) / PREVIEW (bottom) ═════════════════════════════ -->
+    <SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS"
+               dividerPositions="0.30"
+               style="-fx-background-color:#0f1117; -fx-padding:0;">
+
+        <!-- ── Input ─────────────────────────────────────────────────────── -->
+        <VBox style="-fx-background-color:#0f1117; -fx-padding:10 14 6 14;"
+              spacing="5" minHeight="80">
+
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Input"
+                       style="-fx-text-fill:#7c86c7;-fx-font-size:11px;-fx-font-weight:bold;"/>
+                <Label text="— paste AI output (text + LaTeX mixed)"
+                       style="-fx-text-fill:#4a5270;-fx-font-size:11px;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="statusLabel" text="Ready"
+                       style="-fx-text-fill:#4ade80;-fx-font-size:11px;"/>
+            </HBox>
+
+            <TextArea fx:id="inputArea"
+                      promptText="Paste any AI response here — e.g.:&#10;&#10;The Gaussian integral: $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$&#10;&#10;Inline: $E = mc^2$ is famous."
+                      wrapText="true"
+                      VBox.vgrow="ALWAYS"
+                      style="-fx-control-inner-background:#13151f;
+                             -fx-text-fill:#e2e8f0;
+                             -fx-font-family:'JetBrains Mono','Fira Code','Consolas',monospace;
+                             -fx-font-size:12px;
+                             -fx-border-color:#2d3150;-fx-border-radius:8;
+                             -fx-background-radius:8;
+                             -fx-focus-color:#6366f1;-fx-faint-focus-color:transparent;
+                             -fx-padding:8 10;"/>
+        </VBox>
+
+        <!-- ── Live Preview ───────────────────────────────────────────────── -->
+        <VBox style="-fx-background-color:#0f1117; -fx-padding:6 14 10 14;"
+              spacing="5" VBox.vgrow="ALWAYS" minHeight="200">
+
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Live Preview"
+                       style="-fx-text-fill:#7c86c7;-fx-font-size:11px;-fx-font-weight:bold;"/>
+                <Label text="— KaTeX rendered"
+                       style="-fx-text-fill:#4a5270;-fx-font-size:11px;"/>
+            </HBox>
+
+            <!-- White background = clean snapshot -->
+            <StackPane VBox.vgrow="ALWAYS"
+                       style="-fx-background-color:#ffffff;-fx-background-radius:8;
+                              -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.35),10,0,0,3);">
+                <WebView fx:id="previewWebView" minHeight="160"/>
+            </StackPane>
+
+        </VBox>
+    </SplitPane>
+
+    <!-- ══ ACTION BAR ════════════════════════════════════════════════════════ -->
+    <HBox style="-fx-background-color:#161827;-fx-padding:10 14;
+                 -fx-border-color:#2d3150;-fx-border-width:1 0 0 0;"
+          spacing="8" alignment="CENTER_RIGHT">
+
+        <Button fx:id="clearBtn" text="✕  Clear"
+                style="-fx-background-color:#1e2235;-fx-text-fill:#94a3b8;
+                       -fx-background-radius:7;-fx-border-color:#2d3150;-fx-border-radius:7;
+                       -fx-padding:7 16;-fx-cursor:hand;-fx-font-size:11px;"/>
+
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <!-- Copy full preview as image (paste into Word/Docs/Notion) -->
+        <Button fx:id="copyImageBtn" text="🖼  Copy as Image"
+                style="-fx-background-color:#1e2235;-fx-text-fill:#38bdf8;
+                       -fx-background-radius:7;-fx-border-color:#0ea5e9;-fx-border-radius:7;
+                       -fx-padding:7 16;-fx-cursor:hand;-fx-font-size:11px;-fx-font-weight:bold;"/>
+
+        <!-- Export to PDF via iText (math as PNG images — no font errors) -->
+        <Button fx:id="exportPdfBtn" text="📄  Export PDF"
+                style="-fx-background-color:#6366f1;-fx-text-fill:white;
+                       -fx-background-radius:7;-fx-padding:7 22;
+                       -fx-cursor:hand;-fx-font-size:11px;-fx-font-weight:bold;
+                       -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.5),8,0,0,2);"/>
+
+    </HBox>
+</VBox>

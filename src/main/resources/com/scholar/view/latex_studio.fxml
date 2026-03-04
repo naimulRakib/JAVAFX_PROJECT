@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.WebView?>
+
+<!--
+  latex_studio.fxml
+  ══════════════════════════════════════════════════════════════
+  Pure LaTeX Studio — no AI browser, no web panel.
+
+  FLOW:
+    Paste text (with $...$, $$...$$, \[...\]) into the TextArea
+    → live KaTeX preview in WebView
+    → "Export & Upload to Telegram" builds PDF + uploads + saves history
+    → history list shows resource name, date, Telegram download link
+
+  Controller: com.scholar.controller.ai.LatexStudioController
+-->
+<BorderPane
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.scholar.controller.ai.LatexStudioController"
+    style="-fx-background-color:#080a14;">
+
+    <!-- ══ TOP BAR ══════════════════════════════════════════════════════════ -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16"
+              style="-fx-background-color:#0b0d1a;
+                     -fx-padding:13 26;
+                     -fx-border-color:rgba(99,102,241,0.22);
+                     -fx-border-width:0 0 1 0;">
+
+            <VBox spacing="2">
+                <Label text="📐 LaTeX Studio"
+                       style="-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                <Label text="Paste AI text → Preview → PDF → Upload to Telegram"
+                       style="-fx-font-size:10;-fx-text-fill:#6366f1;"/>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Font size -->
+            <HBox alignment="CENTER" spacing="8">
+                <Label text="Font:" style="-fx-text-fill:#64748b;-fx-font-size:11;"/>
+                <ComboBox fx:id="fontSizeCombo"
+                          style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                 -fx-border-color:rgba(99,102,241,0.22);-fx-border-radius:6;
+                                 -fx-background-radius:6;-fx-pref-width:72;"/>
+            </HBox>
+
+            <!-- Status badge -->
+            <Label fx:id="statusLabel" text="Ready"
+                   style="-fx-font-size:11;-fx-text-fill:#64748b;
+                          -fx-background-color:rgba(99,102,241,0.08);
+                          -fx-padding:6 16;-fx-background-radius:20;
+                          -fx-border-color:rgba(99,102,241,0.15);-fx-border-radius:20;"/>
+        </HBox>
+    </top>
+
+    <!-- ══ MAIN BODY ════════════════════════════════════════════════════════ -->
+    <center>
+        <!-- Outer split: Editor+Preview (left 65%) | History (right 35%) -->
+        <SplitPane dividerPositions="0.65"
+                   style="-fx-background-color:#080a14;-fx-border-color:transparent;">
+
+            <!-- ── LEFT: INPUT + PREVIEW ─────────────────────────────────── -->
+            <SplitPane orientation="VERTICAL" dividerPositions="0.40"
+                       SplitPane.resizableWithParent="true"
+                       style="-fx-background-color:#080a14;-fx-border-color:transparent;">
+
+                <!-- Input area -->
+                <VBox spacing="0" SplitPane.resizableWithParent="true"
+                      style="-fx-background-color:#0b0d1a;">
+
+                    <HBox alignment="CENTER_LEFT" spacing="10"
+                          style="-fx-background-color:#0b0d1a;-fx-padding:10 14;
+                                 -fx-border-color:rgba(99,102,241,0.15);-fx-border-width:0 0 1 0;">
+                        <Label text="📋 Input — paste AI text here"
+                               style="-fx-font-weight:bold;-fx-font-size:12;-fx-text-fill:#94a3b8;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+
+                        <Button fx:id="pasteBtn" text="📋 Paste &amp; Render"
+                                onAction="#pasteAndRender"
+                                style="-fx-background-color:rgba(99,102,241,0.2);
+                                       -fx-text-fill:#818cf8;-fx-font-weight:bold;
+                                       -fx-background-radius:8;-fx-border-color:rgba(99,102,241,0.35);
+                                       -fx-border-radius:8;-fx-cursor:hand;
+                                       -fx-padding:6 14;-fx-font-size:12;"/>
+                        <Button fx:id="clearBtn" text="🗑 Clear"
+                                onAction="#clearAll"
+                                style="-fx-background-color:rgba(239,68,68,0.1);
+                                       -fx-text-fill:#f87171;-fx-font-size:12;
+                                       -fx-background-radius:8;-fx-border-color:rgba(239,68,68,0.25);
+                                       -fx-border-radius:8;-fx-cursor:hand;-fx-padding:6 14;"/>
+                    </HBox>
+
+                    <TextArea fx:id="inputArea" VBox.vgrow="ALWAYS"
+                              promptText="Paste AI-generated text here…&#xa;Supports mixed text + LaTeX:&#xa;  Inline: $E = mc^2$&#xa;  Display: $$\int_0^\infty f(x)\,dx$$&#xa;  Block: \[ \nabla \cdot \vec{E} = \frac{\rho}{\varepsilon_0} \]"
+                              wrapText="true"
+                              style="-fx-control-inner-background:#080a14;
+                                     -fx-text-fill:#e2e8f0;
+                                     -fx-prompt-text-fill:#334155;
+                                     -fx-font-family:'JetBrains Mono','Fira Code','Consolas',monospace;
+                                     -fx-font-size:13;
+                                     -fx-background-color:#080a14;
+                                     -fx-border-color:transparent;
+                                     -fx-focus-color:transparent;
+                                     -fx-faint-focus-color:transparent;"/>
+                </VBox>
+
+                <!-- Preview -->
+                <VBox spacing="0" SplitPane.resizableWithParent="true"
+                      style="-fx-background-color:#0b0d1a;">
+
+                    <HBox alignment="CENTER_LEFT" spacing="10"
+                          style="-fx-background-color:#0b0d1a;-fx-padding:10 14;
+                                 -fx-border-color:rgba(99,102,241,0.15);-fx-border-width:0 0 1 0;">
+                        <Label text="👁 Live Preview"
+                               style="-fx-font-weight:bold;-fx-font-size:12;-fx-text-fill:#94a3b8;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="copyImgBtn" text="📸 Copy as Image"
+                                onAction="#copyAsImage"
+                                style="-fx-background-color:rgba(6,182,212,0.12);
+                                       -fx-text-fill:#22d3ee;-fx-font-size:12;
+                                       -fx-background-radius:8;-fx-border-color:rgba(6,182,212,0.25);
+                                       -fx-border-radius:8;-fx-cursor:hand;-fx-padding:6 14;"/>
+                    </HBox>
+
+                    <StackPane VBox.vgrow="ALWAYS"
+                               style="-fx-background-color:#ffffff;">
+                        <WebView fx:id="previewWebView"/>
+                    </StackPane>
+                </VBox>
+            </SplitPane>
+
+            <!-- ── RIGHT: UPLOAD FORM + HISTORY ──────────────────────────── -->
+            <VBox spacing="0" SplitPane.resizableWithParent="true"
+                  style="-fx-background-color:#0b0d1a;
+                         -fx-border-color:rgba(99,102,241,0.14);-fx-border-width:0 0 0 1;">
+
+                <!-- Upload form -->
+                <VBox spacing="12" style="-fx-padding:16;-fx-background-color:#0b0d1a;
+                                          -fx-border-color:rgba(99,102,241,0.15);
+                                          -fx-border-width:0 0 1 0;">
+
+                    <Label text="📤 Export &amp; Upload"
+                           style="-fx-font-weight:bold;-fx-font-size:14;-fx-text-fill:#e2e8f0;"/>
+
+                    <!-- Resource name -->
+                    <VBox spacing="4">
+                        <Label text="Resource Name *"
+                               style="-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                        <TextField fx:id="resourceNameField"
+                                   promptText="e.g. Calculus — Integration by Parts"
+                                   style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                          -fx-prompt-text-fill:#334155;-fx-background-radius:8;
+                                          -fx-border-color:rgba(99,102,241,0.22);-fx-border-radius:8;
+                                          -fx-padding:9 12;-fx-font-size:12;"/>
+                    </VBox>
+
+                    <!-- Subject + Difficulty row -->
+                    <HBox spacing="8">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Subject"
+                                   style="-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                            <ComboBox fx:id="subjectCombo" maxWidth="Infinity"
+                                      style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                             -fx-border-color:rgba(99,102,241,0.22);
+                                             -fx-border-radius:8;-fx-background-radius:8;"/>
+                        </VBox>
+                        <VBox spacing="4" prefWidth="110">
+                            <Label text="Difficulty"
+                                   style="-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                            <ComboBox fx:id="difficultyCombo" maxWidth="Infinity"
+                                      style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                             -fx-border-color:rgba(99,102,241,0.22);
+                                             -fx-border-radius:8;-fx-background-radius:8;"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Description -->
+                    <VBox spacing="4">
+                        <Label text="Description (optional)"
+                               style="-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                        <TextArea fx:id="descriptionArea" prefRowCount="3" wrapText="true"
+                                  promptText="Brief description of this resource…"
+                                  style="-fx-control-inner-background:#111325;-fx-text-fill:#e2e8f0;
+                                         -fx-prompt-text-fill:#334155;-fx-background-radius:8;
+                                         -fx-border-color:rgba(99,102,241,0.22);-fx-border-radius:8;
+                                         -fx-font-size:12;-fx-focus-color:transparent;
+                                         -fx-faint-focus-color:transparent;"/>
+                    </VBox>
+
+                    <!-- Tags -->
+                    <VBox spacing="4">
+                        <Label text="Tags (comma-separated)"
+                               style="-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                        <TextField fx:id="tagsField"
+                                   promptText="e.g. calculus, integration, math"
+                                   style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                          -fx-prompt-text-fill:#334155;-fx-background-radius:8;
+                                          -fx-border-color:rgba(99,102,241,0.22);-fx-border-radius:8;
+                                          -fx-padding:9 12;-fx-font-size:12;"/>
+                    </VBox>
+
+                    <!-- Upload progress -->
+                    <ProgressBar fx:id="uploadProgress" maxWidth="Infinity"
+                                 progress="0" visible="false"
+                                 style="-fx-accent:#6366f1;-fx-pref-height:4;-fx-background-radius:4;"/>
+
+                    <!-- Action buttons -->
+                    <HBox spacing="8">
+                        <Button fx:id="uploadBtn" text="🚀 Export PDF &amp; Upload to Telegram"
+                                onAction="#exportAndUpload"
+                                maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                                style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                       -fx-text-fill:white;-fx-font-weight:bold;
+                                       -fx-background-radius:10;-fx-cursor:hand;
+                                       -fx-padding:11 0;-fx-font-size:13;
+                                       -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.4),10,0,0,3);"/>
+                    </HBox>
+
+                    <HBox spacing="8">
+                        <Button fx:id="pdfOnlyBtn" text="💾 Save PDF Only"
+                                onAction="#savePdfOnly"
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                style="-fx-background-color:rgba(16,185,129,0.12);
+                                       -fx-text-fill:#34d399;-fx-font-weight:bold;
+                                       -fx-background-radius:8;-fx-border-color:rgba(16,185,129,0.3);
+                                       -fx-border-radius:8;-fx-cursor:hand;-fx-padding:9 0;-fx-font-size:12;"/>
+                        <Button fx:id="clearFormBtn" text="✕ Clear Form"
+                                onAction="#clearForm"
+                                style="-fx-background-color:rgba(239,68,68,0.08);
+                                       -fx-text-fill:#f87171;-fx-font-size:12;
+                                       -fx-background-radius:8;-fx-border-color:rgba(239,68,68,0.2);
+                                       -fx-border-radius:8;-fx-cursor:hand;-fx-padding:9 14;"/>
+                    </HBox>
+                </VBox>
+
+                <!-- History header -->
+                <HBox alignment="CENTER_LEFT" spacing="10"
+                      style="-fx-padding:12 16 8 16;-fx-background-color:#080a14;">
+                    <Label text="📚 Upload History"
+                           style="-fx-font-weight:bold;-fx-font-size:13;-fx-text-fill:#e2e8f0;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="refreshHistoryBtn" text="⟳"
+                            onAction="#refreshHistory"
+                            style="-fx-background-color:rgba(99,102,241,0.1);-fx-text-fill:#818cf8;
+                                   -fx-background-radius:20;-fx-border-color:rgba(99,102,241,0.2);
+                                   -fx-border-radius:20;-fx-cursor:hand;-fx-padding:4 12;"/>
+                </HBox>
+
+                <!-- Search history -->
+                <HBox style="-fx-padding:0 16 10 16;-fx-background-color:#080a14;">
+                    <TextField fx:id="historySearchField" maxWidth="Infinity"
+                               HBox.hgrow="ALWAYS"
+                               promptText="🔍 Search history…"
+                               style="-fx-background-color:#111325;-fx-text-fill:#e2e8f0;
+                                      -fx-prompt-text-fill:#334155;-fx-background-radius:20;
+                                      -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:20;
+                                      -fx-padding:7 14;-fx-font-size:12;"/>
+                </HBox>
+
+                <!-- History list -->
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background:#080a14;-fx-background-color:#080a14;
+                                   -fx-border-color:transparent;">
+                    <VBox fx:id="historyContainer" spacing="8"
+                          style="-fx-background-color:#080a14;-fx-padding:0 12 16 12;"/>
+                </ScrollPane>
+
+            </VBox>
+        </SplitPane>
+    </center>
+
+</BorderPane>

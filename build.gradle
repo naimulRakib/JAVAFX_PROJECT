@@ -21,6 +21,9 @@ dependencies {
     // JavaFX
     implementation 'org.openjfx:javafx-controls:21'
     implementation 'org.openjfx:javafx-fxml:21'
+
+    implementation 'com.itextpdf:itext7-core:8.0.2'
+    implementation 'com.itextpdf:html2pdf:5.0.0'
    
 
     //audio call
@@ -29,7 +32,7 @@ implementation 'org.springframework.boot:spring-boot-starter-websocket:3.4.0'
     // UI Styling (BootstrapFX/AtlantaFX)
     implementation 'org.kordamp.bootstrapfx:bootstrapfx-core:0.4.0'
     implementation 'io.github.mkpaz:atlantafx-base:2.0.1'
-
+implementation 'org.openjfx:javafx-swing:21.0.1'
     // Database & Cloud
     implementation 'org.postgresql:postgresql:42.7.2'
     implementation 'io.github.cdimascio:dotenv-java:3.0.0'

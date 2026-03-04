@@ -258,7 +258,7 @@ public class DashboardController {
     adminMergeController.requestStatusLabel    = requestStatusLabel;
     adminMergeController.hubStatusLabel        = hubStatusLabel;
    
-    adminMergeController.initialize();
+    // adminMergeController.initialize();
 
         // ── Channel setup ─────────────────────────────────────
         if (AuthService.CURRENT_CHANNEL_ID != -1) {
@@ -448,7 +448,12 @@ public class DashboardController {
     // =========================================================
     // COLLABORATION — delegates
     // =========================================================
-    @FXML public void onCreatePost()    { collaborationController.onCreatePost(); }
+@FXML
+    public void onCreatePost(javafx.event.ActionEvent event) {
+        if (collaborationController != null) {
+            collaborationController.onCreatePost(event);
+        }
+    }
     @FXML public void onCreateChannel() { collaborationController.onCreateChannel(); }
     @FXML public void onAddTeamResourceClick() {
         showError("Please select a team workspace first and use the 'Add Resource' button inside it.");
@@ -495,6 +500,9 @@ public class DashboardController {
         if (resourceList == null) return;
         resourceList.getChildren().clear();
         new Thread(() -> {
+
+            // DashboardController.java এর ৫০৩ নম্বর লাইনের আশেপাশে
+
             List<ResourceService.Resource> items = resourceService.getAllResources();
             Platform.runLater(() -> {
                 for (var item : items) {
@@ -506,6 +514,9 @@ public class DashboardController {
                 }
             });
         }).start();
+
+
+        
     }
 
     // =========================================================

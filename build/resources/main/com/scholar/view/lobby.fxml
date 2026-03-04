@@ -1,71 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="25.0" style="-fx-background-color: #ecf0f1;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.scholar.controller.LobbyController">
-    
-    <padding>
-        <Insets bottom="50.0" left="50.0" right="50.0" top="50.0" />
-    </padding>
+<!--
+  lobby.fxml — RESPONSIVE dark-theme rewrite
+  Key fixes:
+    • Root VBox fills window; inner cards have maxWidth="480" + center alignment
+    • HBox/TextField children use HBox.hgrow="ALWAYS" + maxWidth="Infinity"
+    • No hardcoded prefWidth on the root that would cut off on resize
+-->
+<VBox alignment="CENTER" spacing="28"
+      style="-fx-background-color:#080a14;-fx-padding:48;"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.scholar.controller.LobbyController">
 
-    <VBox alignment="CENTER" spacing="5">
-        <Label text="Welcome to Scholar Grid! 🎓" textFill="#2c3e50">
-            <font>
-                <Font name="System Bold" size="28.0" />
-            </font>
-        </Label>
-        <Label text="Enter your multiverse: Join a class or create a new one." textFill="#7f8c8d">
-            <font>
-                <Font size="14.0" />
-            </font>
-        </Label>
+    <!-- Header -->
+    <VBox alignment="CENTER" spacing="6">
+        <Label text="Welcome to ScholarGrid! 🎓"
+               style="-fx-font-size:30;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+        <Label text="Enter your multiverse: Join a class or create a new one."
+               style="-fx-font-size:13;-fx-text-fill:#475569;"/>
     </VBox>
 
-    <VBox alignment="CENTER" maxWidth="450.0" spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-padding: 20;">
-        <Label text="Student? Join a Classroom 🚀" textFill="#2980b9">
-             <font><Font name="System Bold" size="16.0" /></font>
-        </Label>
-        <Label text="Ask your CR for the unique code." textFill="#bdc3c7" style="-fx-font-size: 12px;"/>
-        
-        <HBox alignment="CENTER" spacing="10.0">
-            <TextField fx:id="joinCodeField" promptText="Enter Code (e.g. CSE24)" HBox.hgrow="ALWAYS" style="-fx-font-size: 14px; -fx-padding: 8;"/>
-            <Button onAction="#onJoinClick" text="Join Class" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 8 15;" />
+    <!-- JOIN card -->
+    <VBox maxWidth="480" spacing="12"
+          style="-fx-background-color:#141828;-fx-background-radius:14;
+                 -fx-border-color:rgba(37,99,235,0.35);-fx-border-radius:14;
+                 -fx-padding:24;
+                 -fx-effect:dropshadow(gaussian,rgba(37,99,235,0.2),18,0,0,5);">
+        <Label text="Student? Join a Classroom 🚀"
+               style="-fx-font-size:15;-fx-font-weight:bold;-fx-text-fill:#60a5fa;"/>
+        <Label text="Ask your CR for the unique code."
+               style="-fx-text-fill:#334155;-fx-font-size:12;"/>
+        <HBox alignment="CENTER" spacing="10">
+            <TextField fx:id="joinCodeField" promptText="Enter Code (e.g. CSE24)"
+                       HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                       style="-fx-font-size:14;-fx-padding:11;-fx-background-radius:10;
+                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                              -fx-prompt-text-fill:#334155;
+                              -fx-border-color:rgba(37,99,235,0.3);-fx-border-radius:10;"/>
+            <Button onAction="#onJoinClick" text="Join Class"
+                    style="-fx-background-color:#2563eb;-fx-text-fill:white;-fx-font-weight:bold;
+                           -fx-cursor:hand;-fx-padding:11 20;-fx-background-radius:10;-fx-font-size:13;"/>
         </HBox>
     </VBox>
 
-    <HBox alignment="CENTER" spacing="10" maxWidth="450">
-        <Separator HBox.hgrow="ALWAYS"/>
-        <Label text="OR" textFill="#95a5a6" style="-fx-font-weight: bold;"/>
-        <Separator HBox.hgrow="ALWAYS"/>
+    <!-- OR divider -->
+    <HBox alignment="CENTER" spacing="14" maxWidth="480">
+        <Separator HBox.hgrow="ALWAYS" style="-fx-opacity:0.15;"/>
+        <Label text="OR" style="-fx-text-fill:#334155;-fx-font-weight:bold;-fx-font-size:12;"/>
+        <Separator HBox.hgrow="ALWAYS" style="-fx-opacity:0.15;"/>
     </HBox>
 
-    <VBox alignment="CENTER" maxWidth="450.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-padding: 20;">
-        <Label text="CR / Teacher? Create a New Channel 🛠️" textFill="#e67e22">
-             <font><Font name="System Bold" size="16.0" /></font>
-        </Label>
-        
-        <VBox spacing="8" alignment="CENTER_LEFT">
-            <Label text="Class Name:" textFill="#7f8c8d" style="-fx-font-size: 12px;"/>
-            <TextField fx:id="createNameField" promptText="e.g. BUET CSE-24" style="-fx-font-size: 14px; -fx-padding: 8;"/>
-            
-            <Label text="Unique Join Code (Must be unique):" textFill="#7f8c8d" style="-fx-font-size: 12px;"/>
-            <TextField fx:id="createCodeField" promptText="e.g. CSE24-BUET" style="-fx-font-size: 14px; -fx-padding: 8;"/>
+    <!-- CREATE card -->
+    <VBox maxWidth="480" spacing="12"
+          style="-fx-background-color:#141828;-fx-background-radius:14;
+                 -fx-border-color:rgba(217,119,6,0.35);-fx-border-radius:14;
+                 -fx-padding:24;
+                 -fx-effect:dropshadow(gaussian,rgba(217,119,6,0.2),18,0,0,5);">
+        <Label text="CR / Teacher? Create a New Channel 🛠️"
+               style="-fx-font-size:15;-fx-font-weight:bold;-fx-text-fill:#fbbf24;"/>
+        <VBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Class Name:" style="-fx-text-fill:#475569;-fx-font-size:12;"/>
+            <TextField fx:id="createNameField" promptText="e.g. BUET CSE-24"
+                       maxWidth="Infinity"
+                       style="-fx-font-size:13;-fx-padding:11;-fx-background-radius:10;
+                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                              -fx-prompt-text-fill:#334155;
+                              -fx-border-color:rgba(217,119,6,0.3);-fx-border-radius:10;"/>
+            <Label text="Unique Join Code:" style="-fx-text-fill:#475569;-fx-font-size:12;"/>
+            <TextField fx:id="createCodeField" promptText="e.g. CSE24-BUET"
+                       maxWidth="Infinity"
+                       style="-fx-font-size:13;-fx-padding:11;-fx-background-radius:10;
+                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                              -fx-prompt-text-fill:#334155;
+                              -fx-border-color:rgba(217,119,6,0.3);-fx-border-radius:10;"/>
         </VBox>
-
-        <Button onAction="#onCreateClick" text="Create Channel &amp; Enter" maxWidth="Infinity" style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 10;" />
+        <Button onAction="#onCreateClick" text="Create Channel &amp; Enter"
+                maxWidth="Infinity"
+                style="-fx-background-color:linear-gradient(to right,#d97706,#f59e0b);
+                       -fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;
+                       -fx-font-size:14;-fx-padding:12;-fx-background-radius:10;
+                       -fx-effect:dropshadow(gaussian,rgba(217,119,6,0.4),10,0,0,3);"/>
     </VBox>
 
-    <Label fx:id="statusLabel" text="Ready to connect..." textFill="#95a5a6">
-        <font>
-            <Font size="13.0" />
-        </font>
-    </Label>
-
+    <Label fx:id="statusLabel" text="Ready to connect..."
+           style="-fx-text-fill:#334155;-fx-font-size:13;"/>
 </VBox>

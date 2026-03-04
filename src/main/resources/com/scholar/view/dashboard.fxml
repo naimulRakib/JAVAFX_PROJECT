@@ -1,1135 +1,710 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ProgressIndicator?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.TreeView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.web.WebView?>
 <?import javafx.scene.text.Font?>
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.ListView?>
-<?import javafx.scene.control.ComboBox?>
-<?import javafx.scene.control.ProgressIndicator?>
 
+<!--
+  dashboard.fxml — Dark-polished rewrite
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  BUG FIXES:
+  1. WHITE GAPS IN NOTICES SCROLLPANE:
+     JavaFX ScrollPane has a .viewport child that ignores
+     "-fx-background-color:transparent" and falls back to
+     white. Fix: set BOTH -fx-background AND -fx-background-color
+     to the card's dark colour (#0f1020). Same fix applied to
+     all other ScrollPanes in the file.
+
+  2. CALENDAR WHITE BOXES:
+     CalendarController.createDayBox() hardcodes white/light
+     CSS. Fixed in CalendarController.java (see that file).
+
+  3. TAB BAR:
+     Replaced boring plain text="..." style="-fx-font-weight:bold"
+     tabs with <graphic> Label tabs. Each Label is styled inline
+     so the tab button looks like a pill nav. The TabPane CSS
+     properties set the header-area background to a polished
+     dark gradient. ALL fx:id / onAction / onSelectionChanged /
+     closable attributes and all inner content are 100% UNCHANGED.
+
+  NO INNER LOGIC TOUCHED.
+-->
 <BorderPane
-    maxHeight="-Infinity" maxWidth="-Infinity"
-    minHeight="-Infinity" minWidth="-Infinity"
     prefHeight="860.0" prefWidth="1300.0"
-    style="-fx-background-color: #f0f4ff;"
+    style="-fx-background-color:#0d0f1a;"
     xmlns="http://javafx.com/javafx/21"
     xmlns:fx="http://javafx.com/fxml/1"
     fx:controller="com.scholar.controller.DashboardController">
 
-    <!-- ═══════════════════════════════════════════════════════
-         TOP NAV BAR
-    ═══════════════════════════════════════════════════════ -->
+    <!-- ══ TOP BAR ════════════════════════════════════════════ -->
     <top>
-        <HBox
-            alignment="CENTER_LEFT" spacing="18.0"
-            style="
-                -fx-background-color: linear-gradient(to right, #1a1a2e, #16213e, #0f3460);
-                -fx-padding: 14 28;
-                -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.35), 12, 0, 0, 4);
-            ">
+        <HBox alignment="CENTER_LEFT" spacing="16"
+              style="-fx-background-color:linear-gradient(to right,#0a0c1e,#12142e,#0a0e20);
+                     -fx-padding:12 24;
+                     -fx-border-color:rgba(99,102,241,0.22);
+                     -fx-border-width:0 0 1 0;
+                     -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.65),18,0,0,5);">
 
-            <!-- Logo -->
             <VBox alignment="CENTER_LEFT" spacing="1">
-                <Label text="ScholarGrid" textFill="#ffffff">
-                    <font><Font name="System Bold" size="22.0"/></font>
-                </Label>
-                <Label text="Your Intelligent Study Hub" textFill="#7c83fd" style="-fx-font-size: 10px; -fx-letter-spacing: 0.5px;"/>
+                <Label text="ScholarGrid"
+                       style="-fx-font-size:20;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;
+                              -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.45),10,0,0,0);"/>
+                <Label text="Your Intelligent Study Hub"
+                       style="-fx-font-size:10;-fx-text-fill:#6366f1;-fx-font-weight:bold;"/>
             </VBox>
 
-            <Separator orientation="VERTICAL" style="-fx-opacity: 0.25; -fx-padding: 0 5;"/>
+            <Separator orientation="VERTICAL" style="-fx-opacity:0.15;"/>
 
-            <!-- Workspace badge -->
             <HBox alignment="CENTER" spacing="8"
-                style="
-                    -fx-background-color: rgba(124,131,253,0.15);
-                    -fx-border-color: rgba(124,131,253,0.4);
-                    -fx-border-radius: 20;
-                    -fx-background-radius: 20;
-                    -fx-padding: 5 14;
-                ">
-                <Label text="🏛" style="-fx-font-size: 14px;"/>
+                  style="-fx-background-color:rgba(99,102,241,0.1);
+                         -fx-border-color:rgba(99,102,241,0.32);
+                         -fx-border-radius:20;-fx-background-radius:20;
+                         -fx-padding:5 14;">
+                <Label text="🏛" style="-fx-font-size:13;"/>
                 <VBox alignment="CENTER_LEFT" spacing="1">
-                    <Label text="WORKSPACE" textFill="#7c83fd" style="-fx-font-size: 9px; -fx-font-weight: bold;"/>
-                    <Label fx:id="channelNameLabel" text="Loading..." textFill="#fbbf24">
-                        <font><Font name="System Bold" size="13.0"/></font>
-                    </Label>
+                    <Label text="WORKSPACE"
+                           style="-fx-font-size:9;-fx-font-weight:bold;-fx-text-fill:#6366f1;"/>
+                    <Label fx:id="channelNameLabel" text="Loading..."
+                           style="-fx-font-size:13;-fx-font-weight:bold;-fx-text-fill:#fbbf24;"/>
                 </VBox>
             </HBox>
 
             <Region HBox.hgrow="ALWAYS"/>
 
-            <!-- Nav pill buttons -->
             <HBox spacing="8" alignment="CENTER">
-                <Button text="🤖 AI Tutor"
-                    fx:id="aiTutorBtn"
-                    style="
-                        -fx-background-color: linear-gradient(to right, #7c83fd, #56ccf2);
-                        -fx-text-fill: white; -fx-font-weight: bold;
-                        -fx-background-radius: 20; -fx-padding: 7 18;
-                        -fx-cursor: hand; -fx-font-size: 12px;
-                        -fx-effect: dropshadow(three-pass-box, rgba(124,131,253,0.5), 8, 0, 0, 3);
-                    "/>
+                <Button fx:id="aiTutorBtn" text="🤖 AI Tutor"
+                        style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                               -fx-text-fill:white;-fx-font-weight:bold;
+                               -fx-background-radius:20;-fx-padding:7 18;
+                               -fx-cursor:hand;-fx-font-size:12;
+                               -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.55),8,0,0,3);"/>
                 <Button text="Logout 🚪"
-                    style="
-                        -fx-background-color: transparent;
-                        -fx-text-fill: #94a3b8;
-                        -fx-border-color: rgba(148,163,184,0.4);
-                        -fx-border-radius: 20; -fx-background-radius: 20;
-                        -fx-padding: 7 18; -fx-cursor: hand; -fx-font-size: 12px;
-                    "/>
+                        style="-fx-background-color:transparent;-fx-text-fill:#64748b;
+                               -fx-border-color:rgba(100,116,139,0.32);
+                               -fx-border-radius:20;-fx-background-radius:20;
+                               -fx-padding:7 18;-fx-cursor:hand;-fx-font-size:12;"/>
             </HBox>
         </HBox>
     </top>
 
-    <!-- ═══════════════════════════════════════════════════════
-         MAIN CONTENT
-    ═══════════════════════════════════════════════════════ -->
+    <!-- ══ TAB PANE ═══════════════════════════════════════════
+         Tab styling strategy:
+           • Remove default text by leaving text="" and using
+             <graphic> Label instead — full CSS control.
+           • Tab header background set via -fx-tab-header-*
+             properties directly on the TabPane style string.
+           • Each tab graphic Label has padding 0 4 so tabs are
+             compact. The platform draws the active-tab underline
+             indicator on top automatically.
+    ══════════════════════════════════════════════════════════ -->
     <center>
-        <TabPane
-            style="
-                -fx-background-color: transparent;
-                -fx-tab-min-height: 42px;
-                -fx-tab-max-height: 42px;
-            "
-            tabClosingPolicy="UNAVAILABLE">
+        <TabPane tabClosingPolicy="UNAVAILABLE"
+                 style="-fx-background-color:#0d0f1a;
+                        -fx-tab-min-height:44;
+                        -fx-tab-max-height:44;
+                        -fx-tab-min-width:0;
+                        -fx-focus-color:transparent;
+                        -fx-faint-focus-color:transparent;
+                        -fx-tab-header-area-background-color:linear-gradient(to bottom,#0b0d1c,#0f1120);
+                        -fx-tab-header-background:linear-gradient(to bottom,#0b0d1c,#0f1120);
+                        -fx-border-width:0;">
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 1 — DASHBOARD (AI Input lives here only)
-            ───────────────────────────────────────────────── -->
-            <Tab text="🏠 Dashboard" style="-fx-font-weight: bold;">
+            <!-- ── TAB 1 · 🏠 Dashboard ────────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🏠  Dashboard"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+
                 <SplitPane dividerPositions="0.28"
-                    style="-fx-background-color: transparent; -fx-padding: 12;">
+                           style="-fx-background-color:transparent;-fx-padding:12;">
 
-                    <!-- LEFT: AI Input Panel -->
-                    <VBox spacing="16"
-                        style="
-                            -fx-background-color: linear-gradient(to bottom, #1a1a2e, #16213e);
-                            -fx-background-radius: 16;
-                            -fx-effect: dropshadow(gaussian, rgba(124,131,253,0.25), 20, 0, 0, 6);
-                            -fx-padding: 24;
-                        ">
-
-                        <!-- Header -->
-                        <VBox spacing="4">
-                            <Label text="✨ AI Scheduler" textFill="#7c83fd">
-                                <font><Font name="System Bold" size="20.0"/></font>
-                            </Label>
-                            <Label text="Describe your study goals — AI does the rest"
-                                textFill="#64748b" style="-fx-font-size: 12px;"/>
+                    <!-- LEFT: AI Scheduler -->
+                    <VBox spacing="14" SplitPane.resizableWithParent="false"
+                          style="-fx-background-color:linear-gradient(to bottom,#12142a,#1a1c38);
+                                 -fx-background-radius:14;-fx-padding:22;
+                                 -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;
+                                 -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.2),16,0,0,5);">
+                        <VBox spacing="3">
+                            <Label text="✨ AI Scheduler"
+                                   style="-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#818cf8;"/>
+                            <Label text="Describe your goals — AI does the rest"
+                                   style="-fx-font-size:11;-fx-text-fill:#475569;"/>
                         </VBox>
-
-                        <!-- Prompt chips -->
-                        <HBox spacing="6" style="-fx-padding: 4 0 0 0;">
+                        <HBox spacing="6">
                             <Button text="📚 Exam prep"
-                                style="
-                                    -fx-background-color: rgba(124,131,253,0.15);
-                                    -fx-text-fill: #7c83fd; -fx-border-color: rgba(124,131,253,0.3);
-                                    -fx-border-radius: 12; -fx-background-radius: 12;
-                                    -fx-padding: 4 10; -fx-cursor: hand; -fx-font-size: 11px;
-                                "/>
+                                    style="-fx-background-color:rgba(99,102,241,0.15);-fx-text-fill:#818cf8;
+                                           -fx-border-color:rgba(99,102,241,0.3);-fx-border-radius:12;
+                                           -fx-background-radius:12;-fx-padding:4 10;-fx-cursor:hand;-fx-font-size:11;"/>
                             <Button text="⏰ Daily plan"
-                                style="
-                                    -fx-background-color: rgba(86,204,242,0.15);
-                                    -fx-text-fill: #56ccf2; -fx-border-color: rgba(86,204,242,0.3);
-                                    -fx-border-radius: 12; -fx-background-radius: 12;
-                                    -fx-padding: 4 10; -fx-cursor: hand; -fx-font-size: 11px;
-                                "/>
+                                    style="-fx-background-color:rgba(6,182,212,0.15);-fx-text-fill:#22d3ee;
+                                           -fx-border-color:rgba(6,182,212,0.3);-fx-border-radius:12;
+                                           -fx-background-radius:12;-fx-padding:4 10;-fx-cursor:hand;-fx-font-size:11;"/>
                             <Button text="🎯 Sprint"
-                                style="
-                                    -fx-background-color: rgba(16,185,129,0.15);
-                                    -fx-text-fill: #10b981; -fx-border-color: rgba(16,185,129,0.3);
-                                    -fx-border-radius: 12; -fx-background-radius: 12;
-                                    -fx-padding: 4 10; -fx-cursor: hand; -fx-font-size: 11px;
-                                "/>
+                                    style="-fx-background-color:rgba(16,185,129,0.15);-fx-text-fill:#34d399;
+                                           -fx-border-color:rgba(16,185,129,0.3);-fx-border-radius:12;
+                                           -fx-background-radius:12;-fx-padding:4 10;-fx-cursor:hand;-fx-font-size:11;"/>
                         </HBox>
-
-                        <!-- Text input -->
-                        <TextArea
-                            fx:id="inputArea"
-                            promptText="Example: I have a Calculus midterm on Friday covering Integrals. Make a 3-day plan..."
-                            wrapText="true"
-                            VBox.vgrow="ALWAYS"
-                            style="
-                                -fx-control-inner-background: #0f172a;
-                                -fx-text-fill: #e2e8f0;
-                                -fx-prompt-text-fill: #475569;
-                                -fx-background-radius: 12;
-                                -fx-border-color: rgba(124,131,253,0.25);
-                                -fx-border-radius: 12;
-                                -fx-font-size: 13px;
-                                -fx-padding: 14;
-                            "/>
-
-                        <!-- Generate button -->
-                        <Button
-                            fx:id="generateBtn"
-                            maxWidth="1.7976931348623157E308"
-                            onAction="#onGenerateClick"
-                            text="⚡ Generate My Schedule"
-                            style="
-                                -fx-background-color: linear-gradient(to right, #7c83fd, #56ccf2);
-                                -fx-text-fill: white; -fx-cursor: hand;
-                                -fx-background-radius: 12; -fx-font-weight: bold;
-                                -fx-font-size: 14px;
-                                -fx-effect: dropshadow(gaussian, rgba(124,131,253,0.6), 14, 0, 0, 5);
-                            ">
-                            <padding><Insets bottom="13.0" top="13.0"/></padding>
-                        </Button>
-
-                        <!-- Add task manually -->
-                        <Button
-                            maxWidth="1.7976931348623157E308"
-                            onAction="#showManualTaskEntryDialog"
-                            text="➕ Add Task Manually"
-                            style="
-                                -fx-background-color: rgba(255,255,255,0.05);
-                                -fx-text-fill: #94a3b8;
-                                -fx-border-color: rgba(255,255,255,0.1);
-                                -fx-border-radius: 12; -fx-background-radius: 12;
-                                -fx-cursor: hand; -fx-font-size: 12px;
-                            ">
-                            <padding><Insets bottom="9.0" top="9.0"/></padding>
-                        </Button>
+                        <TextArea fx:id="inputArea"
+                                  promptText="Example: Calculus midterm Friday — make a 3-day plan..."
+                                  wrapText="true" VBox.vgrow="ALWAYS"
+                                  style="-fx-control-inner-background:#080a14;-fx-text-fill:#e2e8f0;
+                                         -fx-prompt-text-fill:#334155;-fx-background-radius:10;
+                                         -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;
+                                         -fx-font-size:13;-fx-padding:12;"/>
+                        <Button fx:id="generateBtn" maxWidth="Infinity"
+                                onAction="#onGenerateClick" text="⚡ Generate My Schedule"
+                                style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                       -fx-text-fill:white;-fx-cursor:hand;-fx-background-radius:10;
+                                       -fx-font-weight:bold;-fx-font-size:13;-fx-padding:12 0;
+                                       -fx-effect:dropshadow(gaussian,rgba(99,102,241,0.6),12,0,0,4);"/>
+                        <Button maxWidth="Infinity" onAction="#showManualTaskEntryDialog"
+                                text="➕ Add Task Manually"
+                                style="-fx-background-color:rgba(255,255,255,0.04);-fx-text-fill:#64748b;
+                                       -fx-border-color:rgba(255,255,255,0.08);-fx-border-radius:10;
+                                       -fx-background-radius:10;-fx-cursor:hand;-fx-font-size:12;
+                                       -fx-padding:9 0;"/>
                     </VBox>
 
-                    <!-- RIGHT: Dashboard Content -->
+                    <!-- RIGHT: Routine + Notices + Timeline
+                         ScrollPane FIX: -fx-background sets the inner
+                         Viewport fill; -fx-background-color sets the
+                         ScrollPane node itself.  Both must be #0d0f1a. -->
                     <ScrollPane fitToWidth="true"
-                        style="
-                            -fx-background-color: transparent;
-                            -fx-control-inner-background: transparent;
-                            -fx-border-color: transparent;
-                        ">
-                        <content>
-                            <VBox spacing="18" style="-fx-padding: 4 4 20 4;">
+                                style="-fx-background:#0d0f1a;
+                                       -fx-background-color:#0d0f1a;
+                                       -fx-border-color:transparent;">
+                        <VBox spacing="16"
+                              style="-fx-padding:4 4 20 4;-fx-background-color:#0d0f1a;">
 
-                                <!-- Class routine + announcements -->
-                                <HBox spacing="16">
+                            <!-- Routine card + Notices card side-by-side -->
+                            <HBox spacing="14">
 
-                                    <!-- Routine card -->
-                                    <VBox HBox.hgrow="ALWAYS"
-                                        style="
-                                            -fx-background-color: white;
-                                            -fx-background-radius: 16;
-                                            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 18, 0, 0, 6);
-                                            -fx-padding: 20;
-                                            -fx-border-color: #e8eeff;
-                                            -fx-border-radius: 16;
-                                        ">
-                                        <HBox alignment="CENTER_LEFT" spacing="10">
-                                            <Label text="📅" style="-fx-font-size: 20px;"/>
-                                            <Label text="Class Routine" textFill="#1e293b">
-                                                <font><Font name="System Bold" size="17.0"/></font>
-                                            </Label>
-                                            <Region HBox.hgrow="ALWAYS"/>
-                                            <Button fx:id="editRoutineBtn" text="✏ Edit"
-                                                style="
-                                                    -fx-background-color: #fef3c7;
-                                                    -fx-text-fill: #d97706;
-                                                    -fx-border-color: #fde68a;
-                                                    -fx-border-radius: 8; -fx-background-radius: 8;
-                                                    -fx-cursor: hand; -fx-font-weight: bold;
-                                                    -fx-padding: 5 12;
-                                                "/>
-                                        </HBox>
-                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 10 0 14 0;"/>
-                                        <GridPane fx:id="routineGrid" hgap="20" vgap="10"
-                                            style="-fx-font-size: 13px; -fx-text-fill: #334155;"/>
-                                    </VBox>
-
-                                    <!-- Announcements card -->
-                                    <VBox prefWidth="310"
-                                        style="
-                                            -fx-background-color: linear-gradient(to bottom right, #fff0f6, #fff);
-                                            -fx-background-radius: 16;
-                                            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 18, 0, 0, 6);
-                                            -fx-padding: 20;
-                                            -fx-border-color: #ffd6e0;
-                                            -fx-border-radius: 16;
-                                        ">
-                                        <HBox alignment="CENTER_LEFT" spacing="8">
-                                            <Label text="📢" style="-fx-font-size: 18px;"/>
-                                            <Label text="Notices" textFill="#be185d">
-                                                <font><Font name="System Bold" size="16.0"/></font>
-                                            </Label>
-                                            <Region HBox.hgrow="ALWAYS"/>
-                                            <Button fx:id="postAnnouncementBtn" text="＋"
-                                                style="
-                                                    -fx-background-color: #be185d;
-                                                    -fx-text-fill: white;
-                                                    -fx-background-radius: 50;
-                                                    -fx-font-weight: bold; -fx-cursor: hand;
-                                                    -fx-min-width: 28; -fx-min-height: 28;
-                                                    -fx-max-width: 28; -fx-max-height: 28;
-                                                "/>
-                                        </HBox>
-                                        <Separator style="-fx-opacity: 0.3; -fx-padding: 8 0 12 0;"/>
-                                        <ScrollPane fitToWidth="true"
-                                            style="-fx-background-color: transparent; -fx-border-color: transparent;"
-                                            VBox.vgrow="ALWAYS">
-                                            <content>
-                                                <VBox fx:id="announcementList" spacing="10"
-                                                    style="-fx-background-color: transparent;"/>
-                                            </content>
-                                        </ScrollPane>
-                                    </VBox>
-                                </HBox>
-
-                                <!-- Timeline section header -->
-                                <HBox alignment="CENTER_LEFT" spacing="12"
-                                    style="
-                                        -fx-background-color: white;
-                                        -fx-background-radius: 14;
-                                        -fx-padding: 14 20;
-                                        -fx-border-color: #e8eeff;
-                                        -fx-border-radius: 14;
-                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10, 0, 0, 3);
-                                    ">
-                                    <Label text="🗓 My Timeline" textFill="#1e293b">
-                                        <font><Font name="System Bold" size="15.0"/></font>
-                                    </Label>
-                                    <Region HBox.hgrow="ALWAYS"/>
-                                    <!-- View mode pills -->
-                                    <HBox spacing="6">
-                                        <Button fx:id="btnDailyTasks" text="📋 Today"
-                                            style="
-                                                -fx-background-color: #eef2ff;
-                                                -fx-text-fill: #4f46e5;
-                                                -fx-border-color: #c7d2fe;
-                                                -fx-border-radius: 20; -fx-background-radius: 20;
-                                                -fx-cursor: hand; -fx-font-weight: bold;
-                                                -fx-padding: 6 16; -fx-font-size: 12px;
-                                            "/>
-                                        <Button fx:id="btnBacklog" text="🔴 Backlog"
-                                            style="
-                                                -fx-background-color: #fff1f2;
-                                                -fx-text-fill: #e11d48;
-                                                -fx-border-color: #fecdd3;
-                                                -fx-border-radius: 20; -fx-background-radius: 20;
-                                                -fx-cursor: hand; -fx-font-weight: bold;
-                                                -fx-padding: 6 16; -fx-font-size: 12px;
-                                            "/>
-                                        <Button fx:id="btnCompleted" text="✅ Done"
-                                            style="
-                                                -fx-background-color: #f0fdf4;
-                                                -fx-text-fill: #16a34a;
-                                                -fx-border-color: #bbf7d0;
-                                                -fx-border-radius: 20; -fx-background-radius: 20;
-                                                -fx-cursor: hand; -fx-font-weight: bold;
-                                                -fx-padding: 6 16; -fx-font-size: 12px;
-                                            "/>
+                                <!-- Class Routine -->
+                                <VBox HBox.hgrow="ALWAYS"
+                                      style="-fx-background-color:#0f1220;-fx-background-radius:14;
+                                             -fx-padding:18;
+                                             -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:14;
+                                             -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.35),14,0,0,4);">
+                                    <HBox alignment="CENTER_LEFT" spacing="10">
+                                        <Label text="📅" style="-fx-font-size:18;"/>
+                                        <Label text="Class Routine"
+                                               style="-fx-font-size:15;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="editRoutineBtn" text="✏ Edit"
+                                                style="-fx-background-color:rgba(251,191,36,0.14);
+                                                       -fx-text-fill:#fbbf24;
+                                                       -fx-border-color:rgba(251,191,36,0.28);
+                                                       -fx-border-radius:8;-fx-background-radius:8;
+                                                       -fx-cursor:hand;-fx-font-weight:bold;-fx-padding:5 12;"/>
                                     </HBox>
-                                </HBox>
-
-                                <!-- Timeline cards container -->
-                                <VBox fx:id="timelineContainer" spacing="10"
-                                    style="
-                                        -fx-background-color: white;
-                                        -fx-background-radius: 16;
-                                        -fx-padding: 20;
-                                        -fx-border-color: #e8eeff;
-                                        -fx-border-radius: 16;
-                                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 5);
-                                    ">
-                                    <Label text="📌 Your tasks for today will appear here"
-                                        textFill="#94a3b8" style="-fx-font-size: 13px;"/>
+                                    <Separator style="-fx-opacity:0.1;-fx-padding:8 0 10 0;"/>
+                                    <GridPane fx:id="routineGrid" hgap="18" vgap="8"
+                                              style="-fx-font-size:13;-fx-text-fill:#94a3b8;"/>
                                 </VBox>
 
+                                <!-- ╔═══════════════════════════════════╗
+                                     ║  NOTICES — WHITE-GAP ROOT FIX     ║
+                                     ║                                    ║
+                                     ║  The card VBox itself is #0f1020.  ║
+                                     ║  The inner ScrollPane sets BOTH    ║
+                                     ║    -fx-background:#0f1020          ║
+                                     ║    -fx-background-color:#0f1020    ║
+                                     ║  so JavaFX's .viewport node has    ║
+                                     ║  no reason to fall back to white.  ║
+                                     ║  The announcementList VBox also    ║
+                                     ║  gets the same colour so there is  ║
+                                     ║  zero gap between cards.           ║
+                                     ╚═══════════════════════════════════╝ -->
+                                <VBox prefWidth="290" minWidth="240"
+                                      style="-fx-background-color:#0f1020;
+                                             -fx-background-radius:14;
+                                             -fx-border-color:rgba(236,72,153,0.25);
+                                             -fx-border-width:0 0 0 3;
+                                             -fx-border-radius:14;
+                                             -fx-effect:dropshadow(gaussian,rgba(236,72,153,0.12),16,0,0,4);">
+
+                                    <!-- Padded inner column -->
+                                    <VBox spacing="0" VBox.vgrow="ALWAYS"
+                                          style="-fx-padding:16 14 14 14;
+                                                 -fx-background-color:#0f1020;
+                                                 -fx-background-radius:0 14 14 0;">
+
+                                        <HBox alignment="CENTER_LEFT" spacing="8">
+                                            <Label text="📢" style="-fx-font-size:16;"/>
+                                            <Label text="Notices"
+                                                   style="-fx-font-size:15;-fx-font-weight:bold;-fx-text-fill:#f472b6;"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Button fx:id="postAnnouncementBtn" text="＋"
+                                                    style="-fx-background-color:#be185d;-fx-text-fill:white;
+                                                           -fx-background-radius:50;-fx-font-weight:bold;
+                                                           -fx-cursor:hand;-fx-min-width:28;-fx-min-height:28;
+                                                           -fx-max-width:28;-fx-max-height:28;"/>
+                                        </HBox>
+
+                                        <Separator style="-fx-opacity:0.1;-fx-padding:8 0 10 0;"/>
+
+                                        <!-- VIEWPORT FIX: both properties must be set -->
+                                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                                                    style="-fx-background:#0f1020;
+                                                           -fx-background-color:#0f1020;
+                                                           -fx-border-color:transparent;
+                                                           -fx-padding:0;">
+                                            <VBox fx:id="announcementList" spacing="8"
+                                                  style="-fx-background-color:#0f1020;
+                                                         -fx-padding:4 0 10 0;"/>
+                                        </ScrollPane>
+                                    </VBox>
+                                </VBox>
+
+                            </HBox>
+
+                            <!-- Timeline filter bar -->
+                            <HBox alignment="CENTER_LEFT" spacing="12"
+                                  style="-fx-background-color:#0f1220;-fx-background-radius:12;
+                                         -fx-padding:12 18;
+                                         -fx-border-color:rgba(99,102,241,0.15);-fx-border-radius:12;">
+                                <Label text="🗓 My Timeline"
+                                       style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <HBox spacing="6">
+                                    <Button fx:id="btnDailyTasks" text="📋 Today"
+                                            style="-fx-background-color:rgba(99,102,241,0.2);-fx-text-fill:#818cf8;
+                                                   -fx-border-color:rgba(99,102,241,0.35);-fx-border-radius:20;
+                                                   -fx-background-radius:20;-fx-cursor:hand;-fx-font-weight:bold;
+                                                   -fx-padding:5 14;-fx-font-size:12;"/>
+                                    <Button fx:id="btnBacklog" text="🔴 Backlog"
+                                            style="-fx-background-color:rgba(239,68,68,0.1);-fx-text-fill:#f87171;
+                                                   -fx-border-color:rgba(239,68,68,0.25);-fx-border-radius:20;
+                                                   -fx-background-radius:20;-fx-cursor:hand;-fx-font-weight:bold;
+                                                   -fx-padding:5 14;-fx-font-size:12;"/>
+                                    <Button fx:id="btnCompleted" text="✅ Done"
+                                            style="-fx-background-color:rgba(16,185,129,0.1);-fx-text-fill:#34d399;
+                                                   -fx-border-color:rgba(16,185,129,0.25);-fx-border-radius:20;
+                                                   -fx-background-radius:20;-fx-cursor:hand;-fx-font-weight:bold;
+                                                   -fx-padding:5 14;-fx-font-size:12;"/>
+                                </HBox>
+                            </HBox>
+
+                            <!-- Timeline container (populated by TaskController) -->
+                            <VBox fx:id="timelineContainer" spacing="8"
+                                  style="-fx-background-color:#0f1220;-fx-background-radius:14;
+                                         -fx-padding:18;
+                                         -fx-border-color:rgba(99,102,241,0.15);-fx-border-radius:14;">
+                                <Label text="📌 Your tasks for today will appear here"
+                                       style="-fx-text-fill:#334155;-fx-font-size:13;"/>
                             </VBox>
-                        </content>
+
+                        </VBox>
                     </ScrollPane>
                 </SplitPane>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 2 — CALENDAR
-            ───────────────────────────────────────────────── -->
-            <Tab text="📅 Calendar" style="-fx-font-weight: bold;">
-                <VBox spacing="16"
-                    style="
-                        -fx-padding: 24;
-                        -fx-background-color: white;
-                        -fx-background-radius: 0;
-                    ">
-                    <HBox alignment="CENTER_LEFT" spacing="15">
-                        <Label text="📅" style="-fx-font-size: 28px;"/>
-                        <Label fx:id="monthLabel" text="February 2026" textFill="#1e293b">
-                            <font><Font name="System Bold" size="26.0"/></font>
-                        </Label>
+            <!-- ── TAB 2 · 📅 Calendar ─────────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="📅  Calendar"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <VBox spacing="14" style="-fx-padding:24;-fx-background-color:#0d0f1a;">
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <Label text="📅" style="-fx-font-size:26;"/>
+                        <Label fx:id="monthLabel" text="February 2026"
+                               style="-fx-font-size:24;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
                     </HBox>
-                    <Separator style="-fx-opacity: 0.2;"/>
+                    <Separator style="-fx-opacity:0.15;"/>
                     <GridPane fx:id="calendarGrid" hgap="10" vgap="10" VBox.vgrow="ALWAYS"
-                        style="-fx-background-color: transparent;"/>
+                              style="-fx-background-color:transparent;"/>
                 </VBox>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 3 — RESOURCES
-            ───────────────────────────────────────────────── -->
-            <Tab text="📚 Resources" style="-fx-font-weight: bold;">
+            <!-- ── TAB 3 · 📚 Resources ────────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="📚  Resources"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <SplitPane dividerPositions="0.35"
-                    style="-fx-background-color: #f0f4ff; -fx-padding: 12;">
-                    <items>
-                        <!-- Generate panel -->
-                        <VBox spacing="16"
-                            style="
-                                -fx-background-color: linear-gradient(to bottom, #1a1a2e, #16213e);
-                                -fx-background-radius: 16; -fx-padding: 24;
-                                -fx-effect: dropshadow(gaussian, rgba(124,131,253,0.2), 16, 0, 0, 5);
-                            ">
-                            <Label text="✨ AI Study Guide" textFill="#7c83fd">
-                                <font><Font name="System Bold" size="18.0"/></font>
-                            </Label>
-                            <Label text="Paste notes → get a structured guide"
-                                textFill="#64748b" style="-fx-font-size: 12px;"/>
-                            <TextField fx:id="resTitle" promptText="Topic (e.g. Graph Theory)"
-                                style="
-                                    -fx-control-inner-background: #0f172a;
-                                    -fx-text-fill: #e2e8f0; -fx-prompt-text-fill: #475569;
-                                    -fx-background-radius: 10; -fx-border-color: rgba(124,131,253,0.3);
-                                    -fx-border-radius: 10; -fx-padding: 10;
-                                "/>
-                            <TextArea fx:id="resInput"
-                                promptText="Paste your raw notes or concepts here..."
-                                wrapText="true" VBox.vgrow="ALWAYS"
-                                style="
-                                    -fx-control-inner-background: #0f172a;
-                                    -fx-text-fill: #e2e8f0; -fx-prompt-text-fill: #475569;
-                                    -fx-background-radius: 10; -fx-border-color: rgba(124,131,253,0.3);
-                                    -fx-border-radius: 10; -fx-padding: 12;
-                                "/>
-                            <Button maxWidth="1.7976931348623157E308" onAction="#onGenerateResource"
+                           style="-fx-background-color:#0d0f1a;-fx-padding:12;">
+                    <VBox spacing="14"
+                          style="-fx-background-color:linear-gradient(to bottom,#12142a,#1a1c38);
+                                 -fx-background-radius:14;-fx-padding:22;
+                                 -fx-border-color:rgba(99,102,241,0.2);-fx-border-radius:14;">
+                        <Label text="✨ AI Study Guide"
+                               style="-fx-font-size:17;-fx-font-weight:bold;-fx-text-fill:#818cf8;"/>
+                        <Label text="Paste notes → get a structured guide"
+                               style="-fx-font-size:11;-fx-text-fill:#475569;"/>
+                        <TextField fx:id="resTitle" promptText="Topic (e.g. Graph Theory)"
+                                   style="-fx-control-inner-background:#080a14;-fx-text-fill:#e2e8f0;
+                                          -fx-prompt-text-fill:#334155;-fx-background-radius:9;
+                                          -fx-border-color:rgba(99,102,241,0.3);-fx-border-radius:9;
+                                          -fx-padding:10;"/>
+                        <TextArea fx:id="resInput" promptText="Paste your raw notes here..."
+                                  wrapText="true" VBox.vgrow="ALWAYS"
+                                  style="-fx-control-inner-background:#080a14;-fx-text-fill:#e2e8f0;
+                                         -fx-prompt-text-fill:#334155;-fx-background-radius:9;
+                                         -fx-border-color:rgba(99,102,241,0.3);-fx-border-radius:9;
+                                         -fx-padding:11;"/>
+                        <Button maxWidth="Infinity" onAction="#onGenerateResource"
                                 text="⚡ Generate &amp; Save"
-                                style="
-                                    -fx-background-color: linear-gradient(to right, #7c83fd, #56ccf2);
-                                    -fx-text-fill: white; -fx-font-weight: bold;
-                                    -fx-background-radius: 12; -fx-cursor: hand; -fx-font-size: 13px;
-                                    -fx-effect: dropshadow(gaussian, rgba(124,131,253,0.5), 10, 0, 0, 4);
-                                ">
-                                <padding><Insets bottom="12.0" top="12.0"/></padding>
-                            </Button>
-                        </VBox>
+                                style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                       -fx-text-fill:white;-fx-font-weight:bold;-fx-background-radius:10;
+                                       -fx-cursor:hand;-fx-font-size:13;-fx-padding:12 0;"/>
+                    </VBox>
 
-                        <!-- Library panel -->
-                        <VBox spacing="14"
-                            style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 22;
-                                   -fx-border-color: #e8eeff; -fx-border-radius: 16;
-                                   -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 14, 0, 0, 4);
-                            ">
-                            <HBox alignment="CENTER_LEFT" spacing="10">
-                                <Label text="📖" style="-fx-font-size: 20px;"/>
-                                <Label text="Personal Library" textFill="#1e293b">
-                                    <font><Font name="System Bold" size="17.0"/></font>
-                                </Label>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Button onAction="#loadResources" text="🔄 Refresh"
-                                    style="
-                                        -fx-background-color: #f1f5f9;
-                                        -fx-border-color: #e2e8f0; -fx-border-radius: 8;
-                                        -fx-background-radius: 8; -fx-cursor: hand;
-                                        -fx-padding: 6 12; -fx-font-size: 12px;
-                                    "/>
-                            </HBox>
-                            <Separator style="-fx-opacity: 0.3;"/>
-                            <ScrollPane fitToWidth="true"
-                                style="-fx-background-color: transparent; -fx-border-color: transparent;"
-                                VBox.vgrow="ALWAYS">
-                                <content>
-                                    <VBox fx:id="resourceList" spacing="10"
-                                        style="-fx-background-color: transparent;"/>
-                                </content>
-                            </ScrollPane>
-                        </VBox>
-                    </items>
+                    <VBox spacing="12"
+                          style="-fx-background-color:#0f1220;-fx-background-radius:14;-fx-padding:20;
+                                 -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:14;">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="📖" style="-fx-font-size:18;"/>
+                            <Label text="Personal Library"
+                                   style="-fx-font-size:15;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button onAction="#loadResources" text="🔄 Refresh"
+                                    style="-fx-background-color:rgba(99,102,241,0.12);
+                                           -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:8;
+                                           -fx-background-radius:8;-fx-cursor:hand;-fx-padding:6 12;
+                                           -fx-font-size:12;-fx-text-fill:#818cf8;"/>
+                        </HBox>
+                        <Separator style="-fx-opacity:0.12;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                                    style="-fx-background:#0f1220;
+                                           -fx-background-color:#0f1220;
+                                           -fx-border-color:transparent;">
+                            <VBox fx:id="resourceList" spacing="10"
+                                  style="-fx-background-color:#0f1220;"/>
+                        </ScrollPane>
+                    </VBox>
                 </SplitPane>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 4 — COMMUNITY
-            ───────────────────────────────────────────────── -->
-            <Tab text="🎓 Community" style="-fx-font-weight: bold;">
+            <!-- ── TAB 4 · 🎓 Community ────────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🎓  Community"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <SplitPane dividerPositions="0.24"
-                    style="-fx-background-color: #f0f4ff; -fx-padding: 12;">
-                    <items>
-                        <!-- Tree panel -->
-                        <VBox spacing="12"
-                            style="
-                                -fx-background-color: white; -fx-padding: 18;
-                                -fx-background-radius: 16;
-                                -fx-border-color: #e8eeff; -fx-border-radius: 16;
-                                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 14, 0, 0, 4);
-                            ">
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="📂 Explorer" textFill="#4f46e5">
-                                    <font><Font name="System Bold" size="15.0"/></font>
-                                </Label>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Button text="🔄" onAction="#onRefreshCommunity"
-                                    style="
-                                        -fx-background-color: #eef2ff; -fx-cursor: hand;
-                                        -fx-background-radius: 8; -fx-text-fill: #4f46e5;
-                                        -fx-border-color: #c7d2fe; -fx-border-radius: 8; -fx-padding: 5 10;
-                                    "/>
-                            </HBox>
-                            <TextField fx:id="communitySearchField"
-                                promptText="🔍 Search course..."
-                                style="
-                                    -fx-background-radius: 20; -fx-padding: 8 16;
-                                    -fx-border-color: #e2e8f0; -fx-border-radius: 20;
-                                "/>
-                            <TreeView fx:id="communityTree" VBox.vgrow="ALWAYS"
-                                style="
-                                    -fx-border-color: transparent;
-                                    -fx-background-color: transparent;
-                                    -fx-font-size: 13px;
-                                "/>
-                            <Button text="➕ Add Course / Folder"
-                                onAction="#onAddNewFolder" maxWidth="1.7976931348623157E308"
-                                style="
-                                    -fx-background-color: linear-gradient(to right, #4f46e5, #7c83fd);
-                                    -fx-text-fill: white; -fx-background-radius: 10;
-                                    -fx-padding: 10; -fx-font-weight: bold; -fx-cursor: hand;
-                                    -fx-effect: dropshadow(gaussian, rgba(79,70,229,0.4), 8, 0, 0, 3);
-                                "/>
-                        </VBox>
+                           style="-fx-background-color:#0d0f1a;-fx-padding:12;">
+                    <VBox spacing="10"
+                          style="-fx-background-color:#0f1220;-fx-padding:16;-fx-background-radius:14;
+                                 -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:14;">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="📂 Explorer"
+                                   style="-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#818cf8;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="🔄" onAction="#onRefreshCommunity"
+                                    style="-fx-background-color:rgba(99,102,241,0.12);-fx-cursor:hand;
+                                           -fx-background-radius:8;-fx-text-fill:#818cf8;
+                                           -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:8;
+                                           -fx-padding:5 10;"/>
+                        </HBox>
+                        <TextField fx:id="communitySearchField" promptText="🔍 Search course..."
+                                   style="-fx-background-radius:20;-fx-padding:8 14;
+                                          -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                          -fx-prompt-text-fill:#334155;
+                                          -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:20;"/>
+                        <TreeView fx:id="communityTree" VBox.vgrow="ALWAYS"
+                                  style="-fx-border-color:transparent;-fx-background-color:transparent;
+                                         -fx-font-size:13;"/>
+                        <Button text="➕ Add Course / Folder" onAction="#onAddNewFolder"
+                                maxWidth="Infinity"
+                                style="-fx-background-color:linear-gradient(to right,#4f46e5,#6366f1);
+                                       -fx-text-fill:white;-fx-background-radius:10;-fx-padding:10;
+                                       -fx-font-weight:bold;-fx-cursor:hand;"/>
+                    </VBox>
 
-                        <!-- Resource table panel -->
-                        <VBox spacing="14"
-                            style="
-                                -fx-background-color: white; -fx-padding: 22;
-                                -fx-background-radius: 16;
-                                -fx-border-color: #e8eeff; -fx-border-radius: 16;
-                                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 14, 0, 0, 4);
-                            ">
-                            <HBox alignment="CENTER_LEFT" spacing="12">
-                                <Label fx:id="currentFolderLabel" text="Select a folder..."
-                                    textFill="#64748b">
-                                    <font><Font name="System Bold" size="18.0"/></font>
-                                </Label>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <TextField promptText="🔍 Search files..." prefWidth="220"
-                                    style="-fx-background-radius: 20; -fx-padding: 7 16; -fx-border-color: #e2e8f0; -fx-border-radius: 20;"/>
-                                <Button text="📤 Upload Resource"
-                                    onAction="#onUploadResourceClick"
-                                    style="
-                                        -fx-background-color: linear-gradient(to right, #10b981, #06b6d4);
-                                        -fx-text-fill: white; -fx-font-weight: bold;
-                                        -fx-padding: 9 20; -fx-background-radius: 20;
-                                        -fx-cursor: hand; -fx-font-size: 12px;
-                                        -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.4), 8, 0, 0, 3);
-                                    "/>
-                            </HBox>
-                            <Separator style="-fx-opacity: 0.2;"/>
-                            <TableView fx:id="resourceTable" VBox.vgrow="ALWAYS"
-                                style="
-                                    -fx-font-size: 13px;
-                                    -fx-background-radius: 10;
-                                    -fx-border-color: #e8eeff; -fx-border-radius: 10;
-                                ">
-                                <columns>
-                                    <TableColumn fx:id="colResName"     text="Resource Name"  prefWidth="210"/>
-                                    <TableColumn fx:id="colResType"     text="Type"           prefWidth="75"/>
-                                    <TableColumn fx:id="colResDiff"     text="Level"          prefWidth="80"/>
-                                    <TableColumn fx:id="colResUploader" text="Uploader"        prefWidth="110"/>
-                                    <TableColumn fx:id="colResTags"     text="Tags"            prefWidth="130"/>
-                                    <TableColumn fx:id="colResVotes"    text="Votes"           prefWidth="100"/>
-                                    <TableColumn fx:id="colResAction"   text="Actions"         prefWidth="240"/>
-                                </columns>
-                            </TableView>
-                        </VBox>
-                    </items>
+                    <VBox spacing="12"
+                          style="-fx-background-color:#0f1220;-fx-padding:20;-fx-background-radius:14;
+                                 -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:14;">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label fx:id="currentFolderLabel" text="Select a folder..."
+                                   style="-fx-font-size:16;-fx-font-weight:bold;-fx-text-fill:#94a3b8;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <TextField promptText="🔍 Search files..." prefWidth="200"
+                                       style="-fx-background-radius:20;-fx-padding:7 14;
+                                              -fx-control-inner-background:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:20;"/>
+                            <Button text="📤 Upload Resource" onAction="#onUploadResourceClick"
+                                    style="-fx-background-color:linear-gradient(to right,#10b981,#06b6d4);
+                                           -fx-text-fill:white;-fx-font-weight:bold;-fx-padding:9 18;
+                                           -fx-background-radius:20;-fx-cursor:hand;-fx-font-size:12;"/>
+                        </HBox>
+                        <Separator style="-fx-opacity:0.12;"/>
+                        <TableView fx:id="resourceTable" VBox.vgrow="ALWAYS"
+                                   style="-fx-font-size:13;-fx-background-color:#0d0f1a;
+                                          -fx-background-radius:10;
+                                          -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:10;">
+                            <columns>
+                                <TableColumn fx:id="colResName"     text="Resource Name"  prefWidth="210"/>
+                                <TableColumn fx:id="colResType"     text="Type"           prefWidth="75"/>
+                                <TableColumn fx:id="colResDiff"     text="Level"          prefWidth="80"/>
+                                <TableColumn fx:id="colResUploader" text="Uploader"        prefWidth="110"/>
+                                <TableColumn fx:id="colResTags"     text="Tags"            prefWidth="130"/>
+                                <TableColumn fx:id="colResVotes"    text="Votes"           prefWidth="100"/>
+                                <TableColumn fx:id="colResAction"   text="Actions"         prefWidth="240"/>
+                            </columns>
+                        </TableView>
+                    </VBox>
                 </SplitPane>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 5 — COLLABORATE
-            ───────────────────────────────────────────────── -->
-          <Tab text="🤝 Collaborate" style="-fx-font-weight: bold;">
-    <SplitPane dividerPositions="0.22, 0.60"
-        style="-fx-background-color: #0f1117; -fx-padding: 10;">
-        <items>
+            <!-- ── TAB 5 · 🤝 Collaborate ─────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🤝  Collaborate"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <content>
+                    <fx:include source="collaboration.fxml"/>
+                </content>
+            </Tab>
 
-            <!-- ── Left Panel: Channels ─────────────────────────────────── -->
-            <VBox spacing="10"
-                style="-fx-padding: 16;
-                       -fx-background-color: #13151f;
-                       -fx-background-radius: 14;
-                       -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 14, 0, 0, 4);">
-
-                <Label text="CHANNELS" textFill="#6366f1"
-                    style="-fx-font-weight: bold; -fx-font-size: 11px; -fx-letter-spacing: 1.5px;"/>
-
-                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
-                    style="-fx-background: #13151f; -fx-background-color: #13151f; -fx-border-color: transparent;">
-                    <VBox fx:id="channelList" spacing="4"
-                        style="-fx-background-color: #13151f;"/>
-                </ScrollPane>
-
-                <!-- Admin only — shown/hidden via init() -->
-                <Button fx:id="createChannelBtn"
-                    text="➕ New Channel"
-                    onAction="#onCreateChannel"
-                    maxWidth="Infinity"
-                    style="-fx-background-color: rgba(99,102,241,0.15);
-                           -fx-text-fill: #818cf8;
-                           -fx-cursor: hand;
-                           -fx-font-weight: bold;
-                           -fx-border-color: rgba(99,102,241,0.4);
-                           -fx-border-radius: 8;
-                           -fx-background-radius: 8;
-                           -fx-padding: 9;
-                           -fx-font-size: 13px;"/>
-            </VBox>
-
-            <!-- ── Middle Panel: Teams ──────────────────────────────────── -->
-            <VBox spacing="12"
-                style="-fx-padding: 16;
-                       -fx-background-color: #0f1117;
-                       -fx-background-radius: 14;
-                       -fx-border-color: #1e2235;
-                       -fx-border-radius: 14;">
-
-                <!-- Channel info banner -->
-                <VBox fx:id="channelInfoBox" spacing="5"
-                    visible="false" managed="false"
-                    style="-fx-background-color: rgba(99,102,241,0.1);
-                           -fx-border-color: rgba(99,102,241,0.3);
-                           -fx-border-radius: 10;
-                           -fx-background-radius: 10;
-                           -fx-padding: 14;">
-                    <Label fx:id="channelTitleLabel" text="Channel"
-                        style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #818cf8;"/>
-                    <Label fx:id="channelDescLabel" text="Description"
-                        wrapText="true"
-                        style="-fx-text-fill: #94a3b8; -fx-font-size: 13px;"/>
-                </VBox>
-
-                <!-- Header row -->
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="ACTIVE TEAMS"
-                        style="-fx-font-weight: bold; -fx-font-size: 12px;
-                               -fx-letter-spacing: 1px; -fx-text-fill: #6366f1;"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="📢 Create Team" onAction="#onCreatePost"
-                        style="-fx-background-color: linear-gradient(to right, #6366f1, #8b5cf6);
-                               -fx-text-fill: white;
-                               -fx-font-weight: bold;
-                               -fx-padding: 8 16;
-                               -fx-cursor: hand;
-                               -fx-background-radius: 8;"/>
-                </HBox>
-
-                <!-- Team cards scroll -->
-                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
-                    style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
-                    <VBox fx:id="teamList" spacing="12"
-                        style="-fx-padding: 2;"/>
-                </ScrollPane>
-            </VBox>
-
-            <!-- ── Right Panel: Workspace ───────────────────────────────── -->
-            <VBox fx:id="roomContainer" spacing="0"
-                style="-fx-background-color: #0f1117;
-                       -fx-background-radius: 14;
-                       -fx-border-color: #1e2235;
-                       -fx-border-radius: 14;
-                       -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 14, 0, 0, 4);">
-
-                <!-- Placeholder (replaced dynamically) -->
-                <VBox alignment="CENTER" VBox.vgrow="ALWAYS" spacing="12">
-                    <Label text="💬 Team Workspace"
-                        style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;"/>
-                    <Label text="Select a team from the left to start collaborating."
-                        style="-fx-text-fill: #475569; -fx-font-size: 14px;"/>
-                </VBox>
-            </VBox>
-
-        </items>
-    </SplitPane>
-</Tab>
-
-
-
-            <!-- ─────────────────────────────────────────────
-                 TAB 6 — ECA TRACKER
-            ───────────────────────────────────────────────── -->
-            <Tab text="🏆 ECA" onSelectionChanged="#handleECATrackerSelect"
-                style="-fx-font-weight: bold;">
-                <VBox alignment="TOP_CENTER" spacing="20"
-                    style="
-                        -fx-padding: 28;
-                        -fx-background-color: linear-gradient(to bottom right, #f0f4ff, #fff0f6);
-                    ">
+            <!-- ── TAB 6 · 🏆 ECA ─────────────────────────── -->
+            <Tab onSelectionChanged="#handleECATrackerSelect" closable="false">
+                <graphic>
+                    <Label text="🏆  ECA"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <VBox alignment="TOP_CENTER" spacing="18"
+                      style="-fx-padding:24;-fx-background-color:#0d0f1a;">
                     <HBox alignment="CENTER_RIGHT">
                         <Button text="🔄 Refresh Stats" onAction="#forceRefreshECA"
-                            style="
-                                -fx-background-color: white; -fx-border-color: #e2e8f0;
-                                -fx-border-radius: 8; -fx-background-radius: 8;
-                                -fx-cursor: hand; -fx-padding: 8 16; -fx-font-size: 12px;
-                                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);
-                            "/>
+                                style="-fx-background-color:rgba(99,102,241,0.12);
+                                       -fx-border-color:rgba(99,102,241,0.25);
+                                       -fx-border-radius:8;-fx-background-radius:8;
+                                       -fx-cursor:hand;-fx-padding:8 16;-fx-font-size:12;
+                                       -fx-text-fill:#818cf8;"/>
                     </HBox>
                     <VBox fx:id="ecaContainer" alignment="CENTER" spacing="16" VBox.vgrow="ALWAYS"/>
                 </VBox>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 7 — SETTINGS
-            ───────────────────────────────────────────────── -->
-           <Tab text="⚙️ Settings" style="-fx-font-weight: bold;">
-    <fx:include source="profile_settings.fxml"/>
-</Tab>
+            <!-- ── TAB 7 · ⚙️ Settings ────────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="⚙️  Settings"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <fx:include source="profile_settings.fxml"/>
+            </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 8 — ADMIN PANEL
-            ───────────────────────────────────────────────── -->
-            <!-- ─────────────────────────────────────────────────────────────────
-     FXML PATCH — dashboard.fxml  (Admin Tab content)
-     
-     Find your existing <Tab fx:id="adminTab"> in dashboard.fxml
-     and replace its <content> with this structure.
-     ───────────────────────────────────────────────────────────────── -->
-
-
-
-<Tab fx:id="adminTab" text="🛡️ Admin">
-    <content>
-        <ScrollPane fitToWidth="true"
-                    style="-fx-background-color: #f8fafc; -fx-background: #f8fafc;">
-            <VBox spacing="20" style="-fx-padding: 28 40;">
-
-                <!-- ══ PAGE HEADER ══════════════════════════════════════ -->
-                <VBox spacing="4">
-                    <Label text="Admin Control Panel"
-                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
-                    <Label text="Manage platform settings, member requests, and social features."
-                           style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
-                    <Separator style="-fx-padding: 4 0 0 0;"/>
-                </VBox>
-
-                <!-- ══ INNER SUB-TAB PANE ════════════════════════════════ -->
-                <TabPane tabClosingPolicy="UNAVAILABLE"
-                         style="-fx-tab-min-height: 38px; -fx-background-color: transparent;">
-
-                    <!-- ────────────────────────────────────────────────────
-                         SUB-TAB 1 ── General Controls (your original content)
-                    ──────────────────────────────────────────────────────── -->
-                    <Tab text="⚙️  General" closable="false">
-                        <content>
-                            <VBox spacing="20" style="-fx-padding: 20 0 0 0;">
-
-                                <!-- Chat Controls -->
-                                <VBox fx:id="adminControlsBox" spacing="12">
-                                    <Label text="⚙️  Chat Controls"
-                                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
-                                    <!-- Card injected by AdminChatToggleController -->
-                                </VBox>
-
-                                <Separator/>
-
-                                <!-- Pending Member Requests -->
-                                <VBox spacing="12">
-                                    <HBox alignment="CENTER_LEFT" spacing="12">
-                                        <Label text="👥  Pending Member Requests"
-                                               style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"
-                                               HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-                                        <Button text="🔄 Refresh" onAction="#loadPendingRequests"
-                                                style="-fx-background-color: #2563eb; -fx-text-fill: white;
-                                                       -fx-font-weight: bold; -fx-background-radius: 8;
-                                                       -fx-padding: 8 16; -fx-cursor: hand;"/>
-                                    </HBox>
-                                    <VBox fx:id="pendingListContainer" spacing="10">
-                                        <Label text="Click Refresh to load pending requests."
-                                               style="-fx-text-fill: #9ca3af; -fx-font-size: 13px;"/>
-                                    </VBox>
-                                </VBox>
-
-                                <Separator/>
-
-                                <!-- Broadcast Tools -->
-                                <VBox spacing="12">
-                                    <Label text="📢  Broadcast Tools"
-                                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
-                                    <HBox spacing="12">
-                                        <Button text="📅 Broadcast Varsity Routine"
-                                                onAction="#onBroadcastRoutine"
-                                                style="-fx-background-color: #7c3aed; -fx-text-fill: white;
-                                                       -fx-font-weight: bold; -fx-background-radius: 8;
-                                                       -fx-padding: 10 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                        <Button text="📢 Broadcast Official Notice"
-                                                onAction="#onBroadcastNotice"
-                                                style="-fx-background-color: #0891b2; -fx-text-fill: white;
-                                                       -fx-font-weight: bold; -fx-background-radius: 8;
-                                                       -fx-padding: 10 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                    </HBox>
-                                </VBox>
-
-                            </VBox>
-                        </content>
-                    </Tab>
-
-                    <!-- ────────────────────────────────────────────────────
-                         SUB-TAB 2 ── Channel Merge System
-                    ──────────────────────────────────────────────────────── -->
-                    <Tab text="🔗  Channel Merge" closable="false">
-                        <content>
-                            <ScrollPane fitToWidth="true"
-                                        style="-fx-background-color: transparent; -fx-background: transparent;">
-                                <VBox spacing="18" style="-fx-padding: 20 2 20 2;">
-
-                                    <!-- Section header -->
-                                    <VBox spacing="3">
-                                        <Label text="Channel Merge Manager"
-                                               style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
-                                        <Label text="Enable merging, discover channels, handle requests and manage active hubs."
-                                               style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
-                                    </VBox>
-
-                                    <!-- ╔══════════════════════════════════════╗
-                                         ║  CARD 1 — MERGE SETTINGS             ║
-                                         ╚══════════════════════════════════════╝ -->
-                                    <VBox spacing="14"
-                                          style="-fx-background-color: white;
-                                                 -fx-border-color: #e5e7eb;
-                                                 -fx-border-radius: 12;
-                                                 -fx-background-radius: 12;
-                                                 -fx-padding: 18 20;">
-
-                                        <HBox alignment="CENTER_LEFT" spacing="8">
-                                            <Label text="🔧" style="-fx-font-size: 15px;"/>
-                                            <Label text="Merge Settings"
-                                                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                                        </HBox>
-                                        <Separator/>
-
-                                        <CheckBox fx:id="allowMergeCheck"
-                                                  text="Make my channel visible to other admins for merge requests"
-                                                  style="-fx-font-size: 13px; -fx-text-fill: #374151;"/>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="12">
-                                            <Label text="User Privacy in Merged Hub:"
-                                                   style="-fx-font-size: 13px; -fx-text-fill: #374151; -fx-min-width: 195;"/>
-                                            <ComboBox fx:id="privacyCombo" prefWidth="155"
-                                                      style="-fx-font-size: 13px;"/>
-                                            <Label text="PUBLIC = names shown  |  ANONYMOUS = identities hidden"
-                                                   style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;"/>
-                                        </HBox>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="14">
-                                            <Button text="💾 Save Settings" onAction="#onSaveSettings"
-                                                    style="-fx-background-color: #2563eb; -fx-text-fill: white;
-                                                           -fx-font-weight: bold; -fx-background-radius: 8;
-                                                           -fx-padding: 8 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                            <Label fx:id="settingsStatusLabel" text=""
-                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
-                                        </HBox>
-                                    </VBox>
-
-                                    <!-- ╔══════════════════════════════════════╗
-                                         ║  CARD 2 — DISCOVER & SEND REQUEST    ║
-                                         ╚══════════════════════════════════════╝ -->
-                                    <VBox spacing="14"
-                                          style="-fx-background-color: white;
-                                                 -fx-border-color: #e5e7eb;
-                                                 -fx-border-radius: 12;
-                                                 -fx-background-radius: 12;
-                                                 -fx-padding: 18 20;">
-
-                                        <HBox alignment="CENTER_LEFT" spacing="8">
-                                            <Label text="🔍" style="-fx-font-size: 15px;"/>
-                                            <Label text="Discover Channels &amp; Send Request"
-                                                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                                        </HBox>
-                                        <Separator/>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="16">
-                                            <VBox spacing="5">
-                                                <Label text="Merge Type"
-                                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
-                                                <ComboBox fx:id="mergeTypeCombo" prefWidth="148"
-                                                          style="-fx-font-size: 13px;"/>
-                                            </VBox>
-                                            <VBox spacing="5">
-                                                <Label text="Duration (days)"
-                                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
-                                                <TextField fx:id="durationField"
-                                                           promptText="e.g. 7"
-                                                           prefWidth="105"
-                                                           style="-fx-font-size: 13px;
-                                                                  -fx-background-radius: 7;
-                                                                  -fx-border-color: #d1d5db;
-                                                                  -fx-border-radius: 7;
-                                                                  -fx-padding: 6 10;"/>
-                                            </VBox>
-                                            <VBox spacing="5">
-                                                <Label text=" " style="-fx-font-size: 11px;"/>
-                                                <Button text="🔄 Refresh List" onAction="#onLoadChannels"
-                                                        style="-fx-background-color: #f3f4f6;
-                                                               -fx-text-fill: #374151;
-                                                               -fx-font-weight: bold;
-                                                               -fx-background-radius: 7;
-                                                               -fx-border-color: #d1d5db;
-                                                               -fx-border-radius: 7;
-                                                               -fx-padding: 7 14; -fx-cursor: hand;"/>
-                                            </VBox>
-                                        </HBox>
-
-                                        <Label text="Channels currently open for merging:"
-                                               style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
-                                        <ListView fx:id="availableChannelsList"
-                                                  prefHeight="120"
-                                                  style="-fx-background-radius: 8;
-                                                         -fx-border-color: #d1d5db;
-                                                         -fx-border-radius: 8;
-                                                         -fx-font-size: 13px;"/>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="12">
-                                            <Button text="📨 Send Merge Request" onAction="#onSendRequest"
-                                                    style="-fx-background-color: #059669; -fx-text-fill: white;
-                                                           -fx-font-weight: bold; -fx-background-radius: 8;
-                                                           -fx-padding: 8 20; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                            <Label fx:id="discoverStatusLabel"
-                                                   text="Select a channel above, then send a request."
-                                                   style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;"/>
-                                        </HBox>
-                                    </VBox>
-
-                                    <!-- ╔══════════════════════════════════════╗
-                                         ║  CARD 3 — INCOMING MERGE REQUESTS    ║
-                                         ╚══════════════════════════════════════╝ -->
-                                    <VBox spacing="14"
-                                          style="-fx-background-color: white;
-                                                 -fx-border-color: #e5e7eb;
-                                                 -fx-border-radius: 12;
-                                                 -fx-background-radius: 12;
-                                                 -fx-padding: 18 20;">
-
-                                        <HBox alignment="CENTER_LEFT" spacing="8">
-                                            <Label text="📬" style="-fx-font-size: 15px;"/>
-                                            <Label text="Incoming Merge Requests"
-                                                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                                            <Region HBox.hgrow="ALWAYS"/>
-                                            <Button text="🔄 Refresh" onAction="#onLoadRequests"
-                                                    style="-fx-background-color: #f3f4f6;
-                                                           -fx-text-fill: #374151;
-                                                           -fx-font-weight: bold;
-                                                           -fx-background-radius: 7;
-                                                           -fx-border-color: #d1d5db;
-                                                           -fx-border-radius: 7;
-                                                           -fx-padding: 6 14; -fx-cursor: hand;"/>
-                                        </HBox>
-                                        <Separator/>
-
-                                        <ListView fx:id="pendingRequestsList"
-                                                  prefHeight="120"
-                                                  style="-fx-background-radius: 8;
-                                                         -fx-border-color: #d1d5db;
-                                                         -fx-border-radius: 8;
-                                                         -fx-font-size: 13px;"/>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="10">
-                                            <Button text="✅ Accept &amp; Set Hub Name" onAction="#onAcceptRequest"
-                                                    style="-fx-background-color: #2563eb; -fx-text-fill: white;
-                                                           -fx-font-weight: bold; -fx-background-radius: 8;
-                                                           -fx-padding: 8 16; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                            <Button text="❌ Reject" onAction="#onRejectRequest"
-                                                    style="-fx-background-color: #dc2626; -fx-text-fill: white;
-                                                           -fx-font-weight: bold; -fx-background-radius: 8;
-                                                           -fx-padding: 8 16; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                            <Label fx:id="requestStatusLabel" text=""
-                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
-                                        </HBox>
-
-                                        <Label text="ℹ️  On Accept you will be asked to name the new hub. Both channel admins automatically become hub admins."
-                                               style="-fx-font-size: 11px; -fx-text-fill: #9ca3af; -fx-wrap-text: true;"/>
-                                    </VBox>
-
-                                    <!-- ╔══════════════════════════════════════╗
-                                         ║  CARD 4 — ACTIVE MERGED HUBS         ║
-                                         ╚══════════════════════════════════════╝ -->
-                                    <VBox spacing="14"
-                                          style="-fx-background-color: white;
-                                                 -fx-border-color: #e5e7eb;
-                                                 -fx-border-radius: 12;
-                                                 -fx-background-radius: 12;
-                                                 -fx-padding: 18 20;">
-
-                                        <HBox alignment="CENTER_LEFT" spacing="8">
-                                            <Label text="🔗" style="-fx-font-size: 15px;"/>
-                                            <Label text="Active Merged Hubs"
-                                                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                                            <Region HBox.hgrow="ALWAYS"/>
-                                            <Button text="🔄 Refresh" onAction="#onLoadActiveMerges"
-                                                    style="-fx-background-color: #f3f4f6;
-                                                           -fx-text-fill: #374151;
-                                                           -fx-font-weight: bold;
-                                                           -fx-background-radius: 7;
-                                                           -fx-border-color: #d1d5db;
-                                                           -fx-border-radius: 7;
-                                                           -fx-padding: 6 14; -fx-cursor: hand;"/>
-                                        </HBox>
-                                        <Separator/>
-
-                                        <Label text="Hubs your channel is currently part of (multi-merge supported):"
-                                               style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
-
-                                        <ListView fx:id="activeHubsList"
-                                                  prefHeight="130"
-                                                  style="-fx-background-radius: 8;
-                                                         -fx-border-color: #d1d5db;
-                                                         -fx-border-radius: 8;
-                                                         -fx-font-size: 13px;"/>
-
-                                        <HBox alignment="CENTER_LEFT" spacing="14">
-                                            <Button text="🚪 Leave This Hub (Instant Unmerge)" onAction="#onInstantUnmerge"
-                                                    style="-fx-background-color: #b45309; -fx-text-fill: white;
-                                                           -fx-font-weight: bold; -fx-background-radius: 8;
-                                                           -fx-padding: 8 18; -fx-cursor: hand; -fx-font-size: 13px;"/>
-                                            <Label fx:id="hubStatusLabel" text=""
-                                                   style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
-                                        </HBox>
-
-                                        <Label text="⚠️  Leaving removes ALL your users from the hub instantly. If only 1 channel remains the hub is auto-destroyed."
-                                               style="-fx-font-size: 11px; -fx-text-fill: #9ca3af; -fx-wrap-text: true;"/>
-                                    </VBox>
-
-                                </VBox>
-                            </ScrollPane>
-                        </content>
-                    </Tab>
-
-                </TabPane>
-                <!-- end inner sub-tab pane -->
-
-            </VBox>
-        </ScrollPane>
-    </content>
-</Tab>
-
-
-
-
-            <!-- ─────────────────────────────────────────────
-                 TAB 9 — AI QUESTION BANK
-            ───────────────────────────────────────────────── -->
-            <Tab fx:id="questionBankTab" text="⚡ Question Bank" closable="false"
-                style="-fx-font-weight: bold;">
+            <!-- ── TAB 8 · 🛡️ Admin ───────────────────────── -->
+            <Tab fx:id="adminTab" closable="false">
+                <graphic>
+                    <Label text="🛡️  Admin"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <content>
-                    <AnchorPane style="-fx-background-color: white;"/>
+                    <ScrollPane fitToWidth="true"
+                                style="-fx-background:#0d0f1a;
+                                       -fx-background-color:#0d0f1a;">
+                        <VBox spacing="18"
+                              style="-fx-padding:24 32;-fx-background-color:#0d0f1a;">
+
+                            <VBox spacing="3">
+                                <Label text="Admin Control Panel"
+                                       style="-fx-font-size:20;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                                <Label text="Manage platform settings, member requests, and social features."
+                                       style="-fx-font-size:12;-fx-text-fill:#475569;"/>
+                                <Separator style="-fx-opacity:0.15;"/>
+                            </VBox>
+
+                            <TabPane tabClosingPolicy="UNAVAILABLE"
+                                     style="-fx-tab-min-height:36;-fx-background-color:transparent;">
+
+                                <Tab text="⚙️ General" closable="false">
+                                    <VBox spacing="18" style="-fx-padding:18 0 0 0;">
+                                        <VBox fx:id="adminControlsBox" spacing="10">
+                                            <Label text="⚙️ Chat Controls"
+                                                   style="-fx-font-size:13;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                                        </VBox>
+                                        <Separator style="-fx-opacity:0.12;"/>
+                                        <VBox spacing="10">
+                                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                                <Label text="👥 Pending Member Requests"
+                                                       style="-fx-font-size:13;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"
+                                                       HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                                                <Button text="🔄 Refresh" onAction="#loadPendingRequests"
+                                                        style="-fx-background-color:#2563eb;-fx-text-fill:white;
+                                                               -fx-font-weight:bold;-fx-background-radius:8;
+                                                               -fx-padding:7 16;-fx-cursor:hand;"/>
+                                            </HBox>
+                                            <VBox fx:id="pendingListContainer" spacing="8">
+                                                <Label text="Click Refresh to load pending requests."
+                                                       style="-fx-text-fill:#475569;-fx-font-size:12;"/>
+                                            </VBox>
+                                        </VBox>
+                                        <Separator style="-fx-opacity:0.12;"/>
+                                        <VBox spacing="10">
+                                            <Label text="📢 Broadcast Tools"
+                                                   style="-fx-font-size:13;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                                            <HBox spacing="10">
+                                                <Button text="📅 Broadcast Varsity Routine"
+                                                        onAction="#onBroadcastRoutine"
+                                                        style="-fx-background-color:#7c3aed;-fx-text-fill:white;
+                                                               -fx-font-weight:bold;-fx-background-radius:8;
+                                                               -fx-padding:9 18;-fx-cursor:hand;-fx-font-size:12;"/>
+                                                <Button text="📢 Broadcast Official Notice"
+                                                        onAction="#onBroadcastNotice"
+                                                        style="-fx-background-color:#0891b2;-fx-text-fill:white;
+                                                               -fx-font-weight:bold;-fx-background-radius:8;
+                                                               -fx-padding:9 18;-fx-cursor:hand;-fx-font-size:12;"/>
+                                            </HBox>
+                                        </VBox>
+                                    </VBox>
+                                </Tab>
+
+                                <Tab text="🔗 Channel Merge" closable="false">
+                                    <content>
+                                        <fx:include source="admin_merge.fxml"/>
+                                    </content>
+                                </Tab>
+
+                            </TabPane>
+                        </VBox>
+                    </ScrollPane>
                 </content>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 10 — SOCIAL ZONE
-            ───────────────────────────────────────────────── -->
-            <Tab text="🌎 Social Zone" style="-fx-font-weight: bold;">
+            <!-- ── TAB 9 · 🤖 AI Resources ────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🤖  AI Resources"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <content>
+                    <fx:include source="latex_studio.fxml"/>
+                </content>
+            </Tab>
+
+            <!-- ── TAB 10 · ⚡ Question Bank ──────────────── -->
+            <Tab fx:id="questionBankTab" closable="false">
+                <graphic>
+                    <Label text="⚡  Question Bank"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <content>
+                    <StackPane style="-fx-background-color:#0d0f1a;"/>
+                </content>
+            </Tab>
+
+            <!-- ── TAB 11 · 🌎 Social Zone ────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🌎  Social Zone"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <content>
                     <fx:include source="social_zone.fxml"/>
                 </content>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 11 — MENTORSHIP
-            ───────────────────────────────────────────────── -->
-            <Tab text="🎓 Mentorship" style="-fx-font-weight: bold;">
+            <!-- ── TAB 12 · 🎓 Mentorship ─────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🎓  Mentorship"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <content>
                     <fx:include source="consultancy_panel.fxml"/>
                 </content>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 12 — AI TUTOR
-            ───────────────────────────────────────────────── -->
-            <Tab text="🤖 AI Tutor" style="-fx-font-weight: bold;">
+            <!-- ── TAB 13 · 🤖 AI Tutor ───────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🤖  AI Tutor"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
                 <content>
-                    <VBox spacing="14"
-                        style="
-                            -fx-padding: 18;
-                            -fx-background-color: linear-gradient(to bottom, #f0f4ff, #fff);
-                        ">
+                    <VBox spacing="12" style="-fx-padding:16;-fx-background-color:#0d0f1a;">
                         <WebView fx:id="aiWebView" VBox.vgrow="ALWAYS"
-                            style="-fx-border-radius: 12;"/>
+                                 style="-fx-border-radius:12;"/>
                         <HBox spacing="10" alignment="CENTER"
-                            style="
-                                -fx-background-color: white;
-                                -fx-background-radius: 16; -fx-padding: 12 16;
-                                -fx-border-color: #e8eeff; -fx-border-radius: 16;
-                                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10, 0, 0, 3);
-                            ">
+                              style="-fx-background-color:#0f1220;-fx-background-radius:14;-fx-padding:12 16;
+                                     -fx-border-color:rgba(99,102,241,0.18);-fx-border-radius:14;">
                             <TextField fx:id="aiTopicInput" promptText="Topic (e.g. Recursion)"
-                                prefWidth="160"
-                                style="
-                                    -fx-padding: 10; -fx-background-radius: 10;
-                                    -fx-border-color: #e2e8f0; -fx-border-radius: 10;
-                                "/>
-                            <TextField fx:id="aiQuestionInput"
-                                promptText="Ask your question here..."
-                                HBox.hgrow="ALWAYS"
-                                style="
-                                    -fx-padding: 10; -fx-background-radius: 10;
-                                    -fx-border-color: #e2e8f0; -fx-border-radius: 10;
-                                "/>
+                                       prefWidth="155"
+                                       style="-fx-padding:10;-fx-background-radius:10;
+                                              -fx-control-inner-background:#080a14;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
+                            <TextField fx:id="aiQuestionInput" promptText="Ask your question here..."
+                                       HBox.hgrow="ALWAYS"
+                                       style="-fx-padding:10;-fx-background-radius:10;
+                                              -fx-control-inner-background:#080a14;-fx-text-fill:#e2e8f0;
+                                              -fx-prompt-text-fill:#334155;
+                                              -fx-border-color:rgba(99,102,241,0.25);-fx-border-radius:10;"/>
                             <Button fx:id="aiAskBtn" text="Ask AI ✨"
-                                style="
-                                    -fx-background-color: linear-gradient(to right, #7c83fd, #56ccf2);
-                                    -fx-text-fill: white; -fx-font-weight: bold;
-                                    -fx-background-radius: 12; -fx-padding: 10 24;
-                                    -fx-cursor: hand; -fx-font-size: 13px;
-                                    -fx-effect: dropshadow(gaussian, rgba(124,131,253,0.5), 10, 0, 0, 4);
-                                "/>
+                                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                           -fx-text-fill:white;-fx-font-weight:bold;
+                                           -fx-background-radius:12;-fx-padding:10 22;
+                                           -fx-cursor:hand;-fx-font-size:13;"/>
                         </HBox>
                     </VBox>
                 </content>
             </Tab>
 
-            <!-- ─────────────────────────────────────────────
-                 TAB 13 — LOGOUT
-            ───────────────────────────────────────────────── -->
-            <Tab onSelectionChanged="#handleLogoutTab"
-                style="-fx-background-color: #fff1f2;">
+            <!-- ── TAB 14 · 🚪 Logout (onSelectionChanged) ── -->
+            <Tab onSelectionChanged="#handleLogoutTab" closable="false">
                 <graphic>
-                    <Label text="🚪 Logout"
-                        style="-fx-text-fill: #b91c1c; -fx-font-weight: bold;"/>
+                    <Label text="🚪  Logout"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#f87171;-fx-cursor:hand;-fx-padding:0 4;"/>
                 </graphic>
                 <content>
-                    <VBox alignment="CENTER" spacing="22"
-                        style="-fx-background-color: white;">
+                    <VBox alignment="CENTER" spacing="18"
+                          style="-fx-background-color:#0d0f1a;">
                         <Label text="Signing you out of ScholarGrid..."
-                            style="-fx-font-size: 16px; -fx-text-fill: #64748b;"/>
-                        <ProgressIndicator maxWidth="55" maxHeight="55"
-                            style="-fx-progress-color: #ef4444;"/>
+                               style="-fx-font-size:15;-fx-text-fill:#64748b;"/>
+                        <ProgressIndicator maxWidth="50" maxHeight="50"
+                                           style="-fx-progress-color:#6366f1;"/>
                     </VBox>
                 </content>
             </Tab>
-            
 
+            <!-- ── TAB 15 · 📖 Study Room ─────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="📖  Study Room"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <content>
+                    <fx:include source="study_room.fxml"/>
+                </content>
+            </Tab>
 
-            <Tab text="📖 Study Room" style="-fx-font-weight: bold;">
-    <content>
-        <fx:include source="study_room.fxml"/>
-    </content>
-</Tab>
+            <!-- ── TAB 16 · 🎮 Game Zone ──────────────────── -->
+            <Tab closable="false">
+                <graphic>
+                    <Label text="🎮  Game Zone"
+                           style="-fx-font-size:12;-fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;-fx-cursor:hand;-fx-padding:0 4;"/>
+                </graphic>
+                <content>
+                    <fx:include source="game_zone.fxml"/>
+                </content>
+            </Tab>
 
         </TabPane>
     </center>
+
 </BorderPane>

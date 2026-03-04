@@ -21,6 +21,9 @@ public class Profile {
     private Long id;
     private UUID userId;   // ← UUID, matches your users.id column
 
+    private String  username;
+    private String  profilePictureUrl;
+
     // A. Basic Identity
     private String  fullName;
     private String  studentId;
@@ -32,6 +35,10 @@ public class Profile {
     private boolean phonePublic       = false;
     private byte[]  profilePicture;
     private String  profilePictureType;
+
+
+
+
 
     // B. Academic
     private BigDecimal cgpa;
@@ -198,4 +205,12 @@ public class Profile {
 
     public LocalDateTime getUpdatedAt()           { return updatedAt; }
     public void setUpdatedAt(LocalDateTime v)     { this.updatedAt = v; }
+
+    // 🌟 ADD THEIR GETTERS AND SETTERS AT THE BOTTOM:
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getProfilePictureUrl() { return profilePictureUrl; }
+    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+    
 }

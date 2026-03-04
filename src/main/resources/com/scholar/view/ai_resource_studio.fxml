@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.WebView?>
+
+<!--
+  ai_resource_studio.fxml
+  Left : AI browser (Gemini / Claude / any URL) with Cmd+C clipboard fix
+  Right: LaTeX tab only — Studio tab removed per requirements
+-->
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.scholar.controller.ai.AIResourceControllerEnhanced"
+            style="-fx-background-color:#0d0f1a;">
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+    <top>
+        <VBox style="-fx-background-color:linear-gradient(to bottom,#12142a,#1a1c38);
+                     -fx-border-color:rgba(99,102,241,0.25);-fx-border-width:0 0 1 0;
+                     -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.5),12,0,0,3);">
+            <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-padding:12 24;">
+                <VBox spacing="2">
+                    <Label text="🤖 AI Resource Studio — LaTeX Renderer"
+                           style="-fx-font-size:16px;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;"/>
+                    <Label text="Paste AI output → renders LaTeX + text  •  Export to PDF  •  Copy as Image"
+                           style="-fx-font-size:10px;-fx-text-fill:#6366f1;"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="statsLabel"
+                       text="📚 Loading…"
+                       style="-fx-font-size:11px;-fx-text-fill:#64748b;
+                              -fx-background-color:rgba(99,102,241,0.08);
+                              -fx-padding:6 14;-fx-background-radius:20;"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- ══ MAIN: BROWSER LEFT + LATEX RENDERER RIGHT ═════════════════════ -->
+    <center>
+        <SplitPane dividerPositions="0.44" style="-fx-background-color:#0d0f1a;">
+
+            <!-- ── LEFT: AI BROWSER ──────────────────────────────────────── -->
+            <VBox spacing="0" SplitPane.resizableWithParent="true">
+
+                <HBox alignment="CENTER_LEFT" spacing="8"
+                      style="-fx-background-color:#141828;-fx-padding:10 12;
+                             -fx-border-color:rgba(99,102,241,0.15);-fx-border-width:0 0 1 0;">
+
+                    <Button fx:id="aiBackBtn" text="◀"
+                            style="-fx-background-color:#1e2235;-fx-text-fill:#94a3b8;
+                                   -fx-background-radius:6;-fx-cursor:hand;
+                                   -fx-min-width:32;-fx-min-height:32;-fx-font-size:12px;"/>
+                    <Button fx:id="aiForwardBtn" text="▶"
+                            style="-fx-background-color:#1e2235;-fx-text-fill:#94a3b8;
+                                   -fx-background-radius:6;-fx-cursor:hand;
+                                   -fx-min-width:32;-fx-min-height:32;-fx-font-size:12px;"/>
+                    <Button fx:id="aiRefreshBtn" text="⟳"
+                            style="-fx-background-color:#1e2235;-fx-text-fill:#94a3b8;
+                                   -fx-background-radius:6;-fx-cursor:hand;
+                                   -fx-min-width:32;-fx-min-height:32;-fx-font-size:14px;"/>
+                    <Button fx:id="aiHomeBtn" text="🏠"
+                            style="-fx-background-color:#1e2235;-fx-text-fill:#94a3b8;
+                                   -fx-background-radius:6;-fx-cursor:hand;
+                                   -fx-min-width:32;-fx-min-height:32;-fx-font-size:12px;"/>
+
+                    <TextField fx:id="aiUrlField" promptText="Enter URL (Gemini, Claude, ChatGPT…)"
+                               HBox.hgrow="ALWAYS"
+                               style="-fx-background-color:#0d0f1a;-fx-text-fill:#e2e8f0;
+                                      -fx-prompt-text-fill:#475569;-fx-background-radius:20;
+                                      -fx-padding:8 16;-fx-border-color:rgba(99,102,241,0.25);
+                                      -fx-border-radius:20;-fx-font-size:12px;"/>
+                    <Button fx:id="aiGoBtn" text="→"
+                            style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                                   -fx-text-fill:white;-fx-font-weight:bold;
+                                   -fx-background-radius:20;-fx-cursor:hand;
+                                   -fx-min-width:40;-fx-min-height:32;-fx-font-size:14px;"/>
+                </HBox>
+
+                <ProgressBar fx:id="aiLoadingBar" maxWidth="Infinity" progress="0" visible="false"
+                             style="-fx-accent:#6366f1;-fx-background-color:#141828;-fx-pref-height:3;"/>
+
+                <StackPane VBox.vgrow="ALWAYS"
+                           style="-fx-background-color:#0d0f1a;
+                                  -fx-border-color:rgba(99,102,241,0.12);-fx-border-width:0 1 0 0;">
+                    <WebView fx:id="aiWebView"/>
+                </StackPane>
+
+                <!-- Hint bar -->
+                <HBox alignment="CENTER" spacing="6"
+                      style="-fx-background-color:#141828;-fx-padding:8 12;
+                             -fx-border-color:rgba(99,102,241,0.12);-fx-border-width:1 0 0 0;">
+                    <Label text="💡 Select text → Cmd+C  →  click 'Paste &amp; Render' on the right"
+                           style="-fx-text-fill:#475569;-fx-font-size:11px;"/>
+                </HBox>
+
+            </VBox>
+
+            <!-- ── RIGHT: LATEX RENDERER (fx:include) ────────────────────── -->
+            <!--
+              latex_renderer.fxml owns its own controller (LaTeXRendererController).
+              Both files use the same JavaFX 21 namespace — no version mismatch.
+            -->
+            <fx:include source="latex_renderer.fxml"/>
+
+        </SplitPane>
+    </center>
+
+</BorderPane>

@@ -1,2 +1,6 @@
 package com.scholar.model;
-public record Doubt(String id, String title, String description, String subject, String topic, String privacy, String status, String studentName, String studentId, String createdAt, boolean isAnonymous) {}
+public record Doubt(
+    String id, String title, String description, String subject, String topic, String privacy,
+    String status, String studentName, String studentId, String createdAt, boolean isAnonymous,
+    String profilePictureUrl // 🌟 NEW
+) {}

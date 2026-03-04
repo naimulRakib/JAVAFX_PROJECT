@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<SplitPane dividerPositions="0.22,0.58"
+           style="-fx-background-color:#0d0f1a; -fx-padding:12;"
+           xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.scholar.controller.DashboardController">
+
+    <VBox spacing="12"
+          style="-fx-padding:16; -fx-background-color:#141828; -fx-background-radius:14;
+                 -fx-border-color:rgba(99,102,241,0.2); -fx-border-radius:14;">
+
+        <Label text="CHANNELS"
+               style="-fx-font-weight:bold; -fx-font-size:11px;
+                      -fx-letter-spacing:1.5; -fx-text-fill:#6366f1;"/>
+
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background:#141828; -fx-background-color:transparent; -fx-border-color:transparent;">
+            <VBox fx:id="channelList" spacing="6" style="-fx-background-color:#141828;"/>
+        </ScrollPane>
+
+        <Button fx:id="createChannelBtn" text="➕ New Channel"
+                onAction="#onCreateChannel" maxWidth="Infinity"
+                style="-fx-background-color:rgba(99,102,241,0.12); -fx-text-fill:#818cf8;
+                       -fx-cursor:hand; -fx-font-weight:bold;
+                       -fx-border-color:rgba(99,102,241,0.35); -fx-border-radius:10;
+                       -fx-background-radius:10; -fx-padding:10; -fx-font-size:12px;"/>
+    </VBox>
+
+    <VBox spacing="14"
+          style="-fx-padding:16; -fx-background-color:#141828; -fx-background-radius:14;
+                 -fx-border-color:rgba(99,102,241,0.2); -fx-border-radius:14;">
+
+        <VBox fx:id="channelInfoBox" spacing="6" visible="false" managed="false"
+              style="-fx-background-color:rgba(99,102,241,0.08);
+                     -fx-border-color:rgba(99,102,241,0.25); -fx-border-radius:12;
+                     -fx-background-radius:12; -fx-padding:14;">
+            <Label fx:id="channelTitleLabel" text="Channel"
+                   style="-fx-font-size:16px; -fx-font-weight:bold; -fx-text-fill:#818cf8;"/>
+            <Label fx:id="channelDescLabel" text="Description" wrapText="true"
+                   style="-fx-text-fill:#94a3b8; -fx-font-size:12px;"/>
+        </VBox>
+
+        <HBox alignment="CENTER_LEFT" spacing="10">
+            <Label text="ACTIVE TEAMS"
+                   style="-fx-font-weight:bold; -fx-font-size:11px;
+                          -fx-letter-spacing:1; -fx-text-fill:#6366f1;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="📢 Create Team" onAction="#onCreatePost"
+                    style="-fx-background-color:linear-gradient(to right,#6366f1,#8b5cf6);
+                           -fx-text-fill:white; -fx-font-weight:bold;
+                           -fx-padding:8 18; -fx-cursor:hand; -fx-background-radius:10; -fx-font-size:12px;"/>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background:#141828; -fx-background-color:transparent; -fx-border-color:transparent;">
+            <VBox fx:id="teamList" spacing="12" style="-fx-padding:2; -fx-background-color:#141828;"/>
+        </ScrollPane>
+    </VBox>
+
+    <VBox fx:id="roomContainer" spacing="0"
+          style="-fx-background-color:#141828; -fx-background-radius:14;
+                 -fx-border-color:rgba(99,102,241,0.2); -fx-border-radius:14;">
+        <VBox alignment="CENTER" VBox.vgrow="ALWAYS" spacing="10">
+            <Label text="💬 Team Workspace"
+                   style="-fx-font-size:22px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
+            <Label text="Select a team from the left to start collaborating."
+                   style="-fx-text-fill:#64748b; -fx-font-size:14px;"/>
+        </VBox>
+    </VBox>
+</SplitPane>

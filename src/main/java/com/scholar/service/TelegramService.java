@@ -1,39 +1,44 @@
 package com.scholar.service;
 
 import org.json.JSONObject;
-import org.springframework.stereotype.Service; // 🟢 নতুন
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import jakarta.annotation.PostConstruct;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 
-@Service // 🌟 ১. এটিকে একটি স্প্রিং সার্ভিস হিসেবে রেজিস্টার করা হলো
+@Service
 public class TelegramService {
 
-    // ২. ফিল্ডগুলো সরাসরি সিস্টেম এনভায়রনমেন্ট থেকে ডাটা নেবে
-    private final String BOT_TOKEN; 
-    private final String CHAT_ID; 
+    @Value("${telegram.bot.token}")
+    private String BOT_TOKEN; 
 
-    public TelegramService() {
-        // 🟢 আপনার ইচ্ছা অনুযায়ী সরাসরি System.getenv() ব্যবহার করা হয়েছে
-        this.BOT_TOKEN = System.getenv("TELEGRAM_BOT_TOKEN");
-        this.CHAT_ID = System.getenv("TELEGRAM_CHAT_ID");
+    @Value("${telegram.chat.id}")
+    private String CHAT_ID; 
 
+    @PostConstruct
+    public void init() {
         if (BOT_TOKEN == null || BOT_TOKEN.isEmpty() || CHAT_ID == null || CHAT_ID.isEmpty()) {
-            System.err.println("❌ ERROR: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in the environment variables!");
+            System.err.println("❌ ERROR: Telegram config missing in application.properties!");
+        } else {
+            System.out.println("✅ Telegram Service initialized successfully!");
         }
     }
 
     /**
-     * Uploads a file to Telegram and returns the File ID. (Logic Unchanged)
+     * Uploads any file (Binary/Text) to Telegram and returns the File ID.
      */
     public String uploadToCloud(File file) {
         if (BOT_TOKEN == null || CHAT_ID == null) {
+            System.err.println("❌ Telegram Token or Chat ID is null.");
             return null; 
         }
 
         String urlString = "https://api.telegram.org/bot" + BOT_TOKEN + "/sendDocument";
-        String boundary = Long.toHexString(System.currentTimeMillis());
+        String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
         String CRLF = "\r\n";
 
         try {
@@ -43,29 +48,45 @@ public class TelegramService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
+            // 🌟 FIX: Using DataOutputStream to safely send raw binary file data
             try (OutputStream output = conn.getOutputStream();
-                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, "UTF-8"), true)) {
+                 DataOutputStream writer = new DataOutputStream(output)) {
 
-                // 1. Send Chat ID
-                writer.append("--").append(boundary).append(CRLF);
-                writer.append("Content-Disposition: form-data; name=\"chat_id\"").append(CRLF);
-                writer.append(CRLF).append(CHAT_ID).append(CRLF);
+                // 1. Send Chat ID (Text part)
+                writer.writeBytes("--" + boundary + CRLF);
+                writer.writeBytes("Content-Disposition: form-data; name=\"chat_id\"" + CRLF);
+                writer.writeBytes(CRLF);
+                writer.writeBytes(CHAT_ID + CRLF);
 
-                // 2. Send File
-                writer.append("--").append(boundary).append(CRLF);
-                writer.append("Content-Disposition: form-data; name=\"document\"; filename=\"").append(file.getName()).append("\"").append(CRLF);
-                writer.append(CRLF).flush();
+                // 2. Send File (Binary part)
+                writer.writeBytes("--" + boundary + CRLF);
+                writer.writeBytes("Content-Disposition: form-data; name=\"document\"; filename=\"" + file.getName() + "\"" + CRLF);
+                writer.writeBytes("Content-Type: application/octet-stream" + CRLF); // Tells Telegram it's a file
+                writer.writeBytes(CRLF);
+                writer.flush();
+
+                // Stream the file directly
                 Files.copy(file.toPath(), output);
                 output.flush();
-                writer.append(CRLF).flush();
-                writer.append("--").append(boundary).append("--").append(CRLF).flush();
+
+                writer.writeBytes(CRLF);
+                writer.writeBytes("--" + boundary + "--" + CRLF);
+                writer.flush();
             }
 
             // 3. Get Response
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            int responseCode = conn.getResponseCode();
+            InputStream is = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             StringBuilder response = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) response.append(line);
+
+            if (responseCode != 200) {
+                System.err.println("❌ Telegram API Error: " + response.toString());
+                return null;
+            }
 
             // 4. Extract File ID
             JSONObject json = new JSONObject(response.toString());
@@ -78,26 +99,32 @@ public class TelegramService {
     }
 
     /**
-     * Get direct download URL from File ID. (Logic Unchanged)
+     * Get direct download URL from File ID.
      */
     public String getFileDownloadUrl(String fileId) {
         if (BOT_TOKEN == null) return null;
         try {
-            // 1. Get File Path from Telegram API
             String urlString = "https://api.telegram.org/bot" + BOT_TOKEN + "/getFile?file_id=" + fileId;
             URL url = new URL(urlString);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            int responseCode = conn.getResponseCode();
+            InputStream is = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             StringBuilder response = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) response.append(line);
             
+            if (responseCode != 200) {
+                System.err.println("❌ Telegram GetFile Error: " + response.toString());
+                return null;
+            }
+
             JSONObject json = new JSONObject(response.toString());
             String filePath = json.getJSONObject("result").getString("file_path");
 
-            // 2. Construct Download URL
             return "https://api.telegram.org/file/bot" + BOT_TOKEN + "/" + filePath;
 
         } catch (Exception e) {

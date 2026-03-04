@@ -2,37 +2,32 @@ package com.scholar.model;
 
 import java.util.List;
 
-/**
- * Represents a daily thread / post in the Social Zone feed.
- *
- * category values: PUBLIC | ACADEMICS | EVENTS | PLACEMENTS | ISSUES
- */
 public record DailyThread(
     String id,
     String userId,
     String authorName,
     String contentText,
+    String authorAvatar,   // 🌟 authorAvatar
     String mediaUrl,
     String photoUrl,
     String category,
     int likeCount,
+    int dislikeCount,      // 🌟 NEW
+    boolean likedByMe,     // 🌟 NEW
+    boolean dislikedByMe,  // 🌟 NEW
     boolean savedByMe,
     String createdAt,
     List<ThreadComment> comments
 ) {
-    /** Convenience constructor — no comments loaded yet */
+    // কাস্টম কনস্ট্রাক্টর (যেখানে comments লিস্ট ফাঁকা থাকবে)
     public DailyThread(
-            String id,
-            String userId,
-            String authorName,
-            String contentText,
-            String mediaUrl,
-            String photoUrl,
-            String category,
-            int likeCount,
-            boolean savedByMe,
-            String createdAt) {
-        this(id, userId, authorName, contentText, mediaUrl, photoUrl,
-             category, likeCount, savedByMe, createdAt, List.of());
+            String id, String userId, String authorName, String contentText, String authorAvatar, // ✅ authorAvatar ঠিক করা হয়েছে
+            String mediaUrl, String photoUrl, String category,
+            int likeCount, int dislikeCount, 
+            boolean likedByMe, boolean dislikedByMe, boolean savedByMe, String createdAt) {
+            
+        // ক্যানোনিকাল কনস্ট্রাক্টর কল
+        this(id, userId, authorName, contentText, authorAvatar, mediaUrl, photoUrl,
+             category, likeCount, dislikeCount, likedByMe, dislikedByMe, savedByMe, createdAt, List.of());
     }
 }
