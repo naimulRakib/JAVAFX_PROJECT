@@ -4,12 +4,12 @@ import com.scholar.model.ResourceRow;
 import com.scholar.service.AuthService;
 import com.scholar.service.CourseService;
 import com.scholar.util.DriveHelper;
-import com.scholar.util.PopupHelper;
+import com.scholar.util.SPopupHelper;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -20,28 +20,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * RESOURCE TABLE CONTROLLER — Card-based layout (replaces boring TableView)
- * Path: src/main/java/com/scholar/controller/community/ResourceTableController.java
- *
- * The TableView is kept in memory for API compatibility with DashboardController,
- * but is swapped out of the scene graph for a modern card ScrollPane on init.
- */
 @Component
 public class ResourceTableController {
 
     @Autowired private CourseService courseService;
     @Autowired private DriveHelper   driveHelper;
 
-    // Kept for DashboardController.init() signature compatibility
-    private TableView<ResourceRow>            resourceTable;
-    private TableColumn<ResourceRow, String>  colResName, colResType, colResDiff,
-                                               colResUploader, colResTags, colResVotes;
-    private TableColumn<ResourceRow, Void>    colResAction;
+    private TableView<ResourceRow>           resourceTable;
+    private TableColumn<ResourceRow, String> colResName, colResType, colResDiff,
+                                              colResUploader, colResTags, colResVotes;
+    private TableColumn<ResourceRow, Void>   colResAction;
 
-    private ComboBox<String>   typeFilterCombo, diffFilterCombo, sortCombo;
-    private Label              statusBarLabel, loadingLabel, resourceCountLabel;
-    private ProgressIndicator  loadingIndicator;
+    private ComboBox<String>  typeFilterCombo, diffFilterCombo, sortCombo;
+    private Label             statusBarLabel, loadingLabel, resourceCountLabel;
+    private ProgressIndicator loadingIndicator;
 
     private Integer currentSelectedTopicId;
     private java.util.function.Consumer<Integer> onTopicReload;
@@ -50,9 +42,7 @@ public class ResourceTableController {
     private StatisticsController statisticsController;
 
     private List<ResourceRow> allRows = new ArrayList<>();
-
-    // ── Card view ─────────────────────────────────────────────────
-    private VBox      cardContainer;
+    private VBox       cardContainer;
     private ScrollPane cardScroll;
 
     // ─────────────────────────────────────────────────────────────
@@ -80,17 +70,43 @@ public class ResourceTableController {
         this.discussionController = discussionController;
         this.statisticsController = statisticsController;
         this.onTopicReload        = this::loadResourcesForTopic;
-
+        
+        setupTableViewFallback(); 
         injectCardView();
     }
 
-    /**
-     * Swaps the TableView out of its parent and injects a dark card ScrollPane.
-     */
+    // 🌟 THE ULTIMATE FALLBACK: Bulletproof TableView Mapping
+    private void setupTableViewFallback() {
+        if (resourceTable == null) return;
+        if (colResName != null) colResName.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getName()));
+        if (colResType != null) colResType.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getType()));
+        if (colResDiff != null) colResDiff.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDiff()));
+        if (colResUploader != null) colResUploader.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getUploader()));
+        if (colResTags != null) colResTags.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTags()));
+        if (colResVotes != null) colResVotes.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getVotes()));
+        
+        if (colResAction != null) {
+            colResAction.setCellFactory(col -> new TableCell<>() {
+                private final Button btn = new Button("👁 Preview");
+                {
+                    btn.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-cursor: hand;");
+                    btn.setOnAction(e -> {
+                        ResourceRow row = getTableView().getItems().get(getIndex());
+                        driveHelper.showInAppPreview(row.getRawResource().link(), row.getRawResource().title());
+                    });
+                }
+                @Override
+                protected void updateItem(Void item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setGraphic(empty ? null : btn);
+                }
+            });
+        }
+    }
+
     private void injectCardView() {
         if (resourceTable == null) return;
 
-        // Build card container
         cardContainer = new VBox(10);
         cardContainer.setPadding(new Insets(16));
         cardContainer.setStyle("-fx-background-color: #0d1117;");
@@ -99,6 +115,9 @@ public class ResourceTableController {
         cardScroll.setFitToWidth(true);
         cardScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         cardScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        cardScroll.setMaxWidth(Double.MAX_VALUE);
+        cardScroll.setMaxHeight(Double.MAX_VALUE);
+        
         cardScroll.setStyle(
             "-fx-background: #0d1117; -fx-background-color: #0d1117; -fx-border-color: transparent;");
         cardScroll.skinProperty().addListener((obs, o, n) -> {
@@ -106,37 +125,47 @@ public class ResourceTableController {
             if (vp != null) vp.setStyle("-fx-background-color: #0d1117;");
         });
 
-        // Replace TableView in its parent
-        javafx.scene.Parent parent = resourceTable.getParent();
-        if (parent instanceof Pane p) {
-            int idx = p.getChildren().indexOf(resourceTable);
-            if (idx >= 0) {
-                p.getChildren().set(idx, cardScroll);
-                if (parent instanceof VBox)       VBox.setVgrow(cardScroll, Priority.ALWAYS);
-                if (parent instanceof HBox)       HBox.setHgrow(cardScroll, Priority.ALWAYS);
-                if (parent instanceof AnchorPane ap) {
-                    Double t = AnchorPane.getTopAnchor(resourceTable);
-                    Double b = AnchorPane.getBottomAnchor(resourceTable);
-                    Double l = AnchorPane.getLeftAnchor(resourceTable);
-                    Double r = AnchorPane.getRightAnchor(resourceTable);
-                    if (t != null) AnchorPane.setTopAnchor(cardScroll, t);
-                    if (b != null) AnchorPane.setBottomAnchor(cardScroll, b);
-                    if (l != null) AnchorPane.setLeftAnchor(cardScroll, l);
-                    if (r != null) AnchorPane.setRightAnchor(cardScroll, r);
-                }
-            }
+        if (!tryInjectIntoParent()) {
+            resourceTable.parentProperty().addListener((obs, oldP, newP) -> {
+                if (newP != null) tryInjectIntoParent();
+            });
         }
-
         showEmptyState("Select a topic from the left panel to view resources.");
     }
 
-    public void initExtras(ComboBox<String>   typeFilterCombo,
-                           ComboBox<String>   diffFilterCombo,
-                           ComboBox<String>   sortCombo,
-                           Label              statusBarLabel,
-                           Label              loadingLabel,
-                           ProgressIndicator  loadingIndicator,
-                           Label              resourceCountLabel) {
+    // 🌟 BULLETPROOF INJECTION: Wait for Layout Engine & Disable Table instead of Removing
+    private boolean tryInjectIntoParent() {
+        if (resourceTable == null || cardScroll == null) return false;
+        javafx.scene.Parent parent = resourceTable.getParent();
+        if (parent == null) return false;
+
+        Platform.runLater(() -> {
+            try {
+                if (parent instanceof VBox vBox) {
+                    if (!vBox.getChildren().contains(cardScroll)) {
+                        int idx = vBox.getChildren().indexOf(resourceTable);
+                        if (idx >= 0) {
+                            // Hide old table but keep it in the scene
+                            resourceTable.setVisible(false);
+                            resourceTable.setManaged(false);
+                            
+                            // Insert CardScroll directly in place
+                            vBox.getChildren().add(idx, cardScroll);
+                            VBox.setVgrow(cardScroll, Priority.ALWAYS);
+                            System.out.println("✅ CardScroll successfully added to VBox and Expanded!");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Injection error: " + e.getMessage());
+            }
+        });
+        return true;
+    }
+
+    public void initExtras(ComboBox<String>  typeFilterCombo, ComboBox<String>  diffFilterCombo,
+                           ComboBox<String>  sortCombo, Label statusBarLabel, Label loadingLabel,
+                           ProgressIndicator loadingIndicator, Label resourceCountLabel) {
 
         this.typeFilterCombo    = typeFilterCombo;
         this.diffFilterCombo    = diffFilterCombo;
@@ -167,110 +196,134 @@ public class ResourceTableController {
     public Integer getCurrentTopicId()              { return currentSelectedTopicId; }
 
     // ─────────────────────────────────────────────────────────────
-    // CARD RENDERING
+    // LOAD RESOURCES
     // ─────────────────────────────────────────────────────────────
-    private void renderCards(List<ResourceRow> rows) {
-        if (cardContainer == null) return;
-        cardContainer.getChildren().clear();
-
-        if (rows.isEmpty()) {
-            showEmptyState("No resources found. Upload the first one! 🚀");
+    public void loadResourcesForTopic(Integer topicId) {
+        if (topicId == null) {
+            allRows.clear();
+            showEmptyState("Select a topic from the left panel to view resources.");
             return;
         }
 
+        this.currentSelectedTopicId = topicId;
+        showLoadingState();
+
+        new Thread(() -> {
+            try {
+                List<CourseService.Resource> resources = courseService.getResources(topicId);
+
+                Platform.runLater(() -> {
+                    List<ResourceRow> rows = new ArrayList<>();
+                    for (var res : resources) {
+                        String uploader = res.creatorName() != null ? res.creatorName() : "Student";
+                        String type     = res.type()        != null ? res.type().trim() : "LINK";
+                        String diff     = res.difficulty()  != null ? res.difficulty()  : "Medium";
+                        String tags     = res.tags()        != null ? res.tags()        : "General";
+                        String votes    = "Up: " + res.upvotes() + " | Down: " + res.downvotes();
+                        rows.add(new ResourceRow(res.title(), type, diff, uploader, tags, votes, res));
+                    }
+                    allRows = rows;
+                    setLoading(false);
+                    
+                    if (rows.isEmpty()) {
+                        showEmptyState("No resources yet for this topic.\nBe the first to upload! 🚀");
+                        if (resourceTable != null) resourceTable.getItems().clear();
+                    } else {
+                        applyFiltersAndSort(rows);
+                    }
+                    updateCountBadge();
+                });
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    setLoading(false);
+                    showEmptyState("Failed to load resources — check console for details.");
+                });
+            }
+        }).start();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // CARD RENDERING
+    // ─────────────────────────────────────────────────────────────
+    private void renderCards(List<ResourceRow> rows) {
+        // Fallback: Populate standard TableView as well
+        if (resourceTable != null) {
+            resourceTable.getItems().setAll(rows);
+        }
+
+        if (cardContainer == null) return;
+        cardContainer.getChildren().clear();
+        if (rows.isEmpty()) {
+            showEmptyState("No resources match the current filters.");
+            return;
+        }
         for (ResourceRow row : rows)
             cardContainer.getChildren().add(buildCard(row));
     }
 
-    /**
-     * Builds a single resource card:
-     *
-     * ┌──────────────────────────────────────────────────────────┐
-     * │  [🔗 LINK]  [Medium]   by admin        🏷 good  👍1 👎0  │
-     * │  Resource Name — large bold title                        │
-     * │  ────────────────────────────────────────────────────── │
-     * │  [👁 Preview] [⬇ Download] [👍 Up] [👎 Down]            │
-     * │  [✅ Done]   [📊 Stats]   [💬 Discuss]  [✏️Edit][🗑Del] │
-     * └──────────────────────────────────────────────────────────┘
-     */
     private VBox buildCard(ResourceRow row) {
         CourseService.Resource res = row.getRawResource();
 
-        // ── Card shell ────────────────────────────────────────────
         VBox card = new VBox(10);
         card.setPadding(new Insets(16, 20, 16, 20));
         card.setStyle(cardStyle(false));
         card.setOnMouseEntered(e -> card.setStyle(cardStyle(true)));
         card.setOnMouseExited(e  -> card.setStyle(cardStyle(false)));
 
-        // ── Row 1: type pill | diff badge | uploader | tags | votes
-        Label typePill  = typePill(row.getType());
-        Label diffBadge = diffBadge(row.getDiff());
-
+        Label typePill    = typePill(row.getType());
+        Label diffBadge   = diffBadge(row.getDiff());
         Label uploaderLbl = new Label("by " + row.getUploader());
         uploaderLbl.setStyle("-fx-text-fill: #4a5a72; -fx-font-size: 11px;");
-
         Label tagsLbl = new Label("🏷 " + row.getTags());
         tagsLbl.setStyle("-fx-text-fill: #4a5a72; -fx-font-size: 11px;");
-
         Label votesLbl = new Label("👍 " + res.upvotes() + "   👎 " + res.downvotes());
         votesLbl.setStyle("-fx-text-fill: #60a5fa; -fx-font-size: 11px; -fx-font-weight: bold;");
-
         Region sp1 = new Region();
         HBox.setHgrow(sp1, Priority.ALWAYS);
-
         HBox metaRow = new HBox(8, typePill, diffBadge, uploaderLbl, sp1, tagsLbl, votesLbl);
         metaRow.setAlignment(Pos.CENTER_LEFT);
 
-        // ── Row 2: resource title ─────────────────────────────────
         Label nameLbl = new Label(row.getName());
-        nameLbl.setStyle(
-            "-fx-text-fill: #e2e8f0; -fx-font-size: 15px; -fx-font-weight: bold;");
+        nameLbl.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 15px; -fx-font-weight: bold;");
         nameLbl.setWrapText(true);
 
-        // ── Divider ───────────────────────────────────────────────
         Separator sep = new Separator();
         sep.setStyle("-fx-opacity: 0.12;");
 
-        // ── Row 3: action buttons ─────────────────────────────────
-        boolean voted     = res.hasUserVoted();
         boolean completed = res.isCompleted();
+        boolean voted     = res.hasUserVoted();
 
         Button previewBtn  = cardBtn("👁  Preview",  "#2c3e50");
         Button downloadBtn = cardBtn("⬇  Download", "#16a085");
         Button upBtn       = cardBtn("👍  Upvote",   "#27ae60");
         Button downBtn     = cardBtn("👎  Downvote", "#e74c3c");
-        Button doneBtn     = cardBtn(
-            completed ? "✅  Edit Note"   : "✅  Mark Done",
-            completed ? "#16a085"         : "#2980b9");
-        Button statsBtn    = cardBtn("📊  Stats",    "#8e44ad");
-        Button discussBtn  = cardBtn("💬  Discuss",  "#34495e");
+        Button doneBtn     = cardBtn(completed ? "✅  Edit Note" : "✅  Mark Done",
+                                     completed ? "#16a085"       : "#2980b9");
+        Button statsBtn    = cardBtn("📊  Stats",   "#8e44ad");
+        Button discussBtn  = cardBtn("💬  Discuss", "#34495e");
 
         upBtn.setDisable(voted);
         downBtn.setDisable(voted);
 
         previewBtn.setOnAction(e  -> driveHelper.showInAppPreview(res.link(), res.title()));
         downloadBtn.setOnAction(e -> driveHelper.directDownloadFile(res.link(), res.title()));
-        upBtn.setOnAction(e   -> processVote(row, 1));
-        downBtn.setOnAction(e -> processVote(row, -1));
-        
-        // Fix: Simply use resolveWindow() directly for the Window argument
-        doneBtn.setOnAction(e ->
-            statisticsController.showResourceCompletionDialog(
-                row, currentSelectedTopicId, onTopicReload, resolveWindow()));
-                
-        statsBtn.setOnAction(e ->
-            statisticsController.showStatisticsDialog(res, resolveWindow()));
-        discussBtn.setOnAction(e ->
-            discussionController.showDiscussionPanel(res, resolveWindow()));
+        upBtn.setOnAction(e       -> processVote(row, 1));
+        downBtn.setOnAction(e     -> processVote(row, -1));
+        doneBtn.setOnAction(e     -> statisticsController.showResourceCompletionDialog(
+                                        row, currentSelectedTopicId, onTopicReload, resolveWindow()));
+        statsBtn.setOnAction(e    -> statisticsController.showStatisticsDialog(res, resolveWindow()));
+        discussBtn.setOnAction(e  -> discussionController.showDiscussionPanel(res, resolveWindow()));
 
         HBox actionRow = new HBox(6, previewBtn, downloadBtn, upBtn, downBtn,
                                      doneBtn, statsBtn, discussBtn);
         actionRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Admin / owner buttons
         boolean canManage = "admin".equals(AuthService.CURRENT_USER_ROLE)
-            || (res.creatorId() != null && res.creatorId().equals(AuthService.CURRENT_USER_ID));
+            || (res.creatorId() != null
+                && String.valueOf(res.creatorId()).equals(
+                   String.valueOf(AuthService.CURRENT_USER_ID)));
         if (canManage) {
             Button editBtn = cardBtn("✏️  Edit",   "#f39c12");
             Button delBtn  = cardBtn("🗑  Delete", "#c0392b");
@@ -284,7 +337,7 @@ public class ResourceTableController {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // EMPTY STATE
+    // STATES
     // ─────────────────────────────────────────────────────────────
     private void showEmptyState(String message) {
         if (cardContainer == null) return;
@@ -300,74 +353,43 @@ public class ResourceTableController {
         cardContainer.getChildren().add(empty);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // DELETE CONFIRM
-    // ─────────────────────────────────────────────────────────────
-    private void showDeleteConfirm(ResourceRow row, Window owner) {
-        Label icon    = new Label("🗑️");
-        icon.setStyle("-fx-font-size: 32px;");
-        Label msg     = new Label("Delete this resource?");
-        msg.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 15px; -fx-font-weight: bold;");
-        Label sub     = new Label(row.getName());
-        sub.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px;");
-        sub.setWrapText(true);
+    private void showLoadingState() {
+        if (cardContainer == null) return;
+        cardContainer.getChildren().clear();
+        ProgressIndicator pi = new ProgressIndicator();
+        pi.setPrefSize(36, 36);
+        pi.setStyle("-fx-progress-color: #3b82f6;");
+        Label lbl = new Label("Loading resources…");
+        lbl.setStyle("-fx-text-fill: #4a5a72; -fx-font-size: 13px;");
+        VBox box = new VBox(12, pi, lbl);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(60));
+        cardContainer.getChildren().add(box);
+        if (loadingIndicator != null) loadingIndicator.setVisible(true);
+        if (loadingLabel     != null) loadingLabel.setVisible(true);
+        if (statusBarLabel   != null) statusBarLabel.setText("Loading...");
+    }
 
-        Button cancelBtn  = actionBtn("Cancel", "#1e2736", "#94a3b8");
-        Button confirmBtn = actionBtn("Delete", "#c0392b", "white");
-        confirmBtn.setStyle(confirmBtn.getStyle() + " -fx-font-weight: bold;");
-
-        Separator sep = new Separator();
-        sep.setStyle("-fx-opacity: 0.2;");
-        HBox btnRow = new HBox(12, cancelBtn, confirmBtn);
-        btnRow.setAlignment(Pos.CENTER_RIGHT);
-
-        VBox root = new VBox(16, icon, msg, sub, sep, btnRow);
-        root.setPadding(new Insets(28));
-        root.setAlignment(Pos.CENTER_LEFT);
-        root.setStyle("-fx-background-color: #161b27;");
-
-        Stage stage = PopupHelper.create(owner, "Confirm Delete", root, 340, 220, 380, 240);
-        stage.show();
-        cancelBtn.setOnAction(e -> stage.close());
-        confirmBtn.setOnAction(e -> {
-            stage.close();
-            new Thread(() -> {
-                if (courseService.deleteResource(row.getRawResource().id()))
-                    Platform.runLater(() -> loadResourcesForTopic(currentSelectedTopicId));
-            }).start();
-        });
+    private void setLoading(boolean on) {
+        if (loadingIndicator != null) loadingIndicator.setVisible(on);
+        if (loadingLabel     != null) loadingLabel.setVisible(on);
+        if (statusBarLabel   != null) statusBarLabel.setText(on ? "Loading..." : "Ready");
     }
 
     // ─────────────────────────────────────────────────────────────
-    // LOAD RESOURCES
+    // DELETE
     // ─────────────────────────────────────────────────────────────
-    public void loadResourcesForTopic(Integer topicId) {
-        if (topicId == null) {
-            allRows.clear();
-            showEmptyState("Select a topic from the left panel to view resources.");
-            return;
-        }
-        this.currentSelectedTopicId = topicId;
-        setLoading(true);
-
-        new Thread(() -> {
-            List<CourseService.Resource> resources = courseService.getResources(topicId);
-            Platform.runLater(() -> {
-                List<ResourceRow> rows = new ArrayList<>();
-                for (var res : resources) {
-                    String uploader = res.creatorName() != null ? res.creatorName() : "Student";
-                    String type     = res.type()        != null ? res.type()        : "LINK";
-                    String diff     = res.difficulty()  != null ? res.difficulty()  : "Medium";
-                    String tags     = res.tags()        != null ? res.tags()        : "General";
-                    String votes    = "Up: " + res.upvotes() + " | Down: " + res.downvotes();
-                    rows.add(new ResourceRow(res.title(), type, diff, uploader, tags, votes, res));
-                }
-                allRows = rows;
-                applyFiltersAndSort(rows);
-                setLoading(false);
-                updateCountBadge();
-            });
-        }).start();
+    private void showDeleteConfirm(ResourceRow row, Window owner) {
+        SPopupHelper.showConfirm(owner,
+            "🗑 Delete Resource",
+            "Delete \"" + row.getName() + "\"?\nThis action cannot be undone.",
+            () -> new Thread(() -> {
+                if (courseService.deleteResource(row.getRawResource().id()))
+                    Platform.runLater(() -> loadResourcesForTopic(currentSelectedTopicId));
+                else
+                    SPopupHelper.showError(owner, "Delete Failed",
+                        "Could not delete the resource. Please retry.");
+            }).start());
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -394,7 +416,6 @@ public class ResourceTableController {
             else if ("Name A-Z".equals(sortV))
                 filtered.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
         }
-
         renderCards(filtered);
         updateCountBadge();
     }
@@ -423,7 +444,8 @@ public class ResourceTableController {
             boolean success = courseService.submitVote(row.getRawResource().id(), voteType);
             Platform.runLater(() -> {
                 if (success) loadResourcesForTopic(currentSelectedTopicId);
-                else System.err.println("Vote failed.");
+                else SPopupHelper.showError(resolveWindow(), "Vote Failed",
+                    "Could not record your vote. Please retry.");
             });
         }).start();
     }
@@ -433,14 +455,14 @@ public class ResourceTableController {
     // ─────────────────────────────────────────────────────────────
     private void showEditResourceDialog(CourseService.Resource res) {
         TextField        titleField    = darkField(res.title());
-        TextField        linkField     = darkField(res.link());
+        TextField        linkField     = darkField(res.link() != null ? res.link() : "");
         ComboBox<String> typeCombo     = darkCombo("LINK", "PDF", "Video", "Note");
-        typeCombo.setValue(res.type() != null ? res.type() : "LINK");
+        typeCombo.setValue(res.type()       != null ? res.type()       : "LINK");
         ComboBox<String> diffCombo     = darkCombo("Easy", "Medium", "Hard");
         diffCombo.setValue(res.difficulty() != null ? res.difficulty() : "Medium");
-        TextField        durationField = darkField(res.duration()   != null ? res.duration()   : "");
-        TextField        tagsField     = darkField(res.tags()       != null ? res.tags()       : "");
-        TextArea         descField     = darkArea(res.description() != null ? res.description(): "");
+        TextField        durationField = darkField(res.duration()    != null ? res.duration()    : "");
+        TextField        tagsField     = darkField(res.tags()        != null ? res.tags()        : "");
+        TextArea         descField     = darkArea(res.description()  != null ? res.description() : "");
         descField.setPrefRowCount(3);
 
         VBox formBox = new VBox(16);
@@ -480,7 +502,7 @@ public class ResourceTableController {
         VBox root = new VBox(formScroll, btnRow);
         root.setStyle("-fx-background-color: #161b27;");
 
-        Stage stage = PopupHelper.create(resolveWindow(),
+        Stage stage = SPopupHelper.create(resolveWindow(),
             "✏️ Edit Resource — " + res.title(), root, 440, 540, 500, 600);
         stage.show();
 
@@ -493,29 +515,18 @@ public class ResourceTableController {
                     res.id(), titleField.getText().trim(), linkField.getText().trim(),
                     typeCombo.getValue(), descField.getText().trim(),
                     tagsField.getText().trim(), diffCombo.getValue(), durationField.getText().trim());
-                Platform.runLater(() -> { if (ok) loadResourcesForTopic(currentSelectedTopicId); });
+                Platform.runLater(() -> {
+                    if (ok) loadResourcesForTopic(currentSelectedTopicId);
+                    else SPopupHelper.showError(resolveWindow(), "Update Failed",
+                        "Could not update the resource. Please retry.");
+                });
             }).start();
         });
     }
 
     // ─────────────────────────────────────────────────────────────
-    // STATUS / LOADING
+    // HELPERS
     // ─────────────────────────────────────────────────────────────
-    private void setLoading(boolean on) {
-        if (loadingIndicator != null) loadingIndicator.setVisible(on);
-        if (loadingLabel     != null) loadingLabel.setVisible(on);
-        if (statusBarLabel   != null) statusBarLabel.setText(on ? "Loading..." : "Ready");
-        if (cardContainer != null && on) {
-            cardContainer.getChildren().clear();
-            Label lbl = new Label("⏳  Loading resources…");
-            lbl.setStyle("-fx-text-fill: #4a5a72; -fx-font-size: 13px;");
-            VBox loading = new VBox(lbl);
-            loading.setAlignment(Pos.CENTER);
-            loading.setPadding(new Insets(60));
-            cardContainer.getChildren().add(loading);
-        }
-    }
-
     private void updateCountBadge() {
         if (resourceCountLabel != null)
             resourceCountLabel.setText(allRows.size() + " resource(s)");
@@ -526,9 +537,6 @@ public class ResourceTableController {
             ? cardScroll.getScene().getWindow() : null;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // LAYOUT HELPER
-    // ─────────────────────────────────────────────────────────────
     private static VBox fieldBlock(String labelText, javafx.scene.Node ctrl) {
         Label lbl = new Label(labelText);
         lbl.setStyle("-fx-text-fill: #7b8fa8; -fx-font-size: 12px; -fx-font-weight: bold;");
@@ -538,21 +546,17 @@ public class ResourceTableController {
         return block;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // STYLE HELPERS
-    // ─────────────────────────────────────────────────────────────
     private static String cardStyle(boolean hovered) {
         return "-fx-background-color: " + (hovered ? "#1a2236" : "#161b27") + "; "
             + "-fx-background-radius: 12; "
-            + "-fx-border-color: "      + (hovered ? "#3b82f6" : "#1e2736") + "; "
-            + "-fx-border-width: 1; "
-            + "-fx-border-radius: 12; "
+            + "-fx-border-color: " + (hovered ? "#3b82f6" : "#1e2736") + "; "
+            + "-fx-border-width: 1; -fx-border-radius: 12; "
             + "-fx-effect: dropshadow(three-pass-box, "
-            + (hovered ? "rgba(59,130,246,0.2)" : "rgba(0,0,0,0.3)")
-            + ", 10, 0, 0, 2);";
+            + (hovered ? "rgba(59,130,246,0.2)" : "rgba(0,0,0,0.3)") + ", 10, 0, 0, 2);";
     }
 
     private static Label typePill(String type) {
+        if (type == null) type = "LINK";
         String emoji = switch (type) {
             case "PDF"   -> "📄";
             case "Video" -> "🎬";
@@ -566,21 +570,20 @@ public class ResourceTableController {
             default      -> "-fx-background-color: #1e2f50; -fx-text-fill: #93c5fd;";
         };
         Label l = new Label(emoji + "  " + type);
-        l.setStyle(color
-            + " -fx-background-radius: 20; -fx-padding: 3 10; "
+        l.setStyle(color + " -fx-background-radius: 20; -fx-padding: 3 10; "
             + "-fx-font-size: 11px; -fx-font-weight: bold;");
         return l;
     }
 
     private static Label diffBadge(String diff) {
+        if (diff == null) diff = "Medium";
         String style = switch (diff) {
             case "Easy" -> "-fx-background-color: #14532d; -fx-text-fill: #4ade80;";
             case "Hard" -> "-fx-background-color: #7f1d1d; -fx-text-fill: #f87171;";
             default     -> "-fx-background-color: #713f12; -fx-text-fill: #fbbf24;";
         };
         Label l = new Label(diff);
-        l.setStyle(style
-            + " -fx-background-radius: 20; -fx-padding: 3 10; "
+        l.setStyle(style + " -fx-background-radius: 20; -fx-padding: 3 10; "
             + "-fx-font-size: 11px; -fx-font-weight: bold;");
         return l;
     }

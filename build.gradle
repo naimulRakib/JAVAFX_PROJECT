@@ -24,6 +24,20 @@ dependencies {
 
     implementation 'com.itextpdf:itext7-core:8.0.2'
     implementation 'com.itextpdf:html2pdf:5.0.0'
+
+    implementation 'org.postgresql:postgresql:42.7.3'
+
+    // Spring JDBC (for raw SQL / pgvector queries)
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+    // OkHttp (for OpenRouter API calls)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // JSON
+    implementation 'org.json:json:20240303'
+
+    // Markdown → HTML (for rendering AI responses)
+    implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
    
 
     //audio call

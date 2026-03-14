@@ -91,13 +91,10 @@ int myChannelId = -1;
             });
         }
 
-        // Load current settings from DB
-        loadCurrentSettings();
-
-        // Auto-load lists
-        onLoadChannels();
-        onLoadRequests();
-        onLoadActiveMerges();
+        // NOTE: Do NOT auto-load lists here.
+        // This is a Spring @Component — FXML fields are null until
+        // DashboardController manually wires them via field assignment.
+        // Lists are loaded by DashboardController after wiring.
     }
 
     /** Load the saved settings for this channel and populate UI */
@@ -153,21 +150,20 @@ int myChannelId = -1;
      */
     @FXML
     public void onLoadChannels() {
-        if (myChannelId < 0) return;
+        if (myChannelId < 0 || availableChannelsList == null) return;
         availableChannelsList.getItems().clear();
         showDiscoverStatus("🔄 Loading available channels...", false);
 
         new Thread(() -> {
             List<String[]> list = mergeService.getAvailableChannels(myChannelId);
-            // Each entry: [id, name, merge_type_preference]
             Platform.runLater(() -> {
+                if (availableChannelsList == null) return;
                 availableChannelsList.getItems().clear();
                 if (list.isEmpty()) {
                     showDiscoverStatus("No channels are currently open for merging.", false);
                 } else {
-                    for (String[] c : list) {
-                        // Display format: "ID | ChannelName"
-                        availableChannelsList.getItems().add(c[0] + " | " + c[1]);
+                    for (String[] ch : list) {
+                        availableChannelsList.getItems().add(ch[0] + " | " + ch[1]);
                     }
                     showDiscoverStatus("✅ " + list.size() + " channel(s) found.", false);
                 }
@@ -181,6 +177,7 @@ int myChannelId = -1;
      */
     @FXML
     public void onSendRequest() {
+        if (availableChannelsList == null) return;
         String sel = availableChannelsList.getSelectionModel().getSelectedItem();
         if (sel == null) {
             showDiscoverStatus("⚠️ Please select a channel first.", true);
@@ -244,14 +241,14 @@ int myChannelId = -1;
     /** Refresh the list of pending incoming merge requests. */
     @FXML
     public void onLoadRequests() {
-        if (myChannelId < 0) return;
+        if (myChannelId < 0 || pendingRequestsList == null) return;
         pendingRequestsList.getItems().clear();
         showRequestStatus("🔄 Loading requests...", false);
 
         new Thread(() -> {
-            // returns: [reqId, senderChannelName, mergeType, durationDays]
             List<String[]> list = mergeService.getPendingRequests(myChannelId);
             Platform.runLater(() -> {
+                if (pendingRequestsList == null) return;
                 pendingRequestsList.getItems().clear();
                 if (list.isEmpty()) {
                     showRequestStatus("No pending merge requests.", false);
@@ -274,6 +271,8 @@ int myChannelId = -1;
      */
     @FXML
     public void onAcceptRequest() {
+        if (pendingRequestsList == null) return;
+        if (pendingRequestsList == null) return;
         String sel = pendingRequestsList.getSelectionModel().getSelectedItem();
         if (sel == null) {
             showRequestStatus("⚠️ Select a request first.", true);
@@ -282,7 +281,6 @@ int myChannelId = -1;
 
         int reqId;
         try {
-            // Parse "REQ:42 | From: ..."
             reqId = Integer.parseInt(sel.split("REQ:")[1].split(" \\|")[0].trim());
         } catch (Exception ex) {
             showRequestStatus("⚠️ Could not parse request ID.", true);
@@ -395,14 +393,14 @@ int myChannelId = -1;
      */
     @FXML
     public void onLoadActiveMerges() {
-        if (myChannelId < 0) return;
+        if (myChannelId < 0 || activeHubsList == null) return;
         activeHubsList.getItems().clear();
         showHubStatus("🔄 Loading active merges...", false);
 
         new Thread(() -> {
-            // returns: [hubChannelId, hubName, expiresAt]
             List<String[]> list = mergeService.getMyActiveHubs(myChannelId);
             Platform.runLater(() -> {
+                if (activeHubsList == null) return;
                 activeHubsList.getItems().clear();
                 if (list.isEmpty()) {
                     showHubStatus("Not currently merged with any channel.", false);
@@ -424,6 +422,7 @@ int myChannelId = -1;
      */
     @FXML
     public void onInstantUnmerge() {
+        if (activeHubsList == null) return;
         String sel = activeHubsList.getSelectionModel().getSelectedItem();
         if (sel == null) {
             showHubStatus("⚠️ Select a hub to leave.", true);
@@ -461,6 +460,23 @@ int myChannelId = -1;
                         }
                     });
                 }).start());
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // CALLED BY DashboardController AFTER field wiring is complete
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Call this from DashboardController after manually assigning all
+     * FXML fields (allowMergeCheck, activeHubsList, etc.).
+     * This replaces the auto-load that was in initialize().
+     */
+    public void initAndLoad() {
+        myChannelId = AuthService.CURRENT_CHANNEL_ID;
+        loadCurrentSettings();
+        onLoadChannels();
+        onLoadRequests();
+        onLoadActiveMerges();
     }
 
     // ─────────────────────────────────────────────────────────────────

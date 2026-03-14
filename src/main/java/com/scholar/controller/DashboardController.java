@@ -26,7 +26,6 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.web.WebView;
-import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -36,14 +35,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DASHBOARD CONTROLLER — slim orchestrator
- * Path: src/main/java/com/scholar/controller/DashboardController.java
- *
- * Community actions now use PopupHelper so every dialog opens
- * correctly centred on the current monitor (fixes macOS multi-monitor
- * black-screen / top-left spawn issues).
- */
 @Controller
 public class DashboardController {
 
@@ -68,10 +59,7 @@ public class DashboardController {
     @Autowired private AITutorController          aiTutorController;
     @Autowired private ECAController              ecaController;
     @Autowired private ProfileController          profileController;
-@Autowired private AdminMergeController adminMergeController;
-
-
-
+    @Autowired private AdminMergeController       adminMergeController;
 
     // =========================================================
     // SERVICES
@@ -84,12 +72,12 @@ public class DashboardController {
     // SHARED STATE
     // =========================================================
     private final List<StudyTask> allTasks = new ArrayList<>();
-    private LocalDate selectedDate         = LocalDate.now();
-    private String    currentViewMode      = "DAILY";
+    private LocalDate selectedDate           = LocalDate.now();
+    private String    currentViewMode        = "DAILY";
     private Integer   currentSelectedTopicId = null;
 
     // =========================================================
-    // FXML — Tab 1: Dashboard
+    // FXML INJECTIONS
     // =========================================================
     @FXML private Label    channelNameLabel;
     @FXML private TextArea inputArea;
@@ -103,29 +91,29 @@ public class DashboardController {
     @FXML private Button   btnBacklog;
     @FXML private Button   btnCompleted;
     @FXML private VBox     adminControlsBox;
-    // Add these to your FXML declarations in DashboardController.java
-@FXML private VBox channelInfoBox;
-@FXML private Label channelTitleLabel;
-@FXML private Label channelDescLabel;
-@FXML private Button createChannelBtn; // Optional, only if you gave the button an fx:id
 
-    // FXML — AI Tutor
+    @FXML private VBox  channelInfoBox;
+    @FXML private Label channelTitleLabel;
+    @FXML private Label channelDescLabel;
+    @FXML private Button createChannelBtn;
+
+    // AI Tutor
     @FXML private WebView   aiWebView;
     @FXML private TextField aiTopicInput;
     @FXML private TextField aiQuestionInput;
     @FXML private Button    aiAskBtn;
     @FXML private Button    aiTutorBtn;
 
-    // FXML — Tab 2: Calendar
+    // Calendar
     @FXML private Label    monthLabel;
     @FXML private GridPane calendarGrid;
 
-    // FXML — Tab 3: Resources
+    // Resources
     @FXML private TextField resTitle;
     @FXML private TextArea  resInput;
     @FXML private VBox      resourceList;
 
-    // FXML — Tab 4: Community
+    // Community
     @FXML private TreeView<String>             communityTree;
     @FXML private Label                        currentFolderLabel;
     @FXML private TableView<ResourceRow>       resourceTable;
@@ -137,7 +125,6 @@ public class DashboardController {
     @FXML private TableColumn<ResourceRow, String> colResVotes;
     @FXML private TableColumn<ResourceRow, Void>   colResAction;
 
-    // Community extras (new from responsive FXML)
     @FXML private ComboBox<String>   typeFilterCombo;
     @FXML private ComboBox<String>   diffFilterCombo;
     @FXML private ComboBox<String>   sortCombo;
@@ -151,56 +138,45 @@ public class DashboardController {
     @FXML private Label              breadcrumbCourse;
     @FXML private Label              breadcrumbSegment;
 
-    // Community AI (legacy)
-    @FXML private TextArea communityAiInput;
-    @FXML private Button   communityAiBtn;
-    @FXML private WebView  communityAiWebView;
+    // Collaboration
+    @FXML private VBox channelList;
+    @FXML private VBox teamList;
+    @FXML private VBox roomContainer;
 
-    // FXML — Tab 5: Collaboration
-    @FXML private VBox             channelList;
-    @FXML private VBox             teamList;
-    @FXML private VBox             roomContainer;
-    @FXML private ListView<String> teamResourceList;
-
-    // FXML — Tab 6: ECA
+    // ECA
     @FXML private VBox ecaContainer;
 
-    // FXML — Tab 7: Settings
+    // Settings
     @FXML private TextField settingsName;
     @FXML private TextField settingsUsername;
     @FXML private Label     settingsEmail;
 
-    // FXML — Tab 8: Admin
+    // Admin
     @FXML private Tab adminTab;
     @FXML private VBox pendingListContainer;
-
-    // FXML — Tab 9: Question Bank
     @FXML private Tab questionBankTab;
 
+    // Merge tab
+    @FXML public void onSaveSettings()      { adminMergeController.onSaveSettings(); }
+    @FXML public void onLoadChannels()      { adminMergeController.onLoadChannels(); }
+    @FXML public void onSendRequest()       { adminMergeController.onSendRequest(); }
+    @FXML public void onLoadRequests()      { adminMergeController.onLoadRequests(); }
+    @FXML public void onAcceptRequest()     { adminMergeController.onAcceptRequest(); }
+    @FXML public void onRejectRequest()     { adminMergeController.onRejectRequest(); }
+    @FXML public void onLoadActiveMerges()  { adminMergeController.onLoadActiveMerges(); }
+    @FXML public void onInstantUnmerge()    { adminMergeController.onInstantUnmerge(); }
 
-    // ── Merge tab delegates ──────────────────────────────────
-@FXML public void onSaveSettings()      { adminMergeController.onSaveSettings(); }
-@FXML public void onLoadChannels()      { adminMergeController.onLoadChannels(); }
-@FXML public void onSendRequest()       { adminMergeController.onSendRequest(); }
-@FXML public void onLoadRequests()      { adminMergeController.onLoadRequests(); }
-@FXML public void onAcceptRequest()     { adminMergeController.onAcceptRequest(); }
-@FXML public void onRejectRequest()     { adminMergeController.onRejectRequest(); }
-@FXML public void onLoadActiveMerges()  { adminMergeController.onLoadActiveMerges(); }
-@FXML public void onInstantUnmerge()    { adminMergeController.onInstantUnmerge(); }
-
-@FXML private CheckBox allowMergeCheck;
-@FXML private ComboBox<String> privacyCombo;
-@FXML private ComboBox<String> mergeTypeCombo;
-@FXML private TextField durationField;
-@FXML private ListView<String> availableChannelsList;
-@FXML private ListView<String> pendingRequestsList;
-@FXML private ListView<String> activeHubsList;
-@FXML private Label settingsStatusLabel;
-@FXML private Label discoverStatusLabel;
-@FXML private Label requestStatusLabel;
-@FXML private Label hubStatusLabel;
-
-
+    @FXML private CheckBox         allowMergeCheck;
+    @FXML private ComboBox<String> privacyCombo;
+    @FXML private ComboBox<String> mergeTypeCombo;
+    @FXML private TextField        durationField;
+    @FXML private ListView<String> availableChannelsList;
+    @FXML private ListView<String> pendingRequestsList;
+    @FXML private ListView<String> activeHubsList;
+    @FXML private Label            settingsStatusLabel;
+    @FXML private Label            discoverStatusLabel;
+    @FXML private Label            requestStatusLabel;
+    @FXML private Label            hubStatusLabel;
 
     // =========================================================
     // INITIALIZE
@@ -211,7 +187,7 @@ public class DashboardController {
 
         new Thread(() -> dataService.autoMoveToBacklog()).start();
 
-        // ── Task ──────────────────────────────────────────────
+        // Tasks
         taskController.init(
             allTasks, timelineContainer,
             () -> selectedDate,
@@ -222,7 +198,7 @@ public class DashboardController {
         if (btnBacklog    != null) btnBacklog.setOnAction(e    -> { currentViewMode = "BACKLOG";    taskController.refreshTimeline(); });
         if (btnCompleted  != null) btnCompleted.setOnAction(e  -> { currentViewMode = "COMPLETED";  taskController.refreshTimeline(); });
 
-        // ── Calendar ──────────────────────────────────────────
+        // Calendar
         calendarController.init(calendarGrid, monthLabel, allTasks, () -> selectedDate, clicked -> {
             selectedDate = clicked;
             taskController.refreshTimeline();
@@ -232,42 +208,38 @@ public class DashboardController {
 
         adminMergeController.myChannelId = AuthService.CURRENT_CHANNEL_ID;
 
-        // ── Routine ───────────────────────────────────────────
+        // Routine
         routineController.init(routineGrid, announcementList);
 
-        // ── Admin broadcast ───────────────────────────────────
+        // Admin broadcast
         adminBroadcastController.init(pendingListContainer, allTasks, () -> {
             taskController.refreshTimeline();
             calendarController.drawCalendar(selectedDate);
         });
 
+        // Admin merge
+        adminMergeController.allowMergeCheck       = allowMergeCheck;
+        adminMergeController.privacyCombo          = privacyCombo;
+        adminMergeController.mergeTypeCombo        = mergeTypeCombo;
+        adminMergeController.durationField         = durationField;
+        adminMergeController.availableChannelsList = availableChannelsList;
+        adminMergeController.pendingRequestsList   = pendingRequestsList;
+        adminMergeController.activeHubsList        = activeHubsList;
+        adminMergeController.settingsStatusLabel   = settingsStatusLabel;
+        adminMergeController.discoverStatusLabel   = discoverStatusLabel;
+        adminMergeController.requestStatusLabel    = requestStatusLabel;
+        adminMergeController.hubStatusLabel        = hubStatusLabel;
 
+        adminMergeController.initAndLoad();
 
-
-        //admin merge 
-         // Wire merge controller fields
-    adminMergeController.allowMergeCheck       = allowMergeCheck;
-    adminMergeController.privacyCombo          = privacyCombo;
-    adminMergeController.mergeTypeCombo        = mergeTypeCombo;
-    adminMergeController.durationField         = durationField;
-    adminMergeController.availableChannelsList = availableChannelsList;
-    adminMergeController.pendingRequestsList   = pendingRequestsList;
-    adminMergeController.activeHubsList        = activeHubsList;
-    adminMergeController.settingsStatusLabel   = settingsStatusLabel;
-    adminMergeController.discoverStatusLabel   = discoverStatusLabel;
-    adminMergeController.requestStatusLabel    = requestStatusLabel;
-    adminMergeController.hubStatusLabel        = hubStatusLabel;
-   
-    // adminMergeController.initialize();
-
-        // ── Channel setup ─────────────────────────────────────
+        // Channel setup
         if (AuthService.CURRENT_CHANNEL_ID != -1) {
             if (channelNameLabel != null) channelNameLabel.setText(AuthService.CURRENT_CHANNEL_NAME);
             routineController.loadClassRoutine();
             routineController.loadClassAnnouncements();
         }
 
-        // ── Admin tab security ────────────────────────────────
+        // Admin tab security
         if (adminTab != null) {
             if (!"admin".equals(AuthService.CURRENT_USER_ROLE)) {
                 adminTab.setDisable(true);
@@ -283,13 +255,9 @@ public class DashboardController {
             adminChatToggleController.init(adminControlsBox);
         }
 
-
-
-
         // ── Community ─────────────────────────────────────────
-        if (communityTree != null) {
+        if (communityTree != null && communityController != null) {
 
-            // 1. Tree → resource table
             communityController.init(communityTree, currentFolderLabel, topicId -> {
                 currentSelectedTopicId = topicId;
                 resourceTableController.setCurrentTopicId(topicId);
@@ -297,24 +265,22 @@ public class DashboardController {
                 updateBreadcrumb(topicId);
             });
 
-            // 2. Resource table columns
-            resourceTableController.init(
-                resourceTable, colResName, colResType, colResDiff,
-                colResUploader, colResTags, colResVotes, colResAction,
-                discussionController, statisticsController);
+            if (resourceTable != null) {
+                resourceTableController.init(
+                    resourceTable, colResName, colResType, colResDiff,
+                    colResUploader, colResTags, colResVotes, colResAction,
+                    discussionController, statisticsController);
 
-            // 3. Optional extras (null-safe — only wired when new FXML is active)
-            resourceTableController.initExtras(
-                typeFilterCombo, diffFilterCombo, sortCombo,
-                statusBarLabel, loadingLabel, loadingIndicator, resourceCountLabel);
+                resourceTableController.initExtras(
+                    typeFilterCombo, diffFilterCombo, sortCombo,
+                    statusBarLabel, loadingLabel, loadingIndicator, resourceCountLabel);
+            }
 
-            // 4. Upload wired via button action below (needs Window at click-time)
             resourceUploadController.init(resourceTableController::loadResourcesForTopic);
             if (uploadResourceBtn != null) {
                 uploadResourceBtn.setOnAction(e -> triggerUpload());
             }
 
-            // 5. Global search
             if (globalSearchField != null) {
                 globalSearchField.textProperty().addListener((obs, old, text) -> {
                     if (text == null || text.isBlank()) resourceTableController.clearSearch();
@@ -322,12 +288,11 @@ public class DashboardController {
                 });
             }
 
-            // 6. Clear filters
             if (clearFiltersBtn != null) {
                 clearFiltersBtn.setOnAction(e -> {
-                    if (typeFilterCombo  != null) typeFilterCombo.setValue("All");
-                    if (diffFilterCombo  != null) diffFilterCombo.setValue("All");
-                    if (sortCombo        != null) sortCombo.setValue("Default");
+                    if (typeFilterCombo   != null) typeFilterCombo.setValue("All");
+                    if (diffFilterCombo   != null) diffFilterCombo.setValue("All");
+                    if (sortCombo         != null) sortCombo.setValue("Default");
                     if (globalSearchField != null) globalSearchField.clear();
                 });
             }
@@ -336,11 +301,15 @@ public class DashboardController {
         }
 
         // ── Collaboration ─────────────────────────────────────
-       collaborationController.init(channelList, teamList, roomContainer, channelInfoBox, channelTitleLabel, channelDescLabel, createChannelBtn);
+        collaborationController.init(channelList, teamList, roomContainer, channelInfoBox, channelTitleLabel, channelDescLabel, createChannelBtn);
         collaborationController.loadChannels();
         collaborationController.loadTeamsForChannel(1, "Hackathons");
 
-        // ── AI Tutor ──────────────────────────────────────────
+        // ── AI Tutor — RAG INTEGRATION ────────────────────────
+        // Pass the logged-in user's UUID so RAG can personalize responses
+        if (AuthService.CURRENT_USER_ID != null) {
+            aiTutorController.setCurrentUserId(AuthService.CURRENT_USER_ID.toString());
+        }
         aiTutorController.initInlineTab(aiWebView, aiTopicInput, aiQuestionInput, aiAskBtn);
         if (aiTutorBtn != null) aiTutorBtn.setOnAction(e -> aiTutorController.showAITutorPanel());
 
@@ -359,9 +328,6 @@ public class DashboardController {
         loadResources();
     }
 
-    // =========================================================
-    // QUESTION BANK
-    // =========================================================
     private void loadQuestionBankTab() {
         if (questionBankTab == null) return;
         try {
@@ -374,9 +340,6 @@ public class DashboardController {
         }
     }
 
-    // =========================================================
-    // AI SCHEDULE GENERATOR
-    // =========================================================
     @FXML
     public void onGenerateClick() {
         String userText = inputArea.getText().trim();
@@ -420,23 +383,20 @@ public class DashboardController {
         }).start();
     }
 
-    // =========================================================
-    // MANUAL TASK
-    // =========================================================
     @FXML
     public void showManualTaskEntryDialog() { taskController.showManualTaskEntryDialog(); }
 
     // =========================================================
     // COMMUNITY — FXML @FXML action delegates
     // =========================================================
-    @FXML public void onRefreshCommunity() { communityController.onRefreshCommunity(); }
-    @FXML public void onAddNewFolder()     { communityController.onAddNewFolder(); }
+    @FXML public void onRefreshCommunity() {
+        if (communityController != null) communityController.onRefreshCommunity();
+    }
 
-    /**
-     * Called by the FXML upload button (onAction="#onUploadResourceClick").
-     * Resolves the owner Window at click-time and delegates to ResourceUploadController,
-     * which opens the dialog via PopupHelper.
-     */
+    @FXML public void onAddNewFolder() {
+        if (communityController != null) communityController.onAddCourse();
+    }
+
     @FXML
     public void onUploadResourceClick() { triggerUpload(); }
 
@@ -448,7 +408,7 @@ public class DashboardController {
     // =========================================================
     // COLLABORATION — delegates
     // =========================================================
-@FXML
+    @FXML
     public void onCreatePost(javafx.event.ActionEvent event) {
         if (collaborationController != null) {
             collaborationController.onCreatePost(event);
@@ -459,29 +419,17 @@ public class DashboardController {
         showError("Please select a team workspace first and use the 'Add Resource' button inside it.");
     }
 
-    // =========================================================
-    // ADMIN — delegates
-    // =========================================================
     @FXML public void loadPendingRequests()  { adminBroadcastController.loadPendingRequests(); }
     @FXML public void onBroadcastRoutine()   { adminBroadcastController.showAddRoutineDialog(); }
     @FXML public void onBroadcastNotice()    { adminBroadcastController.showAddAnnouncementDialog(); }
 
-    // =========================================================
-    // ECA — delegates
-    // =========================================================
     @FXML public void handleECATrackerSelect(Event event) { ecaController.handleECATrackerSelect(event); }
     @FXML public void forceRefreshECA()                   { ecaController.forceRefreshECA(); }
 
-    // =========================================================
-    // SETTINGS — delegates
-    // =========================================================
     @FXML public void loadProfileSettings()        { profileController.loadProfileSettings(); }
     @FXML public void onSaveProfile()              { profileController.onSaveProfile(); }
     @FXML public void handleLogoutTab(Event event) { profileController.handleLogoutTab(event); }
 
-    // =========================================================
-    // RESOURCE ENGINE (Tab 3)
-    // =========================================================
     @FXML
     public void onGenerateResource() {
         String topic   = resTitle.getText().trim();
@@ -500,9 +448,6 @@ public class DashboardController {
         if (resourceList == null) return;
         resourceList.getChildren().clear();
         new Thread(() -> {
-
-            // DashboardController.java এর ৫০৩ নম্বর লাইনের আশেপাশে
-
             List<ResourceService.Resource> items = resourceService.getAllResources();
             Platform.runLater(() -> {
                 for (var item : items) {
@@ -514,9 +459,6 @@ public class DashboardController {
                 }
             });
         }).start();
-
-
-        
     }
 
     // =========================================================
@@ -529,39 +471,29 @@ public class DashboardController {
             if (breadcrumbSegment != null) breadcrumbSegment.setText("—");
             return;
         }
-        communityController.topicMap.forEach((node, id) -> {
-            if (id.equals(topicId) && node.getParent() != null) {
-                String seg = node.getParent().getValue().replace("  ", "").replace("📂 ", "");
-                if (breadcrumbSegment != null) breadcrumbSegment.setText(seg);
 
-                // Course is two levels up through the group node (CT / Basic / Final / Others)
-                if (node.getParent().getParent() != null
-                    && node.getParent().getParent().getParent() != null) {
-                    String course = node.getParent().getParent().getParent()
-                        .getValue().replace("📘 ", "");
-                    if (breadcrumbCourse != null) breadcrumbCourse.setText(course);
+        if (communityController != null && communityController.topicMap != null) {
+            communityController.topicMap.forEach((node, id) -> {
+                if (id.equals(topicId) && node.getParent() != null) {
+                    String seg = node.getParent().getValue().replace("  ", "").replace("📂 ", "");
+                    if (breadcrumbSegment != null) breadcrumbSegment.setText(seg);
+
+                    if (node.getParent().getParent() != null
+                        && node.getParent().getParent().getParent() != null) {
+                        String course = node.getParent().getParent().getParent()
+                            .getValue().replace("📘 ", "");
+                        if (breadcrumbCourse != null) breadcrumbCourse.setText(course);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
-    // =========================================================
-    // HELPERS
-    // =========================================================
-
-    /**
-     * Resolves the best available Window owner for PopupHelper dialogs.
-     * Prefers the resource table's scene (community tab is visible),
-     * falls back to any injected node's scene.
-     */
     private Window resolveOwner() {
-        if (resourceTable != null && resourceTable.getScene() != null)
-            return resourceTable.getScene().getWindow();
-        if (communityTree != null && communityTree.getScene() != null)
-            return communityTree.getScene().getWindow();
-        if (generateBtn != null && generateBtn.getScene() != null)
-            return generateBtn.getScene().getWindow();
-        return null; // PopupHelper handles null gracefully
+        if (resourceTable  != null && resourceTable.getScene()  != null) return resourceTable.getScene().getWindow();
+        if (communityTree  != null && communityTree.getScene()  != null) return communityTree.getScene().getWindow();
+        if (generateBtn    != null && generateBtn.getScene()    != null) return generateBtn.getScene().getWindow();
+        return null;
     }
 
     private void showSuccess(String msg) {

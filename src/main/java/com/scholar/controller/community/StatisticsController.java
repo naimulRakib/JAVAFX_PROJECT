@@ -2,7 +2,7 @@ package com.scholar.controller.community;
 
 import com.scholar.model.ResourceRow;
 import com.scholar.service.CourseService;
-import com.scholar.util.PopupHelper;
+import com.scholar.util.SPopupHelper;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,7 +18,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * STATISTICS CONTROLLER — Resource stats popup + Mark-as-done dialog
+ * STATISTICS CONTROLLER — Resource stats popup + Mark-as-done dialog.
+ * All raw Alert calls replaced with SPopupHelper.
+ *
  * Path: src/main/java/com/scholar/controller/community/StatisticsController.java
  */
 @Component
@@ -26,16 +28,15 @@ public class StatisticsController {
 
     @Autowired private CourseService courseService;
 
-    // Prevents multiple dialogs from opening on rapid clicks
     private final Set<String> activeDialogs = new HashSet<>();
 
     // ─────────────────────────────────────────────────────────────
     // STATISTICS POPUP
     // ─────────────────────────────────────────────────────────────
     public void showStatisticsDialog(CourseService.Resource res, Window owner) {
-        
+
         String lockKey = "STATS_" + res.id();
-        if (!activeDialogs.add(lockKey)) return; // If already clicked and loading/open, do nothing
+        if (!activeDialogs.add(lockKey)) return;
 
         Label spinnerLbl = new Label("⏳ Fetching community data…");
         spinnerLbl.setStyle("-fx-text-fill: #7b8fa8; -fx-font-size: 13px;");
@@ -43,11 +44,10 @@ public class StatisticsController {
         layout.setPadding(new Insets(24));
         layout.setStyle("-fx-background-color: #0f1117;");
 
-        Stage stage = PopupHelper.create(owner,
+        Stage stage = SPopupHelper.create(owner,
             "📊 Statistics — " + res.title(),
             layout, 460, 500, 520, 580);
-        
-        // Release the lock when the window is closed
+
         stage.setOnHidden(e -> activeDialogs.remove(lockKey));
         stage.show();
 
@@ -57,7 +57,6 @@ public class StatisticsController {
                 Platform.runLater(() -> {
                     layout.getChildren().clear();
 
-                    // ── Votes row ─────────────────────────────────────
                     HBox votesBox = new HBox(16);
                     votesBox.setAlignment(Pos.CENTER_LEFT);
                     votesBox.getChildren().addAll(
@@ -65,10 +64,8 @@ public class StatisticsController {
                         badge("👎 " + stats.totalDownvotes() + " downvotes", "#7f1d1d", "#f87171")
                     );
 
-                    // ── Difficulty row ────────────────────────────────
                     HBox diffBox = new HBox(12);
-                    diffBox.setStyle("-fx-background-color: #161b27; -fx-padding: 14; "
-                        + "-fx-background-radius: 10;");
+                    diffBox.setStyle("-fx-background-color: #161b27; -fx-padding: 14; -fx-background-radius: 10;");
                     diffBox.setAlignment(Pos.CENTER_LEFT);
                     diffBox.getChildren().addAll(
                         badge("🟢 Easy: "   + stats.easyCount(),   "#14532d", "#4ade80"),
@@ -76,24 +73,20 @@ public class StatisticsController {
                         badge("🔴 Hard: "   + stats.hardCount(),   "#7f1d1d", "#f87171")
                     );
 
-                    // ── Section title ─────────────────────────────────
                     Label reviewTitle = new Label("📝  Student Notes & Experiences");
                     reviewTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #e2e8f0;");
 
-                    // ── Notes cards ───────────────────────────────────
                     VBox notesContainer = new VBox(10);
                     notesContainer.setStyle("-fx-background-color: #0f1117;");
                     notesContainer.setPadding(new Insets(4, 0, 4, 0));
 
                     if (stats.userLogs().isEmpty()) {
-                        notesContainer.getChildren().add(
-                            emptyLabel("No notes yet — be the first! 🚀"));
+                        notesContainer.getChildren().add(emptyLabel("No notes yet — be the first! 🚀"));
                     } else {
                         for (CourseService.CompletionLog log : stats.userLogs()) {
                             VBox card = new VBox(8);
                             card.setStyle("-fx-background-color: #161b27; -fx-padding: 14; "
-                                + "-fx-background-radius: 10; -fx-border-color: #1e2736; "
-                                + "-fx-border-width: 1;");
+                                + "-fx-background-radius: 10; -fx-border-color: #1e2736; -fx-border-width: 1;");
 
                             HBox header = new HBox(10);
                             header.setAlignment(Pos.CENTER_LEFT);
@@ -129,16 +122,12 @@ public class StatisticsController {
                         }
                     }
 
-                    // ── Fully dark ScrollPane ─────────────────────────
                     ScrollPane scroll = new ScrollPane(notesContainer);
                     scroll.setFitToWidth(true);
                     scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
                     scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
                     scroll.setStyle(
-                        "-fx-background: #0f1117; "
-                        + "-fx-background-color: #0f1117; "
-                        + "-fx-border-color: transparent;");
-                    // Darken viewport once skin is ready
+                        "-fx-background: #0f1117; -fx-background-color: #0f1117; -fx-border-color: transparent;");
                     scroll.skinProperty().addListener((obs, o, n) -> {
                         javafx.scene.Node vp = scroll.lookup(".viewport");
                         if (vp != null) vp.setStyle("-fx-background-color: #0f1117;");
@@ -148,8 +137,10 @@ public class StatisticsController {
                     layout.getChildren().addAll(votesBox, diffBox, reviewTitle, scroll);
                 });
             } catch (Exception ex) {
-                // Failsafe in case DB request fails
-                Platform.runLater(() -> activeDialogs.remove(lockKey));
+                Platform.runLater(() -> {
+                    activeDialogs.remove(lockKey);
+                    SPopupHelper.showError(owner, "Error", "Could not load statistics: " + ex.getMessage());
+                });
             }
         }).start();
     }
@@ -163,7 +154,7 @@ public class StatisticsController {
                                               Window owner) {
 
         String lockKey = "DONE_" + row.getRawResource().id();
-        if (!activeDialogs.add(lockKey)) return; // Prevent multiple threads on rapid click
+        if (!activeDialogs.add(lockKey)) return;
 
         new Thread(() -> {
             try {
@@ -172,7 +163,6 @@ public class StatisticsController {
 
                     boolean isEdit = existing.isCompleted();
 
-                    // ── Inputs ────────────────────────────────────────
                     TextField durationField = darkField(
                         existing.timeMins() > 0 ? String.valueOf(existing.timeMins()) : "");
                     durationField.setPromptText("Time in minutes (e.g. 45)");
@@ -188,7 +178,6 @@ public class StatisticsController {
                     noteArea.setWrapText(true);
                     noteArea.setMaxWidth(Double.MAX_VALUE);
 
-                    // ── Form: label on top, field below ──────────────
                     VBox formBox = new VBox(18);
                     formBox.setPadding(new Insets(24));
                     formBox.setStyle("-fx-background-color: #161b27;");
@@ -198,7 +187,6 @@ public class StatisticsController {
                         fieldBlock("📝  Your notes",         noteArea)
                     );
 
-                    // ── Buttons ───────────────────────────────────────
                     Button cancelBtn = new Button("Cancel");
                     cancelBtn.setStyle("-fx-background-color: #1e2736; -fx-text-fill: #94a3b8; "
                         + "-fx-background-radius: 10; -fx-padding: 10 24; -fx-cursor: hand;");
@@ -216,12 +204,11 @@ public class StatisticsController {
                     VBox root = new VBox(formBox, btnRow);
                     root.setStyle("-fx-background-color: #161b27;");
 
-                    Stage stage = PopupHelper.create(owner,
+                    Stage stage = SPopupHelper.create(owner,
                         isEdit ? "✏️ Edit Your Note — " + row.getName()
                                : "🎉 Completed — " + row.getName(),
                         root, 420, 440, 480, 500);
-                    
-                    // Release the lock when window closes (either via 'cancel', 'save', or 'X' button)
+
                     stage.setOnHidden(ev -> activeDialogs.remove(lockKey));
                     stage.show();
 
@@ -230,31 +217,33 @@ public class StatisticsController {
                     saveBtn.setOnAction(e -> {
                         int mins = durationField.getText().matches("\\d+")
                             ? Integer.parseInt(durationField.getText()) : 0;
-                        stage.close(); // Calling close automatically triggers the setOnHidden event and releases the lock
+                        stage.close();
                         new Thread(() -> {
                             if (courseService.markResourceDone(row.getRawResource().id(),
                                     diffCombo.getValue(), mins, noteArea.getText().trim())) {
                                 Platform.runLater(() -> {
-                                    Alert a = new Alert(Alert.AlertType.INFORMATION,
-                                        "Progress & notes saved ✅");
-                                    a.initOwner(owner);
-                                    a.show();
+                                    SPopupHelper.showToast(owner, "Progress & notes saved ✅");
                                     if (currentSelectedTopicId != null)
                                         onReload.accept(currentSelectedTopicId);
                                 });
+                            } else {
+                                SPopupHelper.showError(owner, "Save Failed",
+                                    "Could not save your progress. Please retry.");
                             }
                         }).start();
                     });
                 });
             } catch (Exception ex) {
-                // Failsafe in case DB request fails
-                Platform.runLater(() -> activeDialogs.remove(lockKey));
+                Platform.runLater(() -> {
+                    activeDialogs.remove(lockKey);
+                    SPopupHelper.showError(owner, "Error", "Could not load your progress: " + ex.getMessage());
+                });
             }
         }).start();
     }
 
     // ─────────────────────────────────────────────────────────────
-    // LAYOUT HELPER — label on top, control below full width
+    // HELPERS
     // ─────────────────────────────────────────────────────────────
     private static VBox fieldBlock(String labelText, javafx.scene.Node ctrl) {
         Label lbl = new Label(labelText);
@@ -265,9 +254,6 @@ public class StatisticsController {
         return block;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────────
     private static Label badge(String text, String bg, String fg) {
         Label l = new Label(text);
         l.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + fg + "; "
