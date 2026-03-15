@@ -2,23 +2,33 @@ package com.scholar.controller.dashboard;
 
 import com.scholar.service.DatabaseConnection;
 import com.scholar.service.AuthService;
+import com.scholar.service.DataService;
+import com.scholar.model.ClassOffPeriod;
 import com.scholar.util.PopupHelper;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +49,7 @@ public class RoutineController {
 
     private GridPane routineGrid;
     private VBox     announcementList;
+    @Autowired private DataService dataService;
 
     // ── Announcement card styles (static — no runtime string building) ────────
     //  Normal: dark #0f1020 bg, subtle dark border
@@ -149,10 +160,68 @@ public class RoutineController {
         new Thread(() -> {
             try (Connection conn = DatabaseConnection.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                ensureAnnouncementsTable(conn);
                 pstmt.setInt(1, AuthService.CURRENT_CHANNEL_ID);
                 ResultSet rs = pstmt.executeQuery();
                 List<VBox> cards = new ArrayList<>();
+
+                // ── Class Off cards (top) ───────────────────────────────
+                List<ClassOffPeriod> offPeriods = dataService.loadClassOffPeriods();
+                for (ClassOffPeriod off : offPeriods) {
+                    VBox card = new VBox(6);
+                    card.setStyle(
+                        "-fx-background-color:#064e3b;" +
+                        "-fx-padding:14;" +
+                        "-fx-background-radius:10;" +
+                        "-fx-border-color:#10b981;" +
+                        "-fx-border-width:0 0 0 3;" +
+                        "-fx-border-radius:10;" +
+                        "-fx-effect:dropshadow(gaussian,rgba(16,185,129,0.2),8,0,0,2);");
+
+                    Label t = new Label("✅ Class Off (Varsity Closed)");
+                    t.setStyle("-fx-font-weight:bold;-fx-font-size:14px;-fx-text-fill:#d1fae5;");
+
+                    String range = (off.startDate() != null && off.endDate() != null)
+                        ? off.startDate() + " → " + off.endDate()
+                        : "Date range not set";
+                    Label r = new Label("📅 " + range);
+                    r.setStyle("-fx-text-fill:#a7f3d0;-fx-font-size:12px;");
+
+                    Label reason = new Label(off.reason() != null ? off.reason() : "Admin broadcasted class off");
+                    reason.setWrapText(true);
+                    reason.setStyle("-fx-text-fill:#d1fae5;-fx-font-size:12px;");
+
+                    HBox actions = new HBox(8);
+                    actions.setAlignment(Pos.CENTER_RIGHT);
+                    if ("admin".equals(AuthService.CURRENT_USER_ROLE)) {
+                        Button reverseBtn = new Button("↩ Reverse");
+                        reverseBtn.setStyle(
+                            "-fx-background-color:#065f46;-fx-text-fill:#ecfdf5;" +
+                            "-fx-border-color:#10b981;-fx-border-radius:12;" +
+                            "-fx-background-radius:12;-fx-cursor:hand;" +
+                            "-fx-font-size:11px;-fx-font-weight:bold;-fx-padding:5 12;");
+                        reverseBtn.setOnAction(e -> {
+                            e.consume();
+                            new Thread(() -> {
+                                boolean ok = dataService.reverseClassOffPeriod(off.id());
+                                Platform.runLater(() -> {
+                                    if (ok) {
+                                        loadClassAnnouncements();
+                                        PopupHelper.showInfo(resolveOwner(), "Reversed", "Class off reverted.");
+                                    } else {
+                                        PopupHelper.showError(resolveOwner(), "Reverse Failed", "Could not reverse.");
+                                    }
+                                });
+                            }).start();
+                        });
+                        actions.getChildren().add(reverseBtn);
+                    }
+
+                    card.getChildren().addAll(t, r, reason, actions);
+                    cards.add(card);
+                }
                 while (rs.next()) {
+                    long annId = rs.getLong("id");
                     VBox card = new VBox(5);
                     card.setStyle(CARD_NORMAL);
 
@@ -175,17 +244,186 @@ public class RoutineController {
 
                     card.getChildren().addAll(t, c);
 
-                    // Click card → show announcement detail popup (LOGIC UNCHANGED)
+                    // Click card → show detail or edit (admin only)
                     final String cardTitle   = rs.getString("title");
                     final String cardContent = rs.getString("content");
-                    card.setOnMouseClicked(e ->
-                        showAnnouncementDetailPopup(cardTitle, cardContent));
+                    card.setOnMouseClicked(e -> {
+                        if ("admin".equals(AuthService.CURRENT_USER_ROLE)) {
+                            showEditAnnouncementDialog(annId, cardTitle, cardContent);
+                        } else {
+                            showAnnouncementDetailPopup(cardTitle, cardContent);
+                        }
+                    });
 
                     cards.add(card);
                 }
                 Platform.runLater(() -> announcementList.getChildren().addAll(cards));
             } catch (SQLException e) { e.printStackTrace(); }
         }).start();
+    }
+
+    public void reverseAllClassOffPeriods() {
+        if (!"admin".equals(AuthService.CURRENT_USER_ROLE)) return;
+        new Thread(() -> {
+            int count = dataService.reverseAllClassOffPeriods();
+            Platform.runLater(() -> {
+                if (count > 0) {
+                    loadClassAnnouncements();
+                    PopupHelper.showInfo(resolveOwner(), "Reversed",
+                        "Reversed " + count + " active class off range(s).");
+                } else {
+                    PopupHelper.showInfo(resolveOwner(), "Nothing to Reverse",
+                        "No active class off ranges found.");
+                }
+            });
+        }).start();
+    }
+
+    public void showManualAnnouncementDialog() {
+        if (!"admin".equals(AuthService.CURRENT_USER_ROLE)) return;
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("📢 Add Notice (Manual)");
+        dialog.setHeaderText("Create a notice without AI.");
+
+        ButtonType saveBtn = new ButtonType("Save ✅", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
+
+        TextField titleField = new TextField();
+        titleField.setPromptText("Notice title");
+        TextArea contentField = new TextArea();
+        contentField.setPromptText("Notice details");
+        contentField.setWrapText(true);
+        contentField.setPrefRowCount(6);
+
+        VBox box = new VBox(10, titleField, contentField);
+        box.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(box);
+
+        dialog.showAndWait().ifPresent(btn -> {
+            if (btn == saveBtn) {
+                String title = titleField.getText().trim();
+                String content = contentField.getText().trim();
+                if (title.isEmpty() || content.isEmpty()) {
+                    PopupHelper.showError(resolveOwner(), "Missing Fields", "Title and content required.");
+                    return;
+                }
+                new Thread(() -> {
+                    boolean ok = insertAnnouncement(title, content);
+                    Platform.runLater(() -> {
+                        if (ok) {
+                            loadClassAnnouncements();
+                            PopupHelper.showInfo(resolveOwner(), "Saved", "Notice added.");
+                        } else {
+                            PopupHelper.showError(resolveOwner(), "Failed", "Could not save notice.");
+                        }
+                    });
+                }).start();
+            }
+        });
+    }
+
+    private void showEditAnnouncementDialog(long id, String title, String content) {
+        if (!"admin".equals(AuthService.CURRENT_USER_ROLE)) return;
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("✏️ Edit Notice");
+        dialog.setHeaderText("Update or delete this notice.");
+
+        ButtonType saveBtn = new ButtonType("Update ✅", ButtonBar.ButtonData.OK_DONE);
+        ButtonType deleteBtn = new ButtonType("Delete 🗑", ButtonBar.ButtonData.OTHER);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtn, deleteBtn, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(title);
+        TextArea contentField = new TextArea(content);
+        contentField.setWrapText(true);
+        contentField.setPrefRowCount(6);
+
+        VBox box = new VBox(10, titleField, contentField);
+        box.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(box);
+
+        dialog.showAndWait().ifPresent(btn -> {
+            if (btn == saveBtn) {
+                String newTitle = titleField.getText().trim();
+                String newContent = contentField.getText().trim();
+                new Thread(() -> {
+                    boolean ok = updateAnnouncement(id, newTitle, newContent);
+                    Platform.runLater(() -> {
+                        if (ok) {
+                            loadClassAnnouncements();
+                            PopupHelper.showInfo(resolveOwner(), "Updated", "Notice updated.");
+                        } else {
+                            PopupHelper.showError(resolveOwner(), "Failed", "Could not update notice.");
+                        }
+                    });
+                }).start();
+            } else if (btn == deleteBtn) {
+                new Thread(() -> {
+                    boolean ok = deleteAnnouncement(id);
+                    Platform.runLater(() -> {
+                        if (ok) {
+                            loadClassAnnouncements();
+                            PopupHelper.showInfo(resolveOwner(), "Deleted", "Notice deleted.");
+                        } else {
+                            PopupHelper.showError(resolveOwner(), "Failed", "Could not delete notice.");
+                        }
+                    });
+                }).start();
+            }
+        });
+    }
+
+    private boolean insertAnnouncement(String title, String content) {
+        String sql = "INSERT INTO announcements (title, content, channel_id) VALUES (?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            ensureAnnouncementsTable(conn);
+            pstmt.setString(1, title);
+            pstmt.setString(2, content);
+            pstmt.setInt(3, AuthService.CURRENT_CHANNEL_ID);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    private boolean updateAnnouncement(long id, String title, String content) {
+        String sql = "UPDATE announcements SET title = ?, content = ? WHERE id = ? AND channel_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            ensureAnnouncementsTable(conn);
+            pstmt.setString(1, title);
+            pstmt.setString(2, content);
+            pstmt.setLong(3, id);
+            pstmt.setInt(4, AuthService.CURRENT_CHANNEL_ID);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    private boolean deleteAnnouncement(long id) {
+        String sql = "DELETE FROM announcements WHERE id = ? AND channel_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            ensureAnnouncementsTable(conn);
+            pstmt.setLong(1, id);
+            pstmt.setInt(2, AuthService.CURRENT_CHANNEL_ID);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    private void ensureAnnouncementsTable(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS announcements (" +
+                "id BIGSERIAL PRIMARY KEY," +
+                "title TEXT NOT NULL," +
+                "content TEXT NOT NULL," +
+                "channel_id INT NOT NULL," +
+                "created_at TIMESTAMPTZ DEFAULT NOW()" +
+                ")"
+            );
+            stmt.executeUpdate(
+                "CREATE INDEX IF NOT EXISTS idx_announcements_channel " +
+                "ON announcements (channel_id, created_at)"
+            );
+        }
     }
 
     // ── saveRoutineToDB ───────────────────────────────────────────────────────

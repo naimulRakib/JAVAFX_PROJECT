@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller; // 🟢 নতুন
 import javax.sql.DataSource; // 🟢
 
@@ -27,8 +28,11 @@ public class AIController {
     @Autowired
     private DataSource dataSource;
 
-    // ⚠️ Replace with your actual Google AI Studio Gemini API Key
-    private String GEMINI_API_KEY = "AIzaSyCsgRERKdg0pDtapy5nuYJeFfiotr5V6MM"; 
+    @Value("${gemini.api.key:}")
+    private String GEMINI_API_KEY;
+
+    @Value("${gemini.model:gemini-3.1-pro-flash-lite-preview}")
+    private String GEMINI_MODEL;
 
     public void setApiKey(String key) {
         this.GEMINI_API_KEY = key;
@@ -55,8 +59,9 @@ public class AIController {
             String cleanPrompt = prompt.replace("\"", "\\\"").replace("\n", " ");
             String jsonBody = "{\"contents\": [{\"parts\": [{\"text\": \"" + cleanPrompt + "\"}]}]}";
 
-           HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY))
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL
+                        + ":generateContent?key=" + GEMINI_API_KEY))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
@@ -121,8 +126,9 @@ public class AIController {
             String jsonBody = "{\"contents\": [{\"parts\": [{\"text\": \"" + fullPrompt + "\"}]}]}";
 
             // 5. Send Request
-         HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY))
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL
+                        + ":generateContent?key=" + GEMINI_API_KEY))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))

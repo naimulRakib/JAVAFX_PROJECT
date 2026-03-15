@@ -206,6 +206,7 @@ public class TruthDareService {
     }
 
     /** @deprecated use getRoomStatusRaw — kept for internal joinRoom use only */
+    @Deprecated
     public Map<String, Object> getRoomStatus(String roomCode) {
         try {
             String raw = getRoomStatusRaw(roomCode);

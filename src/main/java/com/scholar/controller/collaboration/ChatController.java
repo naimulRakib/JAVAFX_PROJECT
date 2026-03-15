@@ -3,6 +3,7 @@ package com.scholar.controller.collaboration;
 import com.scholar.service.AuthService;
 import com.scholar.service.CollaborationService;
 import com.scholar.service.TelegramService;
+import com.scholar.util.PopupHelper;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -11,6 +12,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -32,6 +34,7 @@ public class ChatController {
 
     private Timeline chatTimeline;
     private List<CollaborationService.TeamResource> currentResourceData = new ArrayList<>();
+    private Window ownerWindow;
 
     // ----------------------------------------------------------
     // SHOW CHAT ROOM (SplitPane)
@@ -39,6 +42,7 @@ public class ChatController {
     public void showChatRoom(CollaborationService.Post post, VBox roomContainer) {
         roomContainer.getChildren().clear();
         if (chatTimeline != null) chatTimeline.stop();
+        if (roomContainer.getScene() != null) ownerWindow = roomContainer.getScene().getWindow();
 
         SplitPane splitPane = new SplitPane();
         splitPane.setDividerPositions(0.7);
@@ -213,9 +217,13 @@ public class ChatController {
     // HELPERS
     // ----------------------------------------------------------
     private void showSuccess(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setContentText(msg); a.show(); });
+        Platform.runLater(() -> PopupHelper.showInfo(resolveOwner(), "Notice", msg));
     }
     private void showError(String msg) {
-        Platform.runLater(() -> { Alert a = new Alert(Alert.AlertType.ERROR); a.setContentText(msg); a.showAndWait(); });
+        Platform.runLater(() -> PopupHelper.showError(resolveOwner(), "Error", msg));
+    }
+
+    private Window resolveOwner() {
+        return ownerWindow;
     }
 }

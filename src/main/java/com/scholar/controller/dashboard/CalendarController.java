@@ -1,6 +1,7 @@
 package com.scholar.controller.dashboard;
 
 import com.scholar.model.StudyTask;
+import com.scholar.model.ClassOffPeriod;
 import com.scholar.service.WeatherService;
 import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
@@ -53,6 +54,7 @@ public class CalendarController {
     private GridPane calendarGrid;
     private Label    monthLabel;
     private List<StudyTask> allTasks;
+    private List<ClassOffPeriod> classOffPeriods = new java.util.ArrayList<>();
     private LocalDate selectedDate;
 
     private java.util.function.Consumer<LocalDate> onDateClickedCallback;
@@ -90,6 +92,9 @@ public class CalendarController {
     }
 
     public void setSelectedDate(LocalDate date) { this.selectedDate = date; }
+    public void setClassOffPeriods(List<ClassOffPeriod> periods) {
+        this.classOffPeriods = periods != null ? periods : new java.util.ArrayList<>();
+    }
 
     // ── drawCalendar ──────────────────────────────────────────────────────────
     public void drawCalendar(LocalDate selectedDate) {
@@ -119,6 +124,29 @@ public class CalendarController {
             });
 
             HBox btnContainer = new HBox(enableWeatherBtn);
+            btnContainer.setAlignment(Pos.CENTER_RIGHT);
+            btnContainer.setPadding(new Insets(0, 0, 10, 0));
+            calendarGrid.add(btnContainer, 0, 0, 7, 1);
+        } else {
+            Button refreshBtn = new Button("🔄 Fetch Weather");
+            refreshBtn.setStyle(
+                "-fx-background-color:#0ea5e9;-fx-text-fill:white;" +
+                "-fx-font-weight:bold;-fx-background-radius:6;" +
+                "-fx-cursor:hand;-fx-padding:6 12;");
+            refreshBtn.setOnAction(e -> {
+                refreshBtn.setText("⏳ Updating...");
+                refreshBtn.setDisable(true);
+                new Thread(() -> {
+                    double[] coords = weatherService.getSavedLocation();
+                    weeklyWeather = weatherService.fetchWeeklyForecast(coords[0], coords[1]);
+                    Platform.runLater(() -> {
+                        refreshBtn.setText("🔄 Fetch Weather");
+                        refreshBtn.setDisable(false);
+                        drawCalendar(this.selectedDate);
+                    });
+                }).start();
+            });
+            HBox btnContainer = new HBox(refreshBtn);
             btnContainer.setAlignment(Pos.CENTER_RIGHT);
             btnContainer.setPadding(new Insets(0, 0, 10, 0));
             calendarGrid.add(btnContainer, 0, 0, 7, 1);
@@ -187,7 +215,18 @@ public class CalendarController {
         String boxStyle;
         String lblStyle;
 
-        if (isToday && isSelected) {
+        ClassOffPeriod offForDay = classOffForDate(date);
+        boolean isClassOff = offForDay != null;
+
+        if (isClassOff) {
+            boxStyle =
+                "-fx-background-color:linear-gradient(to bottom right,#064e3b,#10b981);" +
+                "-fx-border-color:#34d399;-fx-border-width:1;" +
+                "-fx-background-radius:8;-fx-border-radius:8;-fx-cursor:hand;" +
+                "-fx-effect:dropshadow(gaussian,rgba(16,185,129,0.35),10,0,0,2);";
+            lblStyle = "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#ecfdf5;";
+
+        } else if (isToday && isSelected) {
             // Today AND selected — indigo bg, red border accent
             boxStyle =
                 "-fx-background-color:linear-gradient(to bottom right,#4338ca,#6366f1);" +
@@ -254,14 +293,24 @@ public class CalendarController {
 
         box.getChildren().add(topRow);
 
+        if (isClassOff) {
+            Label badge = new Label("OFF");
+            badge.setStyle(
+                "-fx-font-size:9px;-fx-font-weight:bold;" +
+                "-fx-text-fill:#ecfdf5;-fx-background-color:rgba(6,95,70,0.9);" +
+                "-fx-padding:1 4;-fx-background-radius:4;");
+            box.getChildren().add(badge);
+        }
+
         // ── Task dot ──────────────────────────────────────────
         List<StudyTask> tasksForThisDay = allTasks.stream()
             .filter(t -> t.date() != null && t.date().equals(date.toString()))
+            .filter(t -> !(isClassOff && "ROUTINE".equals(t.type())))
             .collect(Collectors.toList());
 
         if (!tasksForThisDay.isEmpty()) {
-            // Always indigo — visible on every dark bg variant
-            Circle dot = new Circle(3, Color.web("#6366f1"));
+            // Always visible — green if class off
+            Circle dot = new Circle(3, Color.web(isClassOff ? "#22c55e" : "#6366f1"));
             box.getChildren().add(dot);
         }
 
@@ -289,6 +338,40 @@ public class CalendarController {
         dateLabel.setStyle(
             "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:#e2e8f0;");
         root.getChildren().add(dateLabel);
+
+        ClassOffPeriod offForDay = classOffForDate(date);
+        if (offForDay != null) {
+            Label offBanner = new Label("✅ Varsity Off — Classes Cancelled");
+            offBanner.setStyle(
+                "-fx-background-color:#064e3b;-fx-text-fill:#d1fae5;" +
+                "-fx-padding:6 10;-fx-background-radius:6;-fx-font-weight:bold;");
+            root.getChildren().add(offBanner);
+        }
+
+        // Current weather (accurate)
+        WeatherService.CurrentWeather current = weatherService.getCurrentWeather();
+        if (current != null) {
+            VBox currentBox = new VBox(8);
+            currentBox.setStyle(
+                "-fx-background-color:#0f172a;-fx-padding:12;" +
+                "-fx-background-radius:8;-fx-border-color:#1e293b;-fx-border-radius:8;");
+            Label curTitle = new Label("🌤️ Current Weather");
+            curTitle.setStyle("-fx-text-fill:#93c5fd;-fx-font-weight:bold;");
+            Label curMain = new Label(current.emoji() + " " + current.condition());
+            curMain.setStyle("-fx-text-fill:#e2e8f0;-fx-font-size:14px;-fx-font-weight:bold;");
+            Label curTemp = new Label("🌡️ Temp: " + current.temperature());
+            curTemp.setStyle("-fx-text-fill:#e2e8f0;");
+            Label curHum = new Label("💧 Humidity: " + current.humidity());
+            curHum.setStyle("-fx-text-fill:#e2e8f0;");
+            Label curPrecip = new Label("🌧️ Precipitation: " + current.precipitationProb());
+            curPrecip.setStyle("-fx-text-fill:#e2e8f0;");
+            Label curWind = new Label("🌬️ Wind: " + current.windSpeed());
+            curWind.setStyle("-fx-text-fill:#e2e8f0;");
+            Label curRain = new Label("🌧️ " + current.rainDetails());
+            curRain.setStyle("-fx-text-fill:#94a3b8;");
+            currentBox.getChildren().addAll(curTitle, curMain, curTemp, curHum, curPrecip, curWind, curRain);
+            root.getChildren().add(currentBox);
+        }
 
         // Climate section
         boolean hasWeather = isWeatherEnabled
@@ -396,5 +479,14 @@ public class CalendarController {
         Label val = new Label(value);
         val.setStyle("-fx-text-fill:#e2e8f0;-fx-font-size:12px;-fx-font-weight:bold;");
         return new HBox(title, val);
+    }
+
+    private ClassOffPeriod classOffForDate(LocalDate date) {
+        if (date == null || classOffPeriods == null) return null;
+        for (ClassOffPeriod p : classOffPeriods) {
+            if (p.startDate() == null || p.endDate() == null) continue;
+            if (!date.isBefore(p.startDate()) && !date.isAfter(p.endDate())) return p;
+        }
+        return null;
     }
 }

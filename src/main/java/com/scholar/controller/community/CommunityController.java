@@ -12,9 +12,12 @@ import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * COMMUNITY CONTROLLER — TreeView with full manual hierarchy:
@@ -32,6 +35,7 @@ import java.util.Map;
  *
  * Path: src/main/java/com/scholar/controller/community/CommunityController.java
  */
+@SuppressWarnings("unchecked")
 @Component("dashCommunityController")
 public class CommunityController {
 
@@ -50,6 +54,8 @@ public class CommunityController {
     private TreeView<String> communityTree;
     private Label currentFolderLabel;
     private java.util.function.Consumer<Integer> onTopicSelected;
+    private List<CourseService.CourseTreeRow> cachedRows = new ArrayList<>();
+    private String currentQuery = "";
 
     // ─────────────────────────────────────────────────────────────
     // INIT
@@ -85,9 +91,6 @@ public class CommunityController {
     @FXML
     public void onRefreshCommunity() {
         if (communityTree == null) return;
-        courseMap.clear();
-        segmentMap.clear();
-        topicMap.clear();
 
         // ── Single background thread → single Platform.runLater ──────
         // This eliminates the previous race condition where topicMap was
@@ -95,72 +98,126 @@ public class CommunityController {
         new Thread(() -> {
             List<CourseService.CourseTreeRow> rows = courseService.loadCourseTree();
             Platform.runLater(() -> {
-
-                TreeItem<String> root = new TreeItem<>("📚 University Courses");
-                root.setExpanded(true);
-
-                // Track nodes we've already created to avoid duplicates
-                java.util.Map<Integer, TreeItem<String>> courseNodes  = new java.util.LinkedHashMap<>();
-                java.util.Map<Integer, TreeItem<String>> segNodes     = new java.util.HashMap<>();
-                java.util.Map<Integer, TreeItem<String>> groupBasic   = new java.util.HashMap<>();
-                java.util.Map<Integer, TreeItem<String>> groupCT      = new java.util.HashMap<>();
-                java.util.Map<Integer, TreeItem<String>> groupTF      = new java.util.HashMap<>();
-
-                for (CourseService.CourseTreeRow row : rows) {
-
-                    // ── Course node ───────────────────────────────────
-                    TreeItem<String> courseNode = courseNodes.computeIfAbsent(row.courseId(), id -> {
-                        TreeItem<String> cn = new TreeItem<>("📘 " + row.courseCode());
-                        courseMap.put(cn, id);
-
-                        // Create the 3 fixed group folders once per course
-                        TreeItem<String> basic = new TreeItem<>(GRP_BASIC);
-                        TreeItem<String> ct    = new TreeItem<>(GRP_CT);
-                        TreeItem<String> tf    = new TreeItem<>(GRP_TF);
-                        cn.getChildren().addAll(basic, ct, tf);
-
-                        // Map groups → courseId so "Add Topic" knows which course
-                        segmentMap.put(basic, id);
-                        segmentMap.put(ct,    id);
-                        segmentMap.put(tf,    id);
-
-                        groupBasic.put(id, basic);
-                        groupCT.put(id, ct);
-                        groupTF.put(id, tf);
-
-                        root.getChildren().add(cn);
-                        return cn;
-                    });
-
-                    // ── Segment node ──────────────────────────────────
-                    TreeItem<String> segNode = segNodes.computeIfAbsent(row.segmentId(), id -> {
-                        TreeItem<String> sn = new TreeItem<>("📂 " + row.segmentName());
-                        segmentMap.put(sn, id);
-
-                        // Place under correct fixed group
-                        String lname = row.segmentName().toLowerCase();
-                        TreeItem<String> targetGroup =
-                            (lname.contains("ct") || lname.contains("class test"))
-                                ? groupCT.get(row.courseId())
-                            : lname.contains("final")
-                                ? groupTF.get(row.courseId())
-                            : groupBasic.get(row.courseId());
-
-                        if (targetGroup != null) targetGroup.getChildren().add(sn);
-                        return sn;
-                    });
-
-                    // ── Topic node (only if row has a topic) ──────────
-                    if (row.topicId() != -1) {
-                        TreeItem<String> topicNode = new TreeItem<>("📄 " + row.topicTitle());
-                        topicMap.put(topicNode, row.topicId());
-                        segNode.getChildren().add(topicNode);
-                    }
-                }
-
-                communityTree.setRoot(root);
+                cachedRows = rows != null ? rows : new ArrayList<>();
+                rebuildTree(cachedRows, currentQuery);
             });
         }).start();
+    }
+
+    public void applySearch(String query) {
+        currentQuery = query == null ? "" : query.trim().toLowerCase();
+        if (Platform.isFxApplicationThread()) rebuildTree(cachedRows, currentQuery);
+        else Platform.runLater(() -> rebuildTree(cachedRows, currentQuery));
+    }
+
+    private void rebuildTree(List<CourseService.CourseTreeRow> rows, String query) {
+        if (communityTree == null) return;
+        courseMap.clear();
+        segmentMap.clear();
+        topicMap.clear();
+
+        boolean hasQuery = query != null && !query.isBlank();
+        String q = hasQuery ? query.toLowerCase() : "";
+
+        Set<Integer> matchedCourses = new HashSet<>();
+        Set<Integer> matchedSegments = new HashSet<>();
+        Set<Integer> matchedTopics = new HashSet<>();
+        Set<Integer> directCourseMatches = new HashSet<>();
+        Set<Integer> directSegmentMatches = new HashSet<>();
+
+        if (hasQuery && rows != null) {
+            for (CourseService.CourseTreeRow row : rows) {
+                boolean courseMatch = contains(row.courseCode(), q);
+                boolean segmentMatch = contains(row.segmentName(), q);
+                boolean topicMatch = row.topicId() != -1 && contains(row.topicTitle(), q);
+
+                if (courseMatch) directCourseMatches.add(row.courseId());
+                if (segmentMatch) directSegmentMatches.add(row.segmentId());
+                if (topicMatch) matchedTopics.add(row.topicId());
+
+                if (courseMatch || segmentMatch || topicMatch) matchedCourses.add(row.courseId());
+                if (segmentMatch || topicMatch) matchedSegments.add(row.segmentId());
+            }
+        }
+
+        TreeItem<String> root = new TreeItem<>("📚 University Courses");
+        root.setExpanded(true);
+
+        Map<Integer, TreeItem<String>> courseNodes = new java.util.LinkedHashMap<>();
+        Map<Integer, TreeItem<String>> segNodes = new java.util.HashMap<>();
+        Map<Integer, TreeItem<String>> groupBasic = new java.util.HashMap<>();
+        Map<Integer, TreeItem<String>> groupCT = new java.util.HashMap<>();
+        Map<Integer, TreeItem<String>> groupTF = new java.util.HashMap<>();
+
+        if (rows != null) {
+            for (CourseService.CourseTreeRow row : rows) {
+                boolean includeCourse = !hasQuery || matchedCourses.contains(row.courseId());
+                if (!includeCourse) continue;
+
+                boolean includeSegment = !hasQuery
+                    || directCourseMatches.contains(row.courseId())
+                    || directSegmentMatches.contains(row.segmentId())
+                    || matchedSegments.contains(row.segmentId());
+
+                boolean includeTopic = row.topicId() != -1 && (!hasQuery
+                    || directCourseMatches.contains(row.courseId())
+                    || directSegmentMatches.contains(row.segmentId())
+                    || matchedTopics.contains(row.topicId()));
+
+                // ── Course node ───────────────────────────────────
+                TreeItem<String> courseNode = courseNodes.computeIfAbsent(row.courseId(), id -> {
+                    TreeItem<String> cn = new TreeItem<>("📘 " + row.courseCode());
+                    cn.setExpanded(hasQuery);
+                    courseMap.put(cn, id);
+
+                    TreeItem<String> basic = new TreeItem<>(GRP_BASIC);
+                    TreeItem<String> ct = new TreeItem<>(GRP_CT);
+                    TreeItem<String> tf = new TreeItem<>(GRP_TF);
+                    basic.setExpanded(hasQuery);
+                    ct.setExpanded(hasQuery);
+                    tf.setExpanded(hasQuery);
+                    cn.getChildren().addAll(basic, ct, tf);
+
+                    segmentMap.put(basic, id);
+                    segmentMap.put(ct, id);
+                    segmentMap.put(tf, id);
+
+                    groupBasic.put(id, basic);
+                    groupCT.put(id, ct);
+                    groupTF.put(id, tf);
+
+                    root.getChildren().add(cn);
+                    return cn;
+                });
+
+                if (!includeSegment && !includeTopic) continue;
+
+                TreeItem<String> segNode = segNodes.computeIfAbsent(row.segmentId(), id -> {
+                    TreeItem<String> sn = new TreeItem<>("📂 " + row.segmentName());
+                    sn.setExpanded(hasQuery);
+                    segmentMap.put(sn, id);
+
+                    String lname = row.segmentName().toLowerCase();
+                    TreeItem<String> targetGroup =
+                        (lname.contains("ct") || lname.contains("class test"))
+                            ? groupCT.get(row.courseId())
+                        : lname.contains("final")
+                            ? groupTF.get(row.courseId())
+                            : groupBasic.get(row.courseId());
+
+                    if (targetGroup != null) targetGroup.getChildren().add(sn);
+                    return sn;
+                });
+
+                if (includeTopic) {
+                    TreeItem<String> topicNode = new TreeItem<>("📄 " + row.topicTitle());
+                    topicMap.put(topicNode, row.topicId());
+                    segNode.getChildren().add(topicNode);
+                }
+            }
+        }
+
+        communityTree.setRoot(root);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -380,6 +437,10 @@ public class CommunityController {
         if (item == null) return false;
         String v = item.getValue();
         return GRP_BASIC.equals(v) || GRP_CT.equals(v) || GRP_TF.equals(v);
+    }
+
+    private static boolean contains(String value, String query) {
+        return value != null && value.toLowerCase().contains(query);
     }
 
     private static String stripEmoji(String s) {

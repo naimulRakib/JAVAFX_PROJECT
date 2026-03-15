@@ -1,7 +1,11 @@
 package com.scholar.controller;
 
+import com.scholar.model.AIResource;
 import com.scholar.service.AIOrchestrator;
+import com.scholar.service.AIResourceService;
+import com.scholar.service.AuthService;
 import com.scholar.service.TelegramService;
+import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -17,11 +21,14 @@ public class SmartUploadController {
     @FXML private TextArea aiOutputArea; // To show the tags
     @FXML private Button uploadBtn;
 
-  @Autowired 
+    @Autowired 
     private TelegramService telegramService;
 
     @Autowired 
     private AIOrchestrator aiBrain;
+
+    @Autowired
+    private AIResourceService aiResourceService;
 
     @FXML
     public void onSmartUploadClick() {
@@ -56,14 +63,34 @@ public class SmartUploadController {
             // (In a real app, you'd extract text from the PDF here. 
             // For now, we send the filename as a hint to the AI)
             JSONObject tags = aiBrain.autoTagResource("File name: " + file.getName());
+            String downloadUrl = telegramService.getFileDownloadUrl(fileId);
+
+            AIResource resource = new AIResource();
+            resource.setTitle(file.getName());
+            resource.setDescription("Smart Upload Resource");
+            resource.setResourceType("SMART_UPLOAD");
+            resource.setTelegramFileId(fileId);
+            resource.setTelegramDownloadUrl(downloadUrl);
+            resource.setTags(tags.toString());
+            if (AuthService.CURRENT_USER_ID != null) {
+                resource.setCreatedByUserId(AuthService.CURRENT_USER_ID);
+            }
+            resource.setPublished(true);
+            boolean saved = aiResourceService != null && aiResourceService.saveResource(resource);
 
             // 3. Update UI
             Platform.runLater(() -> {
                 statusLabel.setText("✅ Done! File ID: " + fileId);
                 aiOutputArea.setText(tags.toString(4)); // Pretty print JSON
                 uploadBtn.setDisable(false);
-                
-                // TODO: Save 'fileId' and 'tags' to Supabase here
+
+                if (saved) {
+                    PopupHelper.showInfo(statusLabel.getScene().getWindow(), "Saved",
+                        "File metadata saved to database.");
+                } else {
+                    PopupHelper.showError(statusLabel.getScene().getWindow(), "Save Failed",
+                        "Could not save metadata to database.");
+                }
             });
 
         }).start();

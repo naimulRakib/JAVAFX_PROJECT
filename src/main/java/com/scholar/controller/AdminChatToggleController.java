@@ -2,6 +2,7 @@ package com.scholar.controller;
 
 import com.scholar.service.AuthService;
 import com.scholar.service.ChatSettingsService;
+import com.scholar.util.PopupHelper;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -228,18 +230,20 @@ public class AdminChatToggleController {
     // ----------------------------------------------------------
 
     private void showNotification(String msg) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Chat Settings Updated");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.show();
+        PopupHelper.showInfo(resolveOwner(), "Chat Settings Updated", msg);
     }
 
     private void showError(String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Update Failed");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
+        PopupHelper.showError(resolveOwner(), "Update Failed", msg);
+    }
+
+    private Window resolveOwner() {
+        if (adminTabContainer != null && adminTabContainer.getScene() != null) {
+            return adminTabContainer.getScene().getWindow();
+        }
+        if (toggleBtn != null && toggleBtn.getScene() != null) {
+            return toggleBtn.getScene().getWindow();
+        }
+        return null;
     }
 }

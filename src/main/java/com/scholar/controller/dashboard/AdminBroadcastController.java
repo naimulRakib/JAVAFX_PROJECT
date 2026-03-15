@@ -29,6 +29,7 @@ public class AdminBroadcastController {
     @Autowired private AISchedulerService aiService;
     @Autowired private DataService dataService;
     @Autowired private ChannelService channelService;
+    @Autowired private RoutineManager routineManager;
 
     private VBox pendingListContainer;
     private List<StudyTask> allTasks;
@@ -45,6 +46,7 @@ public class AdminBroadcastController {
     // ----------------------------------------------------------
     public void showAddRoutineDialog()      { showAdminBroadcastDialog(true); }
     public void showAddAnnouncementDialog() { showAdminBroadcastDialog(false); }
+    public void showClassOffDialog()        { showClassOffOnlyDialog(); }
 
     private void showAdminBroadcastDialog(boolean isRoutine) {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -75,11 +77,28 @@ public class AdminBroadcastController {
                 loadingPopup.show();
 
                 new Thread(() -> {
-                    RoutineManager routineManager = new RoutineManager();
                     List<StudyTask> tempTasks;
+                    boolean classOffApplied = false;
+                    boolean classOffReversed = false;
 
                     if (isRoutine) {
-                        tempTasks = routineManager.processVarsitySchedule(rawText);
+                        RoutineManager.ClassOffCommand cmd = RoutineManager.parseClassOffCommand(rawText);
+                        if (cmd != null) {
+                            if (cmd.reverse()) {
+                                for (RoutineManager.DateRange r : cmd.ranges()) {
+                                    dataService.reverseClassOffByRange(r.startDate(), r.endDate());
+                                }
+                                classOffReversed = true;
+                            } else {
+                                for (RoutineManager.DateRange r : cmd.ranges()) {
+                                    classOffApplied |= dataService.addClassOffPeriod(
+                                        r.startDate(), r.endDate(), cmd.reason());
+                                }
+                            }
+                            tempTasks = new ArrayList<>();
+                        } else {
+                            tempTasks = routineManager.processVarsitySchedule(rawText);
+                        }
                     } else {
                         List<StudyTask> rawNotices = aiService.parseAdminNotice(rawText, LocalDate.now().toString());
                         tempTasks = new ArrayList<>();
@@ -95,14 +114,88 @@ public class AdminBroadcastController {
                     final List<StudyTask> generatedTasks = tempTasks;
                     if (!generatedTasks.isEmpty()) dataService.saveTasks(generatedTasks);
 
+                    final boolean classOffAppliedFinal = classOffApplied;
+                    final boolean classOffReversedFinal = classOffReversed;
                     Platform.runLater(() -> {
                         loadingPopup.close();
-                        if (generatedTasks.isEmpty()) {
+                        if (classOffReversedFinal) {
+                            if (onAfterBroadcast != null) onAfterBroadcast.run();
+                            showSuccess("↩ Class Off Reversed");
+                        } else if (classOffAppliedFinal) {
+                            if (onAfterBroadcast != null) onAfterBroadcast.run();
+                            showSuccess("✅ Class Off Applied (" + rawText + ")");
+                        } else if (generatedTasks.isEmpty()) {
                             showError("AI couldn't understand the text. Please format it clearly.");
                         } else {
                             allTasks.addAll(generatedTasks);
                             if (onAfterBroadcast != null) onAfterBroadcast.run();
                             showSuccess("Successfully Broadcasted " + generatedTasks.size() + " items! ⚡");
+                        }
+                    });
+                }).start();
+            }
+        });
+    }
+
+    private void showClassOffOnlyDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("🏫 Class Off (Date/Range)");
+        dialog.setHeaderText("Write dates in day/month/year (e.g., 13/3/2026) or month names.\n" +
+                             "Examples: 13 Mar 2026, 17 Mar, 18 Mar 2026, 13/3/2026 to 25/3/2026\n" +
+                             "To reverse: add 'reverse' (e.g., reverse 13/3/2026 to 25/3/2026)");
+
+        ButtonType applyBtn = new ButtonType("Apply ✅", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(applyBtn, ButtonType.CANCEL);
+
+        TextArea inputArea = new TextArea();
+        inputArea.setPromptText("e.g. 13/3/2026 to 25/3/2026 varsity off\nor: reverse 13 Mar 2026");
+        inputArea.setPrefRowCount(6);
+        inputArea.setWrapText(true);
+        dialog.getDialogPane().setContent(inputArea);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == applyBtn && !inputArea.getText().trim().isEmpty()) {
+                String rawText = inputArea.getText().trim();
+
+                Stage loadingPopup = PopupHelper.create(
+                    resolveOwner(), "Processing",
+                    buildLoadingPane(),
+                    300, 150, 360, 160
+                );
+                loadingPopup.show();
+
+                new Thread(() -> {
+                    RoutineManager.ClassOffCommand cmd = RoutineManager.parseClassOffCommand(rawText);
+                    boolean applied = false;
+                    boolean reversed = false;
+                    if (cmd != null) {
+                        if (cmd.reverse()) {
+                            for (RoutineManager.DateRange r : cmd.ranges()) {
+                                dataService.reverseClassOffByRange(r.startDate(), r.endDate());
+                            }
+                            reversed = true;
+                        } else {
+                            for (RoutineManager.DateRange r : cmd.ranges()) {
+                                applied |= dataService.addClassOffPeriod(
+                                    r.startDate(), r.endDate(), cmd.reason());
+                            }
+                        }
+                    }
+
+                    final boolean appliedFinal = applied;
+                    final boolean reversedFinal = reversed;
+                    Platform.runLater(() -> {
+                        loadingPopup.close();
+                        if (cmd == null) {
+                            showError("Couldn't parse the dates. Please use day/month/year.");
+                        } else if (reversedFinal) {
+                            if (onAfterBroadcast != null) onAfterBroadcast.run();
+                            showSuccess("↩ Class Off Reversed");
+                        } else if (appliedFinal) {
+                            if (onAfterBroadcast != null) onAfterBroadcast.run();
+                            showSuccess("✅ Class Off Applied");
+                        } else {
+                            showError("No changes were applied.");
                         }
                     });
                 }).start();

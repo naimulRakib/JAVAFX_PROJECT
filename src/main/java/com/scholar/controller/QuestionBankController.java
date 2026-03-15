@@ -1,10 +1,12 @@
 package com.scholar.controller;
 
+import com.scholar.model.AIResource;
 import com.scholar.model.Question;
+import com.scholar.service.AIResourceService;
 import com.scholar.service.AuthService;
-import com.scholar.service.CourseService;
 import com.scholar.service.QuestionBankService;
 import com.scholar.service.TelegramService;
+import com.scholar.util.PopupHelper;
 
 // যদি আপনার CourseService এবং AuthService তৈরি করা থাকে, তবে নিচের লাইনগুলো আনকমেন্ট করে নেবেন
 // import com.scholar.service.CourseService;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Controller;
 
 import java.io.File;
 import java.util.List;
+import org.json.JSONObject;
 @Controller
 public class QuestionBankController {
 
@@ -45,15 +48,17 @@ public class QuestionBankController {
 
 
     // --- সার্ভিস ---
-   @Autowired private QuestionBankService qbService;
+    @Autowired private QuestionBankService qbService;
     @Autowired private TelegramService telegramService;
-    @Autowired private CourseService courseService; 
     @Autowired private AuthService authService;
+    @Autowired private AIResourceService aiResourceService;
     
     // private final CourseService courseService = new CourseService(); // ডাটাবেসের জন্য এটি আনকমেন্ট করবেন
 
     private List<File> selectedFiles;
     private List<Question> extractedQuestions;
+    private static final String RESOURCE_TYPE_QUESTION_BANK = "QUESTION_BANK";
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     @FXML
     public void initialize() {
@@ -70,7 +75,7 @@ public class QuestionBankController {
         // অ্যাকশন কলামে "Download" ও "Preview" বাটন যুক্ত করা
         setupActionColumn();
 
-
+        loadQuestionBankResources();
     }
 
     // ১. ফাইল সিলেক্ট করা
@@ -151,43 +156,40 @@ public class QuestionBankController {
                         log("💾 Saving link to Database...");
 
                         String resName = resourceNameField.getText().isEmpty() ? "Master Question Bank" : resourceNameField.getText();
-        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
-        
-        // টেবিলে নতুন ডাটা যুক্ত করা
-        resourceTable.getItems().add(new ResourceItem(resName, today, fileId));
-        
-        resourceNameField.clear(); // ইনপুট ক্লিয়ার করা
-        showSuccess("Resource saved successfully!");
+                        String today = LocalDate.now().format(DATE_FMT);
+                        String downloadUrl = telegramService.getFileDownloadUrl(fileId);
+
+                        JSONObject tagJson = new JSONObject();
+                        List<String> topics = extractedQuestions.stream()
+                            .map(Question::topic)
+                            .filter(t -> t != null && !t.isBlank())
+                            .distinct()
+                            .toList();
+                        tagJson.put("topics", topics);
+
+                        AIResource res = new AIResource();
+                        res.setTitle(resName);
+                        res.setDescription("AI Generated Question Bank");
+                        res.setResourceType(RESOURCE_TYPE_QUESTION_BANK);
+                        res.setTelegramFileId(fileId);
+                        res.setTelegramDownloadUrl(downloadUrl);
+                        res.setTags(tagJson.toString());
+                        if (AuthService.CURRENT_USER_ID != null) {
+                            res.setCreatedByUserId(AuthService.CURRENT_USER_ID);
+                        }
+                        res.setPublished(true);
+
+                        boolean ok = aiResourceService != null && aiResourceService.saveResource(res);
+                        if (ok) {
+                            resourceTable.getItems().add(new ResourceItem(resName, today, fileId, downloadUrl));
+                            resourceNameField.clear();
+                            showSuccess("Resource saved successfully!");
+                        } else {
+                            showError("Failed to save resource to database.");
+                        }
 
         
                     });
-
-                    /* * ⚠️ ডাটাবেস ইন্টিগ্রেশন (Supabase):
-                     * যখন আপনার CourseService তৈরি হয়ে যাবে, তখন নিচের ব্লকটি আনকমেন্ট করবেন।
-                     */
-                    
-                    /*
-                    boolean dbSuccess = courseService.addDetailedResource(
-                        AuthService.CURRENT_CHANNEL_ID,
-                        dest.getName(),
-                        fileId,
-                        "QUESTION_BANK",
-                        "AI Generated Master Question Bank",
-                        "File",
-                        true
-                    );
-
-                    if (dbSuccess) {
-                        Platform.runLater(() -> {
-                            log("🎉 Successfully saved to Database!");
-                            showSuccess("Question Bank created and shared with the class!");
-                        });
-                    } else {
-                        Platform.runLater(() -> log("❌ Failed to save to Database."));
-                    }
-                    */
-
-                    // আপাতত ডাটাবেস কানেক্ট না হওয়া পর্যন্ত এই সাকসেস মেসেজটি দেখাবে:
                     Platform.runLater(() -> {
                         log("🎉 Process Complete!");
                         showSuccess("Question Bank PDF has been generated and uploaded to Telegram!");
@@ -207,11 +209,11 @@ public class QuestionBankController {
     }
 
     private void showSuccess(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Success");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        PopupHelper.showInfo(resolveOwner(), "Success", message);
+    }
+
+    private void showError(String message) {
+        PopupHelper.showError(resolveOwner(), "Error", message);
     }
 
 
@@ -228,15 +230,22 @@ public class QuestionBankController {
                 // প্রিভিউ বাটনের কাজ (ব্রাউজারে ওপেন হবে)
                 previewBtn.setOnAction(event -> {
                     ResourceItem item = getTableView().getItems().get(getIndex());
-                    openInBrowser("https://t.me/c/YOUR_CHANNEL_ID_HERE/" + item.getFileId()); 
+                    String url = resolveDownloadUrl(item);
+                    if (url != null) openInBrowser(url);
+                    else showError("No download link available for this item.");
                     // নোট: টেলিগ্রাম প্রাইভেট ফাইলের লিংক এভাবেই কাজ করে যদি ইউজার চ্যানেলে জয়েন থাকে।
                 });
 
                 // ডাউনলোড বাটনের কাজ
                 downloadBtn.setOnAction(event -> {
                     ResourceItem item = getTableView().getItems().get(getIndex());
-                    // এখানে আপনার ফাইল ডাউনলোডের লজিক বসবে
-                    showSuccess("Downloading: " + item.getName());
+                    String url = resolveDownloadUrl(item);
+                    if (url != null) {
+                        openInBrowser(url);
+                        showSuccess("Downloading: " + item.getName());
+                    } else {
+                        showError("No download link available for this item.");
+                    }
                 });
             }
 
@@ -257,6 +266,39 @@ public class QuestionBankController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadQuestionBankResources() {
+        if (resourceTable == null || aiResourceService == null) return;
+        new Thread(() -> {
+            List<AIResource> list = aiResourceService.getResourcesByType(RESOURCE_TYPE_QUESTION_BANK);
+            Platform.runLater(() -> {
+                resourceTable.getItems().clear();
+                for (AIResource r : list) {
+                    String date = r.getCreatedAt() != null
+                        ? r.getCreatedAt().toLocalDate().format(DATE_FMT)
+                        : "";
+                    String fileId = r.getTelegramFileId() != null ? r.getTelegramFileId() : r.getSupabaseFileId();
+                    String url = r.getPrimaryDownloadUrl();
+                    resourceTable.getItems().add(new ResourceItem(r.getTitle(), date, fileId, url));
+                }
+            });
+        }).start();
+    }
+
+    private String resolveDownloadUrl(ResourceItem item) {
+        if (item == null) return null;
+        if (item.getDownloadUrl() != null && !item.getDownloadUrl().isBlank()) return item.getDownloadUrl();
+        if (item.getFileId() != null && !item.getFileId().isBlank()) {
+            return "https://t.me/c/YOUR_CHANNEL_ID_HERE/" + item.getFileId();
+        }
+        return null;
+    }
+
+    private javafx.stage.Window resolveOwner() {
+        if (processBtn != null && processBtn.getScene() != null) return processBtn.getScene().getWindow();
+        if (resourceTable != null && resourceTable.getScene() != null) return resourceTable.getScene().getWindow();
+        return null;
     }
 
 

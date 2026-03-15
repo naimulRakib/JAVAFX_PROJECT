@@ -7,6 +7,7 @@ import com.scholar.controller.community.DiscussionController;
 import com.scholar.controller.community.ResourceTableController;
 import com.scholar.controller.community.ResourceUploadController;
 import com.scholar.controller.community.StatisticsController;
+import com.scholar.controller.community.CommunityRagController;
 import com.scholar.controller.dashboard.AdminBroadcastController;
 import com.scholar.controller.dashboard.CalendarController;
 import com.scholar.controller.dashboard.RoutineController;
@@ -55,6 +56,7 @@ public class DashboardController {
     @Autowired private ResourceUploadController   resourceUploadController;
     @Autowired private DiscussionController       discussionController;
     @Autowired private StatisticsController       statisticsController;
+    @Autowired private CommunityRagController     communityRagController;
     @Autowired private CollaborationController    collaborationController;
     @Autowired private AITutorController          aiTutorController;
     @Autowired private ECAController              ecaController;
@@ -87,6 +89,9 @@ public class DashboardController {
     @FXML private VBox     timelineContainer;
     @FXML private Button   editRoutineBtn;
     @FXML private Button   postAnnouncementBtn;
+    @FXML private Button   reverseAllClassOffBtn;
+    @FXML private Button   classOffBtn;
+    @FXML private Button   manualNoticeBtn;
     @FXML private Button   btnDailyTasks;
     @FXML private Button   btnBacklog;
     @FXML private Button   btnCompleted;
@@ -115,6 +120,7 @@ public class DashboardController {
 
     // Community
     @FXML private TreeView<String>             communityTree;
+    @FXML private TextField                    communitySearchField;
     @FXML private Label                        currentFolderLabel;
     @FXML private TableView<ResourceRow>       resourceTable;
     @FXML private TableColumn<ResourceRow, String> colResName;
@@ -124,6 +130,7 @@ public class DashboardController {
     @FXML private TableColumn<ResourceRow, String> colResTags;
     @FXML private TableColumn<ResourceRow, String> colResVotes;
     @FXML private TableColumn<ResourceRow, Void>   colResAction;
+    @FXML private WebView   ragChatWebView;
 
     @FXML private ComboBox<String>   typeFilterCombo;
     @FXML private ComboBox<String>   diffFilterCombo;
@@ -192,7 +199,11 @@ public class DashboardController {
             allTasks, timelineContainer,
             () -> selectedDate,
             () -> currentViewMode,
-            () -> calendarController.drawCalendar(selectedDate));
+            () -> calendarController.drawCalendar(selectedDate),
+            periods -> {
+                calendarController.setClassOffPeriods(periods);
+                calendarController.drawCalendar(selectedDate);
+            });
 
         if (btnDailyTasks != null) btnDailyTasks.setOnAction(e -> { currentViewMode = "DAILY";     taskController.refreshTimeline(); });
         if (btnBacklog    != null) btnBacklog.setOnAction(e    -> { currentViewMode = "BACKLOG";    taskController.refreshTimeline(); });
@@ -212,10 +223,9 @@ public class DashboardController {
         routineController.init(routineGrid, announcementList);
 
         // Admin broadcast
-        adminBroadcastController.init(pendingListContainer, allTasks, () -> {
-            taskController.refreshTimeline();
-            calendarController.drawCalendar(selectedDate);
-        });
+        adminBroadcastController.init(pendingListContainer, allTasks, () ->
+            taskController.loadTasksFromDatabase(() -> calendarController.drawCalendar(selectedDate))
+        );
 
         // Admin merge
         adminMergeController.allowMergeCheck       = allowMergeCheck;
@@ -246,6 +256,9 @@ public class DashboardController {
                 adminTab.setText("Admin Only");
                 if (editRoutineBtn      != null) editRoutineBtn.setVisible(false);
                 if (postAnnouncementBtn != null) postAnnouncementBtn.setVisible(false);
+                if (classOffBtn         != null) classOffBtn.setVisible(false);
+                if (manualNoticeBtn     != null) manualNoticeBtn.setVisible(false);
+                if (reverseAllClassOffBtn != null) reverseAllClassOffBtn.setVisible(false);
             } else {
                 if (editRoutineBtn      != null) editRoutineBtn.setOnAction(e -> adminBroadcastController.showAddRoutineDialog());
                 if (postAnnouncementBtn != null) postAnnouncementBtn.setOnAction(e -> adminBroadcastController.showAddAnnouncementDialog());
@@ -297,7 +310,21 @@ public class DashboardController {
                 });
             }
 
+            if (communitySearchField != null) {
+                communitySearchField.textProperty().addListener((obs, old, text) -> {
+                    if (communityController != null) communityController.applySearch(text);
+                });
+            }
+
             communityController.onRefreshCommunity();
+        }
+
+        // ── Community RAG Chat ───────────────────────────────
+        if (ragChatWebView != null && communityRagController != null) {
+            String uid = AuthService.CURRENT_USER_ID != null
+                ? AuthService.CURRENT_USER_ID.toString()
+                : null;
+            communityRagController.init(ragChatWebView, uid);
         }
 
         // ── Collaboration ─────────────────────────────────────
@@ -310,7 +337,14 @@ public class DashboardController {
         if (AuthService.CURRENT_USER_ID != null) {
             aiTutorController.setCurrentUserId(AuthService.CURRENT_USER_ID.toString());
         }
-        aiTutorController.initInlineTab(aiWebView, aiTopicInput, aiQuestionInput, aiAskBtn);
+        Platform.runLater(() -> {
+            WebView resolvedWebView = resolveAiWebView();
+            if (resolvedWebView == null) {
+                System.err.println("❌ DashboardController: aiWebView not injected or not found in scene.");
+                return;
+            }
+            aiTutorController.initInlineTab(resolvedWebView, aiTopicInput, aiQuestionInput, aiAskBtn);
+        });
         if (aiTutorBtn != null) aiTutorBtn.setOnAction(e -> aiTutorController.showAITutorPanel());
 
         // ── ECA ───────────────────────────────────────────────
@@ -422,6 +456,9 @@ public class DashboardController {
     @FXML public void loadPendingRequests()  { adminBroadcastController.loadPendingRequests(); }
     @FXML public void onBroadcastRoutine()   { adminBroadcastController.showAddRoutineDialog(); }
     @FXML public void onBroadcastNotice()    { adminBroadcastController.showAddAnnouncementDialog(); }
+    @FXML public void onReverseAllClassOff() { routineController.reverseAllClassOffPeriods(); }
+    @FXML public void onClassOffPrompt()     { adminBroadcastController.showClassOffDialog(); }
+    @FXML public void onManualNotice()       { routineController.showManualAnnouncementDialog(); }
 
     @FXML public void handleECATrackerSelect(Event event) { ecaController.handleECATrackerSelect(event); }
     @FXML public void forceRefreshECA()                   { ecaController.forceRefreshECA(); }
@@ -502,5 +539,14 @@ public class DashboardController {
 
     private void showError(String msg) {
         Platform.runLater(() -> PopupHelper.showError(resolveOwner(), "Error", msg));
+    }
+
+    private WebView resolveAiWebView() {
+        if (aiWebView != null) return aiWebView;
+        Node anchor = aiTutorBtn != null ? aiTutorBtn
+                    : (generateBtn != null ? generateBtn : null);
+        if (anchor == null || anchor.getScene() == null) return null;
+        Node found = anchor.getScene().lookup("#aiWebView");
+        return (found instanceof WebView) ? (WebView) found : null;
     }
 }

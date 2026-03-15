@@ -11,7 +11,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,30 +37,35 @@ import java.util.UUID;
 @Component
 public class AdminMergeController {
 
+    private static final String MERGE_TYPE_TEMPORARY = "TEMPORARY";
+    private static final String MERGE_TYPE_PERMANENT = "PERMANENT";
+    private static final String PRIVACY_PUBLIC = "PUBLIC";
+    private static final String PRIVACY_ANONYMOUS = "ANONYMOUS";
+
     @Autowired
     private ChannelMergeService mergeService;
 
     // ── Settings Panel ────────────────────────────────────────────────
-     @FXML CheckBox   allowMergeCheck;
-     @FXML ComboBox<String> privacyCombo;   // PUBLIC | ANONYMOUS
-     @FXML ComboBox<String> mergeTypeCombo; // TEMPORARY | PERMANENT
-     @FXML TextField  durationField;         // days (only when TEMPORARY)
-     @FXML Label      settingsStatusLabel;
+    @FXML CheckBox allowMergeCheck;
+    @FXML ComboBox<String> privacyCombo;   // PUBLIC | ANONYMOUS
+    @FXML ComboBox<String> mergeTypeCombo; // TEMPORARY | PERMANENT
+    @FXML TextField durationField;         // days (only when TEMPORARY)
+    @FXML Label settingsStatusLabel;
 
     // ── Discover & Request Panel ───────────────────────────────────────
-     @FXML ListView<String> availableChannelsList;
-     @FXML Label      discoverStatusLabel;
+    @FXML ListView<String> availableChannelsList;
+    @FXML Label discoverStatusLabel;
 
     // ── Incoming Requests Panel ────────────────────────────────────────
-     @FXML ListView<String> pendingRequestsList;
-     @FXML Label      requestStatusLabel;
+    @FXML ListView<String> pendingRequestsList;
+    @FXML Label requestStatusLabel;
 
     // ── Active Hubs Panel ─────────────────────────────────────────────
-     @FXML ListView<String> activeHubsList;
-    @FXML  Label      hubStatusLabel;
+    @FXML ListView<String> activeHubsList;
+    @FXML Label hubStatusLabel;
 
     // The channel this admin manages — set during scene load from session
-int myChannelId = -1;
+    int myChannelId = -1;
 
     // ─────────────────────────────────────────────────────────────────
     // INIT
@@ -73,16 +77,16 @@ int myChannelId = -1;
 
         // Privacy combo
         if (privacyCombo != null) {
-            privacyCombo.getItems().addAll("PUBLIC", "ANONYMOUS");
-            privacyCombo.setValue("PUBLIC");
+            privacyCombo.getItems().addAll(PRIVACY_PUBLIC, PRIVACY_ANONYMOUS);
+            privacyCombo.setValue(PRIVACY_PUBLIC);
         }
 
         // Merge type combo — disable duration field when PERMANENT
         if (mergeTypeCombo != null) {
-            mergeTypeCombo.getItems().addAll("TEMPORARY", "PERMANENT");
-            mergeTypeCombo.setValue("TEMPORARY");
+            mergeTypeCombo.getItems().addAll(MERGE_TYPE_TEMPORARY, MERGE_TYPE_PERMANENT);
+            mergeTypeCombo.setValue(MERGE_TYPE_TEMPORARY);
             mergeTypeCombo.setOnAction(e -> {
-                boolean isPermanent = "PERMANENT".equals(mergeTypeCombo.getValue());
+                boolean isPermanent = MERGE_TYPE_PERMANENT.equals(mergeTypeCombo.getValue());
                 if (durationField != null) {
                     durationField.setDisable(isPermanent);
                     durationField.setPromptText(isPermanent ? "N/A — Permanent" : "Days (e.g. 7)");
@@ -100,7 +104,7 @@ int myChannelId = -1;
     /** Load the saved settings for this channel and populate UI */
     private void loadCurrentSettings() {
         if (myChannelId < 0) return;
-        new Thread(() -> {
+        runAsync(() -> {
             String[] settings = mergeService.getSettings(myChannelId); // returns [allow_merge, privacy_mode]
             Platform.runLater(() -> {
                 if (settings != null) {
@@ -108,7 +112,7 @@ int myChannelId = -1;
                     if (privacyCombo   != null) privacyCombo.setValue(settings[1]);
                 }
             });
-        }).start();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -124,10 +128,10 @@ int myChannelId = -1;
         if (myChannelId < 0) { showSettingsStatus("❌ Channel not loaded.", true); return; }
 
         boolean allow  = allowMergeCheck != null && allowMergeCheck.isSelected();
-        String privacy = privacyCombo != null ? privacyCombo.getValue() : "PUBLIC";
+        String privacy = privacyCombo != null ? privacyCombo.getValue() : PRIVACY_PUBLIC;
 
         setSettingsUILocked(true);
-        new Thread(() -> {
+        runAsync(() -> {
             boolean ok = mergeService.updateSettings(myChannelId, allow, privacy);
             Platform.runLater(() -> {
                 setSettingsUILocked(false);
@@ -138,7 +142,7 @@ int myChannelId = -1;
                     PopupHelper.showError(getWin(), "Failed to save settings. Please try again.");
                 }
             });
-        }).start();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -154,7 +158,7 @@ int myChannelId = -1;
         availableChannelsList.getItems().clear();
         showDiscoverStatus("🔄 Loading available channels...", false);
 
-        new Thread(() -> {
+        runAsync(() -> {
             List<String[]> list = mergeService.getAvailableChannels(myChannelId);
             Platform.runLater(() -> {
                 if (availableChannelsList == null) return;
@@ -168,7 +172,7 @@ int myChannelId = -1;
                     showDiscoverStatus("✅ " + list.size() + " channel(s) found.", false);
                 }
             });
-        }).start();
+        });
     }
 
     /**
@@ -192,10 +196,10 @@ int myChannelId = -1;
             return;
         }
 
-        String type = mergeTypeCombo != null ? mergeTypeCombo.getValue() : "TEMPORARY";
+        String type = mergeTypeCombo != null ? mergeTypeCombo.getValue() : MERGE_TYPE_TEMPORARY;
         int days = 0;
 
-        if ("TEMPORARY".equals(type)) {
+        if (MERGE_TYPE_TEMPORARY.equals(type)) {
             if (durationField == null || durationField.getText().isBlank()) {
                 showDiscoverStatus("⚠️ Enter number of days for temporary merge.", true);
                 return;
@@ -215,10 +219,10 @@ int myChannelId = -1;
 
         PopupHelper.showConfirm(getWin(),
                 "Send Merge Request",
-                "Send a " + type + (type.equals("TEMPORARY") ? " (" + days + " days)" : "") +
+                "Send a " + type + (MERGE_TYPE_TEMPORARY.equals(type) ? " (" + days + " days)" : "") +
                 " merge request to channel ID " + receiverId + "?",
                 () -> {
-                    new Thread(() -> {
+                    runAsync(() -> {
                         boolean ok = mergeService.sendMergeRequest(myChannelId, finalReceiver, finalType, finalDays);
                         Platform.runLater(() -> {
                             if (ok) {
@@ -230,7 +234,7 @@ int myChannelId = -1;
                                 PopupHelper.showError(getWin(), "Request Failed. You may have already sent one to this channel.");
                             }
                         });
-                    }).start();
+                    });
                 });
     }
 
@@ -245,7 +249,7 @@ int myChannelId = -1;
         pendingRequestsList.getItems().clear();
         showRequestStatus("🔄 Loading requests...", false);
 
-        new Thread(() -> {
+        runAsync(() -> {
             List<String[]> list = mergeService.getPendingRequests(myChannelId);
             Platform.runLater(() -> {
                 if (pendingRequestsList == null) return;
@@ -261,7 +265,7 @@ int myChannelId = -1;
                     showRequestStatus("📬 " + list.size() + " pending request(s).", false);
                 }
             });
-        }).start();
+        });
     }
 
     /**
@@ -271,7 +275,6 @@ int myChannelId = -1;
      */
     @FXML
     public void onAcceptRequest() {
-        if (pendingRequestsList == null) return;
         if (pendingRequestsList == null) return;
         String sel = pendingRequestsList.getSelectionModel().getSelectedItem();
         if (sel == null) {
@@ -325,7 +328,7 @@ int myChannelId = -1;
             }
             popup.close();
 
-            new Thread(() -> {
+            runAsync(() -> {
                 String result = mergeService.acceptMergeRequest(finalReqId, hubName,
                         (UUID) AuthService.CURRENT_USER_ID);
                 Platform.runLater(() -> {
@@ -341,7 +344,7 @@ int myChannelId = -1;
                         PopupHelper.showError(getWin(), "Merge Failed: " + result);
                     }
                 });
-            }).start();
+            });
         });
 
         popup.show();
@@ -370,7 +373,7 @@ int myChannelId = -1;
         final int finalReqId = reqId;
         PopupHelper.showConfirm(getWin(), "Reject Request",
                 "Reject this merge request? The sender channel will be notified.",
-                () -> new Thread(() -> {
+                () -> runAsync(() -> {
                     boolean ok = mergeService.rejectMergeRequest(finalReqId);
                     Platform.runLater(() -> {
                         if (ok) {
@@ -380,7 +383,7 @@ int myChannelId = -1;
                             showRequestStatus("❌ Failed to reject request.", true);
                         }
                     });
-                }).start());
+                }));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -397,7 +400,7 @@ int myChannelId = -1;
         activeHubsList.getItems().clear();
         showHubStatus("🔄 Loading active merges...", false);
 
-        new Thread(() -> {
+        runAsync(() -> {
             List<String[]> list = mergeService.getMyActiveHubs(myChannelId);
             Platform.runLater(() -> {
                 if (activeHubsList == null) return;
@@ -412,7 +415,7 @@ int myChannelId = -1;
                     showHubStatus("🔗 " + list.size() + " active merge(s).", false);
                 }
             });
-        }).start();
+        });
     }
 
     /**
@@ -446,7 +449,7 @@ int myChannelId = -1;
                 "• All your users will be instantly removed from the hub.\n" +
                 "• Your channel returns to normal immediately.\n" +
                 "• If no other channels remain in the hub, it will be destroyed.",
-                () -> new Thread(() -> {
+                () -> runAsync(() -> {
                     boolean ok = mergeService.instantUnmerge(finalHubId, myChannelId);
                     Platform.runLater(() -> {
                         if (ok) {
@@ -459,7 +462,7 @@ int myChannelId = -1;
                             PopupHelper.showError(getWin(), "Unmerge failed. Please try again.");
                         }
                     });
-                }).start());
+                }));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -514,6 +517,12 @@ int myChannelId = -1;
     private void setSettingsUILocked(boolean locked) {
         if (allowMergeCheck != null) allowMergeCheck.setDisable(locked);
         if (privacyCombo    != null) privacyCombo.setDisable(locked);
+    }
+
+    private void runAsync(Runnable work) {
+        Thread thread = new Thread(work);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private Window getWin() {

@@ -4,6 +4,11 @@ import com.scholar.model.StudyTask;
 import org.springframework.beans.factory.annotation.Autowired; // 🟢 নতুন
 import org.springframework.stereotype.Service; // 🟢 নতুন
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +43,92 @@ public class RoutineManager {
             }
         }
         return expandedTasks;
+    }
+
+    // ==========================================================
+    // 📴 3. CLASS OFF PARSER (Admin Routine Broadcast)
+    // ==========================================================
+    public static record ClassOffCommand(boolean reverse, List<DateRange> ranges, String reason) {}
+    public static record DateRange(LocalDate startDate, LocalDate endDate) {}
+
+    public static ClassOffCommand parseClassOffCommand(String rawText) {
+        if (rawText == null || rawText.isBlank()) return null;
+        String lower = rawText.toLowerCase(Locale.ROOT);
+        boolean isReverse = lower.contains("reverse") || lower.contains("undo") || lower.contains("restore");
+
+        if (!isReverse && !lower.contains("off")) return null;
+
+        List<LocalDate> dates = extractDates(rawText);
+        if (dates.isEmpty()) return null;
+
+        List<DateRange> ranges = new ArrayList<>();
+        if (lower.contains(" to ") && dates.size() >= 2) {
+            LocalDate start = dates.get(0);
+            LocalDate end   = dates.get(1);
+            if (end.isBefore(start)) {
+                LocalDate tmp = start;
+                start = end;
+                end = tmp;
+            }
+            ranges.add(new DateRange(start, end));
+        } else {
+            for (LocalDate d : dates) ranges.add(new DateRange(d, d));
+        }
+
+        return new ClassOffCommand(isReverse, ranges, rawText.trim());
+    }
+
+    private static List<LocalDate> extractDates(String rawText) {
+        java.util.LinkedHashSet<LocalDate> dates = new java.util.LinkedHashSet<>();
+
+        Pattern num = Pattern.compile("(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})");
+        Matcher m1 = num.matcher(rawText);
+        while (m1.find()) {
+            LocalDate d = tryParseDate(m1.group(1));
+            if (d != null) dates.add(d);
+        }
+
+        Pattern word = Pattern.compile("(\\d{1,2})\\s*([A-Za-z]{3,9})(?:\\s*(\\d{4}))?");
+        Matcher m2 = word.matcher(rawText);
+        while (m2.find()) {
+            LocalDate d = tryParseWordDate(m2.group(1), m2.group(2), m2.group(3));
+            if (d != null) dates.add(d);
+        }
+
+        return new ArrayList<>(dates);
+    }
+
+    private static LocalDate tryParseDate(String s) {
+        if (s == null) return null;
+        DateTimeFormatter[] formats = new DateTimeFormatter[] {
+            DateTimeFormatter.ofPattern("d/M/uuuu"),
+            DateTimeFormatter.ofPattern("d-M-uuuu"),
+            DateTimeFormatter.ISO_LOCAL_DATE
+        };
+        for (DateTimeFormatter f : formats) {
+            try { return LocalDate.parse(s, f); }
+            catch (DateTimeParseException ignored) {}
+        }
+        return null;
+    }
+
+    private static LocalDate tryParseWordDate(String day, String monthWord, String year) {
+        if (day == null || monthWord == null) return null;
+        String mon = monthWord.toLowerCase(Locale.ROOT);
+        if (mon.length() > 3) mon = mon.substring(0, 3);
+        String y = (year != null && !year.isBlank())
+            ? year
+            : String.valueOf(LocalDate.now().getYear());
+        String normalized = day + " " + mon + " " + y;
+        try {
+            DateTimeFormatter fmt = new java.time.format.DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .appendPattern("d MMM uuuu")
+                .toFormatter(Locale.ENGLISH);
+            return LocalDate.parse(normalized, fmt);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
     }
 
     // ==========================================================

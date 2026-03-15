@@ -182,6 +182,15 @@ public class AIResourceService {
         return getAllResources(null, null, text);
     }
 
+    /** Fetch resources by resource_type, ordered by newest first. */
+    public List<AIResource> getResourcesByType(String resourceType) {
+        StringBuilder q = new StringBuilder(TABLE + "?order=created_at.desc");
+        if (resourceType != null && !resourceType.isBlank()) {
+            q.append("&resource_type=eq.").append(enc(resourceType));
+        }
+        return fetchList(q.toString());
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  STATS
     // ══════════════════════════════════════════════════════════════════════════

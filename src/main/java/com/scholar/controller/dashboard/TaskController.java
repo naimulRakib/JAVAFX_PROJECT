@@ -1,6 +1,7 @@
 package com.scholar.controller.dashboard;
 
 import com.scholar.model.StudyTask;
+import com.scholar.model.ClassOffPeriod;
 import com.scholar.service.AuthService;
 import com.scholar.service.DataService;
 import com.scholar.util.PopupHelper;
@@ -33,17 +34,21 @@ public class TaskController {
     private java.util.function.Supplier<LocalDate> selectedDateSupplier;
     private java.util.function.Supplier<String> viewModeSupplier;
     private Runnable onRefreshCalendar;
+    private java.util.function.Consumer<List<ClassOffPeriod>> onClassOffLoaded;
+    private List<ClassOffPeriod> classOffPeriods = new java.util.ArrayList<>();
 
     public void init(List<StudyTask> allTasks,
                      VBox timelineContainer,
                      java.util.function.Supplier<LocalDate> selectedDateSupplier,
                      java.util.function.Supplier<String> viewModeSupplier,
-                     Runnable onRefreshCalendar) {
+                     Runnable onRefreshCalendar,
+                     java.util.function.Consumer<List<ClassOffPeriod>> onClassOffLoaded) {
         this.allTasks = allTasks;
         this.timelineContainer = timelineContainer;
         this.selectedDateSupplier = selectedDateSupplier;
         this.viewModeSupplier = viewModeSupplier;
         this.onRefreshCalendar = onRefreshCalendar;
+        this.onClassOffLoaded = onClassOffLoaded;
     }
 
     // ----------------------------------------------------------
@@ -53,9 +58,12 @@ public class TaskController {
         new Thread(() -> {
             try {
                 List<StudyTask> dbTasks = dataService.loadAllTasks();
+                List<ClassOffPeriod> offPeriods = dataService.loadClassOffPeriods();
                 Platform.runLater(() -> {
                     allTasks.clear();
                     allTasks.addAll(dbTasks);
+                    classOffPeriods = offPeriods != null ? offPeriods : new java.util.ArrayList<>();
+                    if (onClassOffLoaded != null) onClassOffLoaded.accept(classOffPeriods);
                     refreshTimeline();
                     if (afterLoad != null) afterLoad.run();
                 });
@@ -75,6 +83,13 @@ public class TaskController {
         String currentViewMode = viewModeSupplier.get();
         LocalDate selectedDate = selectedDateSupplier.get();
 
+        ClassOffPeriod offForDay = classOffForDate(selectedDate);
+        boolean isClassOffDay = offForDay != null;
+
+        if ("DAILY".equals(currentViewMode) && isClassOffDay) {
+            timelineContainer.getChildren().add(buildClassOffCard(offForDay));
+        }
+
         List<StudyTask> displayTasks = allTasks.stream()
             .filter(t -> {
                 if ("BACKLOG".equals(currentViewMode))
@@ -83,6 +98,7 @@ public class TaskController {
                     return "PERSONAL".equals(t.type()) && "COMPLETED".equals(t.status());
                 else {
                     if (t.date() == null || !t.date().equals(selectedDate.toString())) return false;
+                    if (isClassOffDay && "ROUTINE".equals(t.type())) return false;
                     if ("PERSONAL".equals(t.type()))
                         return !"COMPLETED".equals(t.status()) && !"BACKLOG".equals(t.status());
                     return true;
@@ -112,6 +128,76 @@ public class TaskController {
         for (StudyTask task : displayTasks) {
             timelineContainer.getChildren().add(buildTaskCard(task, currentViewMode));
         }
+    }
+
+    private VBox buildClassOffCard(ClassOffPeriod off) {
+        VBox card = new VBox(6);
+        card.setStyle(
+            "-fx-background-color:#064e3b;-fx-border-color:#10b981;" +
+            "-fx-border-width:0 0 0 4;-fx-border-radius:0 10 10 0;" +
+            "-fx-background-radius:10;-fx-padding:14;" +
+            "-fx-effect:dropshadow(gaussian,rgba(16,185,129,0.25),10,0,0,2);");
+
+        Label title = new Label("✅ Varsity Off (Class Cancelled)");
+        title.setStyle("-fx-font-weight:bold;-fx-font-size:15px;-fx-text-fill:#d1fae5;");
+
+        String range = (off.startDate() != null && off.endDate() != null)
+            ? off.startDate() + " → " + off.endDate()
+            : "Date range not set";
+        Label rangeLbl = new Label("📅 " + range);
+        rangeLbl.setStyle("-fx-text-fill:#a7f3d0;-fx-font-size:12px;");
+
+        Label reason = new Label(off.reason() != null ? off.reason() : "Admin broadcasted class off");
+        reason.setWrapText(true);
+        reason.setStyle("-fx-text-fill:#d1fae5;-fx-font-size:12px;");
+
+        HBox actions = new HBox(10);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+
+        if ("admin".equals(AuthService.CURRENT_USER_ROLE)) {
+            Button reverseBtn = new Button("↩ Reverse");
+            reverseBtn.setStyle(
+                "-fx-background-color:#065f46;-fx-text-fill:#ecfdf5;" +
+                "-fx-border-color:#10b981;-fx-border-radius:12;" +
+                "-fx-background-radius:12;-fx-cursor:hand;" +
+                "-fx-font-size:11px;-fx-font-weight:bold;-fx-padding:5 12;");
+            reverseBtn.setOnAction(e -> {
+                e.consume();
+                reverseClassOff(off);
+            });
+            actions.getChildren().add(reverseBtn);
+        } else {
+            Label adminOnly = new Label("Admin only");
+            adminOnly.setStyle("-fx-text-fill:#6ee7b7;-fx-font-size:11px;");
+            actions.getChildren().add(adminOnly);
+        }
+
+        card.getChildren().addAll(title, rangeLbl, reason, actions);
+        return card;
+    }
+
+    private void reverseClassOff(ClassOffPeriod off) {
+        if (off == null || off.id() == null) return;
+        new Thread(() -> {
+            boolean ok = dataService.reverseClassOffPeriod(off.id());
+            Platform.runLater(() -> {
+                if (ok) {
+                    loadTasksFromDatabase(onRefreshCalendar);
+                } else {
+                    PopupHelper.showError(resolveOwner(), "Reverse Failed",
+                        "Unable to reverse class off. Please try again.");
+                }
+            });
+        }).start();
+    }
+
+    private ClassOffPeriod classOffForDate(LocalDate date) {
+        if (date == null || classOffPeriods == null) return null;
+        for (ClassOffPeriod p : classOffPeriods) {
+            if (p.startDate() == null || p.endDate() == null) continue;
+            if (!date.isBefore(p.startDate()) && !date.isAfter(p.endDate())) return p;
+        }
+        return null;
     }
 
     // ----------------------------------------------------------
@@ -150,8 +236,10 @@ public class TaskController {
             card.setPadding(new Insets(12));
             String accentColor;
             String cardBg;
+            boolean isCT = task.title() != null && task.title().toUpperCase().contains("CT");
             if ("BACKLOG".equals(currentViewMode))        { accentColor = "#ef4444"; cardBg = "#130a0a"; }
             else if ("COMPLETED".equals(currentViewMode)) { accentColor = "#22c55e"; cardBg = "#0a1a10"; }
+            else if (isCT)                                { accentColor = "#f59e0b"; cardBg = "#1a1205"; }
             else if ("ROUTINE".equals(task.type()))       { accentColor = "#3b82f6"; cardBg = "#0a1020"; }
             else                                          { accentColor = "#8b5cf6"; cardBg = "#100a1a"; }
 
@@ -172,7 +260,37 @@ public class TaskController {
             titleLbl.setStyle(
                 "-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #e2e8f0;");
             header.getChildren().addAll(timeLbl, titleLbl);
+
+            String tag = null;
+            String titleUpper = task.title() != null ? task.title().toUpperCase() : "";
+            String descUpper = task.tags() != null ? task.tags().toUpperCase() : "";
+            if (isCT) tag = "CT";
+            else if (titleUpper.contains("LAB") || descUpper.contains("LAB")) tag = "LAB";
+            else if ("ROUTINE".equals(task.type())) tag = "CLASS";
+
+            if (tag != null) {
+                String tagBg;
+                String tagFg;
+                switch (tag) {
+                    case "CT" -> { tagBg = "rgba(245,158,11,0.2)"; tagFg = "#f59e0b"; }
+                    case "LAB" -> { tagBg = "rgba(59,130,246,0.2)"; tagFg = "#60a5fa"; }
+                    default -> { tagBg = "rgba(99,102,241,0.2)"; tagFg = "#a5b4fc"; }
+                }
+                Label tagLbl = new Label(tag);
+                tagLbl.setStyle(
+                    "-fx-font-size:10px;-fx-font-weight:bold;" +
+                    "-fx-text-fill:" + tagFg + ";" +
+                    "-fx-background-color:" + tagBg + ";" +
+                    "-fx-padding:2 6;-fx-background-radius:8;");
+                header.getChildren().add(tagLbl);
+            }
             card.getChildren().add(header);
+
+            if (isCT && task.ctCourse() != null && !task.ctCourse().isBlank()) {
+                Label ctCourseLbl = new Label("📘 CT Course: " + task.ctCourse());
+                ctCourseLbl.setStyle("-fx-text-fill: #fcd34d; -fx-font-size: 12px;");
+                card.getChildren().add(ctCourseLbl);
+            }
 
             if (task.roomNo() != null && !task.roomNo().isEmpty() && !task.roomNo().equals("null")) {
                 Label roomLbl = new Label("📍 Room: " + task.roomNo());
@@ -292,6 +410,10 @@ public class TaskController {
             task.tags() == null || task.tags().equals("null") ? "" : task.tags());
         descArea.setEditable(canEdit); descArea.setPrefRowCount(3); descArea.setWrapText(true);
 
+        TextField timeField = new TextField(task.startTime());
+        timeField.setEditable(canEdit);
+        timeField.setPromptText("e.g., 10:00 AM");
+
         TextField ctCourseField = new TextField(
             task.ctCourse() == null || task.ctCourse().equals("null") ? "" : task.ctCourse());
         ctCourseField.setEditable(canEdit); ctCourseField.setPromptText("e.g., CSE 105");
@@ -317,7 +439,7 @@ public class TaskController {
             "-fx-border-color: #2d3150; -fx-border-radius: 8; " +
             "-fx-background-radius: 8; -fx-padding: 7 10; -fx-font-size: 13px; " +
             "-fx-control-inner-background: #1e2235;";
-        for (TextField tf : new TextField[]{titleField, roomField, ctCourseField})
+        for (TextField tf : new TextField[]{titleField, roomField, ctCourseField, timeField})
             tf.setStyle(fieldStyle);
         for (TextArea ta : new TextArea[]{descArea, ctSyllabusArea})
             ta.setStyle(areaStyle);
@@ -360,7 +482,7 @@ public class TaskController {
             grid.add(mkLabel("📌  CT Title"),        0, 0); grid.add(titleField,    1, 0);
             grid.add(mkLabel("📘  CT Course"),       0, 1); grid.add(ctCourseField, 1, 1);
             grid.add(mkLabel("📍  CT Room"),         0, 2); grid.add(roomField,     1, 2);
-            grid.add(mkLabel("🕒  CT Time"),         0, 3); grid.add(mkValue(task.startTime()), 1, 3);
+            grid.add(mkLabel("🕒  CT Time"),         0, 3); grid.add(timeField, 1, 3);
             grid.add(mkLabel("📚  Syllabus / Notes"),0, 4); grid.add(ctSyllabusArea,1, 4);
         } else if (isPersonal) {
             grid.add(mkLabel("📌  Title"),      0, 0); grid.add(titleField, 1, 0);
@@ -370,7 +492,7 @@ public class TaskController {
             grid.add(mkLabel("📝  Description"),0, 3); grid.add(descArea, 1, 3);
         } else {
             grid.add(mkLabel("📌  Title"),      0, 0); grid.add(titleField, 1, 0);
-            grid.add(mkLabel("🕒  Time slot"),  0, 1); grid.add(mkValue(task.startTime()), 1, 1);
+            grid.add(mkLabel("🕒  Time slot"),  0, 1); grid.add(timeField, 1, 1);
             grid.add(mkLabel("📍  Room No"),    0, 2); grid.add(roomField, 1, 2);
             grid.add(mkLabel("📚  Description"),0, 3); grid.add(descArea, 1, 3);
         }
@@ -411,20 +533,21 @@ public class TaskController {
                 String newTitle      = titleField.getText().trim();
                 String newRoom       = roomField.getText().trim();
                 String newDesc       = descArea.getText().trim();
+                String newTime       = timeField.getText().trim().isEmpty() ? task.startTime() : timeField.getText().trim();
                 String newCtCourse   = isCT ? ctCourseField.getText().trim() : task.ctCourse();
                 String newCtSyllabus = isCT ? ctSyllabusArea.getText().trim() : task.ctSyllabus();
                 String newImportance = isPersonal ? importanceBox.getValue() : task.importance();
                 popup.close();
                 new Thread(() -> {
                     boolean isUpdated = dataService.updateTaskDetails(
-                        task.id(), newTitle, newRoom, newDesc,
+                        task.id(), newTitle, newTime, newRoom, newDesc,
                         newCtCourse, newCtSyllabus, newImportance);
                     if (isUpdated) {
                         Platform.runLater(() -> {
                             for (int i = 0; i < allTasks.size(); i++) {
                                 if (allTasks.get(i).id().equals(task.id())) {
                                     allTasks.set(i, new StudyTask(
-                                        task.id(), newTitle, task.date(), task.startTime(),
+                                        task.id(), newTitle, task.date(), newTime,
                                         task.durationMinutes(), newRoom, task.type(), newDesc,
                                         task.creatorRole(), newCtCourse, newCtSyllabus,
                                         task.status(), newImportance));

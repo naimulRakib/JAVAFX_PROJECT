@@ -72,7 +72,7 @@ public class SupabaseService {
             String  contentType = Files.probeContentType(file.toPath());
             if (contentType == null) contentType = "application/octet-stream";
 
-            String uploadUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + fileName;
+            String uploadUrl = baseUrl() + "/storage/v1/object/" + bucketName + "/" + fileName;
 
             Request request = new Request.Builder()
                     .url(uploadUrl)
@@ -103,7 +103,7 @@ public class SupabaseService {
      * Only works if the bucket is configured as "Public" in Supabase Dashboard.
      */
     public String getPublicUrl(String fileName) {
-        return supabaseUrl + "/storage/v1/object/public/" + bucketName + "/" + fileName;
+        return baseUrl() + "/storage/v1/object/public/" + bucketName + "/" + fileName;
     }
 
     /**
@@ -112,7 +112,7 @@ public class SupabaseService {
      * @param fileName Path inside the bucket (the value stored as supabase_file_id)
      */
     public boolean deleteFile(String fileName) {
-        String deleteUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + fileName;
+        String deleteUrl = baseUrl() + "/storage/v1/object/" + bucketName + "/" + fileName;
         Request request = new Request.Builder()
                 .url(deleteUrl)
                 .delete()
@@ -143,7 +143,7 @@ public class SupabaseService {
      * @return raw JSON string (array), or null on failure
      */
     public String getJson(String queryPath) {
-        String url = supabaseUrl + "/rest/v1/" + queryPath;
+        String url = restBaseUrl() + "/" + queryPath;
         Request request = new Request.Builder()
                 .url(url)
                 .get()
@@ -162,7 +162,7 @@ public class SupabaseService {
      * @return response body (representation), or null on failure
      */
     public String postJson(String table, String jsonBody) {
-        String url = supabaseUrl + "/rest/v1/" + table;
+        String url = restBaseUrl() + "/" + table;
         Request request = new Request.Builder()
                 .url(url)
                 .post(RequestBody.create(jsonBody, JSON_TYPE))
@@ -182,7 +182,7 @@ public class SupabaseService {
      * @return true on success
      */
     public boolean patchJson(String queryPath, String jsonBody) {
-        String url = supabaseUrl + "/rest/v1/" + queryPath;
+        String url = restBaseUrl() + "/" + queryPath;
         Request request = new Request.Builder()
                 .url(url)
                 .patch(RequestBody.create(jsonBody, JSON_TYPE))
@@ -200,7 +200,7 @@ public class SupabaseService {
      * @return true on success
      */
     public boolean deleteRow(String queryPath) {
-        String url = supabaseUrl + "/rest/v1/" + queryPath;
+        String url = restBaseUrl() + "/" + queryPath;
         Request request = new Request.Builder()
                 .url(url)
                 .delete()
@@ -309,5 +309,18 @@ public class SupabaseService {
 
     private Object orNull(String s) {
         return (s == null || s.isBlank()) ? JSONObject.NULL : s;
+    }
+
+    private String baseUrl() {
+        if (supabaseUrl == null || supabaseUrl.isBlank()) return "";
+        String url = supabaseUrl.trim();
+        int idx = url.indexOf("/rest/v1/");
+        if (idx >= 0) url = url.substring(0, idx);
+        if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
+        return url;
+    }
+
+    private String restBaseUrl() {
+        return baseUrl() + "/rest/v1";
     }
 }

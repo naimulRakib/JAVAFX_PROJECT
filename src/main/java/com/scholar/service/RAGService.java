@@ -28,8 +28,9 @@ public class RAGService {
 
     @Autowired private JdbcTemplate      jdbc;
     @Autowired private EmbeddingService  embedder;
-    @Autowired private OpenRouterService ai;
+    @Autowired private GeminiService     ai;
     @Autowired private CourseService     courseService;
+    @Autowired private ResourceCacheService resourceCache;
 
     // ──────────────────────────────────────────────────────────────
     // PUBLIC: ANSWER WITH RAG
@@ -47,11 +48,20 @@ public class RAGService {
         List<Map<String, Object>> vectorResults = vectorSearch(vectorStr, courseHint);
         LOG.info("RAG vector search returned " + vectorResults.size() + " results for: " + userQuery);
 
-        // STEP 3: Keyword fallback if vector search empty
+        // STEP 3: Keyword/cache fallback if vector search empty
         String keywordContext = "";
+        List<com.scholar.model.ResourceDoc> cacheHits = List.of();
         if (vectorResults.isEmpty()) {
-            keywordContext = courseService.fetchResourceContextForAI(userQuery);
-            LOG.info("RAG: using keyword fallback, found context length=" + keywordContext.length());
+            cacheHits = resourceCache.search(userQuery, courseHint, 6);
+            if (!cacheHits.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (var d : cacheHits) sb.append(formatResourceDoc(d));
+                keywordContext = sb.toString();
+                LOG.info("RAG: using cache fallback, found " + cacheHits.size() + " items");
+            } else {
+                keywordContext = courseService.fetchResourceContextForAI(userQuery);
+                LOG.info("RAG: using keyword fallback, found context length=" + keywordContext.length());
+            }
         }
 
         // STEP 4: Course structure
@@ -129,7 +139,7 @@ public class RAGService {
                 return jdbc.queryForList("""
                     SELECT id, title, description, ai_summary, tags,
                            topic_name, segment_name, course_name,
-                           type, link, difficulty, upvotes,
+                           type, link, difficulty, upvotes, community_notes,
                            1 - (content_vector <=> ?::vector) AS similarity
                     FROM resources
                     WHERE is_public = true
@@ -145,7 +155,7 @@ public class RAGService {
                 return jdbc.queryForList("""
                     SELECT id, title, description, ai_summary, tags,
                            topic_name, segment_name, course_name,
-                           type, link, difficulty, upvotes,
+                           type, link, difficulty, upvotes, community_notes,
                            1 - (content_vector <=> ?::vector) AS similarity
                     FROM resources
                     WHERE is_public = true
@@ -170,12 +180,25 @@ public class RAGService {
         double similarity = row.get("similarity") != null
             ? ((Number) row.get("similarity")).doubleValue() : 0.0;
 
+        int id = row.get("id") != null ? ((Number) row.get("id")).intValue() : -1;
+        var cached = id > 0 ? resourceCache.getById(id) : null;
+        String avgTime = cached != null ? String.format("%.0f mins", cached.avgTimeMins()) : "—";
+        String completionRate = cached != null && cached.progressCount() > 0
+            ? String.format("%.0f%%", (cached.completedCount() * 100.0 / cached.progressCount()))
+            : "—";
+
+        String notes = safe(row.get("community_notes"));
+        String noteLine = notes.equals("—") || notes.isBlank()
+            ? ""
+            : "   💬 Notes: " + notes + "\n";
+
         return String.format(
             "📚 [%s] %s  (relevance: %.0f%%)\n"
           + "   📍 %s > %s > %s\n"
-          + "   📊 Difficulty: %s | ⭐ Upvotes: %s\n"
+          + "   📊 Type: %s | ⭐ Upvotes: %s | Difficulty: %s | ✅ Completion: %s | ⏱ Avg Time: %s\n"
           + "   🏷 Tags: %s\n"
           + "   🤖 Summary: %s\n"
+          + "%s"
           + "   🔗 Link: %s\n\n",
             safe(row.get("type")),
             safe(row.get("title")),
@@ -183,11 +206,50 @@ public class RAGService {
             safe(row.get("course_name")),
             safe(row.get("segment_name")),
             safe(row.get("topic_name")),
-            safe(row.get("difficulty")),
+            safe(row.get("type")),
             safe(row.get("upvotes")),
+            safe(row.get("difficulty")),
+            completionRate,
+            avgTime,
             safe(row.get("tags")),
             safe(row.get("ai_summary")),
+            noteLine,
             safe(row.get("link"))
+        );
+    }
+
+    private String formatResourceDoc(com.scholar.model.ResourceDoc d) {
+        String completionRate = d.progressCount() > 0
+            ? String.format("%.0f%%", (d.completedCount() * 100.0 / d.progressCount()))
+            : "—";
+        String avgTime = String.format("%.0f mins", d.avgTimeMins());
+        String notes = safe(d.communityNotes());
+        String noteLine = notes.equals("—") || notes.isBlank()
+            ? ""
+            : "   💬 Notes: " + notes + "\n";
+
+        return String.format(
+            "📚 [%s] %s\n"
+          + "   📍 %s > %s > %s\n"
+          + "   📊 Type: %s | ⭐ Upvotes: %d | Difficulty: %s | ✅ Completion: %s | ⏱ Avg Time: %s\n"
+          + "   🏷 Tags: %s\n"
+          + "   🤖 Summary: %s\n"
+          + "%s"
+          + "   🔗 Link: %s\n\n",
+            safe(d.type()),
+            safe(d.title()),
+            safe(d.courseName()),
+            safe(d.segmentName()),
+            safe(d.topicName()),
+            safe(d.type()),
+            d.upvotes(),
+            safe(d.difficulty()),
+            completionRate,
+            avgTime,
+            safe(d.tags()),
+            safe(d.aiSummary()),
+            noteLine,
+            safe(d.link())
         );
     }
 
@@ -266,12 +328,14 @@ public class RAGService {
             3. NEVER make up links, topic names, or course codes.
             4. Always name which resource/topic you're referencing.
             5. When resources are found, list them as clickable HTML links.
-            6. If asked for "best resources", rank by upvotes and explain why each is good.
-            7. Personalise using User Progress if available.
-            8. Format as clean HTML: use <h3>, <ul>, <li>, <a href>, <strong>, <em>, <code>.
+            6. Prefer WEB-type resources when the user wants quick references or external reading.
+            7. If asked for "best resources", rank by upvotes, then completion rate, then avg time (shorter is better).
+            8. Always highlight resource stats (type, upvotes, difficulty, completion, avg time).
+            9. Personalise using User Progress if available.
+            10. Format as clean HTML: use <h3>, <ul>, <li>, <a href>, <strong>, <em>, <code>.
                Make it visually clear and easy to scan. NO raw markdown — only HTML tags.
 
-            9. Dont use any emoji strictly!!
+            11. Dont use any emoji strictly!!
 
             ══ DATABASE CONTEXT ══
             %s
@@ -293,18 +357,19 @@ public class RAGService {
                 String sql = "SELECT * FROM resources WHERE id = ?";
                 Map<String, Object> row = jdbc.queryForMap(sql, resourceId);
 
-                // 🟢 FIX: safe(row.get("course_code"))
                 String aiContextText = String.format(
                     "Course: %s | Segment: %s | Topic: %s\n" +
                     "Resource Title: %s\n" +
                     "Type: %s | Difficulty: %s | Tags: %s\n" +
                     "Description: %s\n" +
-                    "AI Summary: %s",
-                    safe(row.get("course_code")), safe(row.get("segment_name")), safe(row.get("topic_name")),
+                    "AI Summary: %s\n" +
+                    "Community Notes: %s",
+                    safe(row.get("course_name")), safe(row.get("segment_name")), safe(row.get("topic_name")),
                     safe(row.get("title")), 
                     safe(row.get("type")), safe(row.get("difficulty")), safe(row.get("tags")),
                     safe(row.get("description")), 
-                    safe(row.get("ai_summary"))
+                    safe(row.get("ai_summary")),
+                    safe(row.get("community_notes"))
                 );
 
                 float[] vector = embedder.embed(aiContextText);

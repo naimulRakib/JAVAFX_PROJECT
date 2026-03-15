@@ -67,6 +67,8 @@ implementation 'org.openjfx:javafx-swing:21.0.1'
     // Jsoup (For Devpost Scraping)
     implementation 'org.jsoup:jsoup:1.16.1'
 
+    testImplementation 'junit:junit:4.13.2'
+
     
     
     // Lombok (Helper)

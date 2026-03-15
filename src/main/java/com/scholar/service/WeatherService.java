@@ -19,8 +19,12 @@ public class WeatherService {
     public record DailyWeather(String maxTemp, String minTemp, String rainChance, 
                                String uvIndex, String windSpeed, String sunrise, String sunset, 
                                String emoji, String condition) {}
+    public record CurrentWeather(String temperature, String humidity, String precipitationProb,
+                                 String windSpeed, String condition, String rainDetails,
+                                 String emoji, String time) {}
 
     private Map<String, DailyWeather> currentForecast = new HashMap<>();
+    private CurrentWeather currentWeather = null;
     
     // 💾 লোকেশন সেভ করে রাখার জন্য Java Preferences
     private Preferences prefs = Preferences.userNodeForPackage(WeatherService.class);
@@ -65,8 +69,12 @@ public class WeatherService {
 
         try {
             // Open-Meteo থেকে সব ক্লাইমেট ডেটা (UV, Wind, Sunrise, Sunset) আনা হচ্ছে
-            String url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lng + 
-                         "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,windspeed_10m_max,sunrise,sunset,weathercode&timezone=auto";
+            String url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lng +
+                         "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,precipitation,rain,showers,snowfall" +
+                         "&hourly=precipitation_probability" +
+                         "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,windspeed_10m_max,sunrise,sunset,weather_code" +
+                         "&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm" +
+                         "&timezone=auto";
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
@@ -74,7 +82,45 @@ public class WeatherService {
             
             // ObjectMapper দিয়ে JSON সুন্দরভাবে পড়া হচ্ছে
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode daily = mapper.readTree(response.body()).path("daily");
+            JsonNode root = mapper.readTree(response.body());
+            JsonNode daily = root.path("daily");
+            JsonNode current = root.path("current");
+            JsonNode hourly = root.path("hourly");
+
+            if (!current.isMissingNode()) {
+                String temp = Math.round(current.path("temperature_2m").asDouble()) + "°C";
+                String humidity = current.path("relative_humidity_2m").asText() + "%";
+                String wind = current.path("wind_speed_10m").asText() + " km/h";
+                int code = current.path("weather_code").asInt();
+                String condition = getConditionFromCode(code);
+                String emoji = getEmojiForCondition(condition);
+
+                double rain = current.path("rain").asDouble(0);
+                double showers = current.path("showers").asDouble(0);
+                double snow = current.path("snowfall").asDouble(0);
+                double precip = current.path("precipitation").asDouble(0);
+
+                String rainDetails = (rain > 0 || showers > 0 || snow > 0 || precip > 0)
+                    ? ("Rain: " + rain + "mm, Showers: " + showers + "mm, Snow: " + snow + "cm")
+                    : "No rain expected";
+
+                String precipProb = "—";
+                String currentTime = current.path("time").asText();
+                if (!hourly.isMissingNode() && hourly.has("time") && hourly.has("precipitation_probability")) {
+                    JsonNode times = hourly.path("time");
+                    JsonNode probs = hourly.path("precipitation_probability");
+                    for (int i = 0; i < times.size() && i < probs.size(); i++) {
+                        if (currentTime.equals(times.get(i).asText())) {
+                            precipProb = probs.get(i).asText() + "%";
+                            break;
+                        }
+                    }
+                }
+
+                currentWeather = new CurrentWeather(
+                    temp, humidity, precipProb, wind, condition, rainDetails, emoji, currentTime
+                );
+            }
 
             if (!daily.isMissingNode()) {
                 for (int i = 0; i < daily.path("time").size(); i++) {
@@ -89,7 +135,7 @@ public class WeatherService {
                     String sunrise = daily.path("sunrise").get(i).asText().substring(11);
                     String sunset = daily.path("sunset").get(i).asText().substring(11);
                     
-                    int code = daily.path("weathercode").get(i).asInt();
+                    int code = daily.path("weather_code").get(i).asInt();
                     String condition = getConditionFromCode(code);
                     String emoji = getEmojiForCondition(condition);
 
@@ -103,14 +149,21 @@ public class WeatherService {
         return currentForecast;
     }
 
+    public CurrentWeather getCurrentWeather() {
+        return currentWeather;
+    }
+
     // কন্ডিশন এবং ইমোজির লজিক আগের মতোই
     private String getConditionFromCode(int code) {
         if (code == 0) return "Clear sky";
-        if (code >= 1 && code <= 3) return "Partly cloudy";
+        if (code == 1) return "Mainly clear";
+        if (code == 2) return "Partly cloudy";
+        if (code == 3) return "Overcast";
         if (code >= 45 && code <= 48) return "Fog";
-        if (code >= 51 && code <= 67) return "Rain";
+        if (code >= 51 && code <= 57) return "Drizzle";
+        if (code >= 61 && code <= 67) return "Rain";
         if (code >= 71 && code <= 77) return "Snow";
-        if (code >= 80 && code <= 82) return "Showers";
+        if (code >= 80 && code <= 82) return "Rain showers";
         if (code >= 95 && code <= 99) return "Thunderstorm";
         return "Cloudy";
     }

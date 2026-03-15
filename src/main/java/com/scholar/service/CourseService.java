@@ -1,6 +1,8 @@
 package com.scholar.service;
 
+import com.scholar.model.ResourceDoc;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import javax.sql.DataSource;
 import java.sql.*;
@@ -35,6 +37,11 @@ public class CourseService {
 
     @Autowired
     private DataSource dataSource;
+    @Autowired(required = false)
+    private ResourceCacheService resourceCache;
+    @Autowired(required = false)
+    @Lazy
+    private RAGService ragService;
 
     // ──────────────────────────────────────────────────────────────
     // CONNECTION
@@ -455,6 +462,7 @@ public class CourseService {
                 0,          0,            false,
                 0
             )
+            RETURNING id
             """;
 
         try (Connection conn = connect();
@@ -477,10 +485,17 @@ public class CourseService {
             ps.setString (15, segmentName);
             ps.setString (16, courseName);
 
-            boolean ok = ps.executeUpdate() > 0;
-            if (ok) LOG.info("addDetailedResource: saved [" + title + "] topic=" + topicName
-                + " seg=" + segmentName + " course=" + courseName);
-            return ok;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int newId = rs.getInt("id");
+                    LOG.info("addDetailedResource: saved [" + title + "] topic=" + topicName
+                        + " seg=" + segmentName + " course=" + courseName);
+                    if (resourceCache != null) resourceCache.refreshResource(newId);
+                    if (ragService != null) ragService.indexResource(newId);
+                    return true;
+                }
+            }
+            return false;
 
         } catch (SQLException e) {
             System.err.println("=== UPLOAD FAILED — FULL SQL ERROR ===");
@@ -526,7 +541,12 @@ public class CourseService {
             ps.setString(8, desc != null ? desc.trim() : "");  // keep user_notes in sync
             ps.setInt(9, id);
             ps.setObject(10, AuthService.CURRENT_USER_ID);
-            return ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) {
+                if (resourceCache != null) resourceCache.refreshResource(id);
+                if (ragService != null) ragService.indexResource(id);
+            }
+            return ok;
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "updateResource failed for id=" + id, e);
             return false;
@@ -544,7 +564,9 @@ public class CourseService {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, resId);
             if (!isAdmin) ps.setObject(2, AuthService.CURRENT_USER_ID);
-            return ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok && resourceCache != null) resourceCache.refreshResource(resId);
+            return ok;
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "deleteResource failed for id=" + resId, e);
             return false;
@@ -592,6 +614,7 @@ public class CourseService {
                     ps.executeUpdate();
                 }
                 conn.commit();
+                if (resourceCache != null) resourceCache.refreshResource(resourceId);
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
@@ -629,10 +652,36 @@ public class CourseService {
             ps.setString(3, difficulty != null ? difficulty : "Medium");
             ps.setInt(4, timeMins);
             ps.setString(5, userNote != null ? userNote : "");
-            return ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) {
+                syncCommunityNotes(resourceId);
+                if (resourceCache != null) resourceCache.refreshResource(resourceId);
+                if (ragService != null) ragService.indexResource(resourceId);
+            }
+            return ok;
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "markResourceDone failed for resourceId=" + resourceId, e);
             return false;
+        }
+    }
+
+    private void syncCommunityNotes(int resourceId) {
+        String sql = """
+            UPDATE resources
+            SET community_notes = COALESCE((
+                SELECT string_agg(user_note, '\n')
+                FROM user_progress
+                WHERE resource_id = ? AND user_note IS NOT NULL AND user_note <> ''
+            ), '')
+            WHERE id = ?
+            """;
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, resourceId);
+            ps.setInt(2, resourceId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING, "syncCommunityNotes failed for resourceId=" + resourceId, e);
         }
     }
 
@@ -832,20 +881,34 @@ public class CourseService {
     // ──────────────────────────────────────────────────────────────
 
     public String fetchResourceContextForAI(String userQuery) {
+        if (userQuery == null || userQuery.isBlank()) return "";
+        if (resourceCache != null) {
+            List<ResourceDoc> hits = resourceCache.search(userQuery, null, 5);
+            if (!hits.isEmpty()) {
+                StringBuilder cached = new StringBuilder();
+                for (ResourceDoc d : hits) {
+                    cached.append("=== RESOURCE CARD ===\nPath: ")
+                          .append(d.courseName()).append(" > ")
+                          .append(d.segmentName()).append(" > ")
+                          .append(d.topicName()).append("\n")
+                          .append("📄 Title: ").append(d.title()).append("\n")
+                          .append("🔗 Link: ").append(d.link()).append("\n")
+                          .append("⭐ Upvotes: ").append(d.upvotes())
+                          .append(" | AI Summary: ").append(d.aiSummary()).append("\n")
+                          .append("💬 Community Notes: ").append(d.communityNotes()).append("\n\n");
+                }
+                return cached.toString();
+            }
+        }
         StringBuilder ctx = new StringBuilder();
         String kw = "%" + userQuery.trim().toLowerCase() + "%";
         String sql = """
             SELECT r.title, r.link, r.type, r.difficulty, r.upvotes, r.ai_summary,
-                   c.code AS course_code, s.name AS segment_name, t.title AS topic_name,
-                   (SELECT STRING_AGG('- ' || user_note, E'\\n')
-                    FROM user_progress WHERE resource_id = r.id
-                      AND user_note IS NOT NULL AND user_note <> '') AS community_notes
+                   r.course_name, r.segment_name, r.topic_name,
+                   r.community_notes
             FROM resources r
-            JOIN topics   t ON r.topic_id   = t.id
-            JOIN segments s ON t.segment_id = s.id
-            JOIN courses  c ON s.course_id  = c.id
-            WHERE (LOWER(c.code)   LIKE ? OR LOWER(s.name)  LIKE ?
-                OR LOWER(t.title)  LIKE ? OR LOWER(r.title) LIKE ?
+            WHERE (LOWER(r.course_name)  LIKE ? OR LOWER(r.segment_name) LIKE ?
+                OR LOWER(r.topic_name)  LIKE ? OR LOWER(r.title) LIKE ?
                 OR LOWER(r.tags)   LIKE ?)
               AND r.channel_id = ?
             ORDER BY r.upvotes DESC
@@ -858,7 +921,7 @@ public class CourseService {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     ctx.append("=== RESOURCE CARD ===\nPath: ")
-                       .append(rs.getString("course_code")).append(" > ")
+                       .append(rs.getString("course_name")).append(" > ")
                        .append(rs.getString("segment_name")).append(" > ")
                        .append(rs.getString("topic_name")).append("\n")
                        .append("📄 Title: ").append(rs.getString("title")).append("\n")

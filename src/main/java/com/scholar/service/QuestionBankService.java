@@ -10,6 +10,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.Loader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service; // 🟢 নতুন
 
 import java.io.File;
@@ -27,18 +28,10 @@ import java.util.stream.Collectors;
 public class QuestionBankService {
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
-    private final String apiKey;
     private final ObjectMapper jsonMapper = new ObjectMapper();
 
-    // ✅ ২. আপনার অরিজিনাল কনস্ট্রাক্টর লজিক (অক্ষত)
-    public QuestionBankService() {
-        // সরাসরি সিস্টেম এনভায়রনমেন্ট ভ্যারিয়েবল ব্যবহার
-        this.apiKey = System.getenv("GEMINI_API_KEY");
-        
-        if (this.apiKey == null || this.apiKey.isEmpty()) {
-            System.err.println("❌ ERROR: GEMINI_API_KEY not found in system environment variables!");
-        }
-    }
+    @Value("${gemini.api.key:}")
+    private String geminiApiKey;
 
     /**
      * Reads PDFs using Apache PDFBox. (Logic Unchanged)
@@ -61,6 +54,10 @@ public class QuestionBankService {
      * Main AI Analysis via Gemini API. (Logic Unchanged)
      */
     public List<Question> analyzeQuestions(String rawPdfText) throws Exception {
+        String apiKey = resolveApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new Exception("GEMINI_API_KEY is missing. Set GEMINI_API_KEY env var or gemini.api.key in application.properties.");
+        }
         String prompt = """
             You are a JSON Converter. Extract exam questions from the text.
             Merge duplicates. Rate importance (1-5).
@@ -94,6 +91,12 @@ public class QuestionBankService {
         
         String cleanJson = aiResponseText.substring(start, end + 1);
         return jsonMapper.readValue(cleanJson, new TypeReference<List<Question>>() {});
+    }
+
+    private String resolveApiKey() {
+        String envKey = System.getenv("GEMINI_API_KEY");
+        if (envKey != null && !envKey.isBlank()) return envKey;
+        return geminiApiKey;
     }
 
     /**

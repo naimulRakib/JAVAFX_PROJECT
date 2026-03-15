@@ -4,7 +4,8 @@
 <?import javafx.scene.layout.*?>
 
 <ScrollPane fitToWidth="true"
-            style="-fx-background-color:transparent;-fx-background:transparent;"
+            style="-fx-background-color:transparent;-fx-background:transparent;
+                   -fx-background-radius:12;-fx-border-radius:12;"
             xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.scholar.controller.AdminMergeController">
@@ -32,8 +33,12 @@
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <Label text="User Privacy in Merged Hub:"
                        style="-fx-font-size:12;-fx-text-fill:#94a3b8;-fx-min-width:190;"/>
-                <ComboBox fx:id="privacyCombo" prefWidth="150"
-                          style="-fx-font-size:12;"/>
+            <ComboBox fx:id="privacyCombo" prefWidth="150"
+                          style="-fx-font-size:12;
+                                 -fx-background-radius:7;-fx-border-radius:7;
+                                 -fx-border-color:rgba(99,102,241,0.3);
+                                 -fx-background-color:#0d0f1a;
+                                 -fx-text-fill:#e2e8f0;"/>
                 <Label text="PUBLIC = names shown  |  ANONYMOUS = hidden"
                        style="-fx-font-size:10;-fx-text-fill:#475569;"/>
             </HBox>
@@ -61,7 +66,11 @@
                     <Label text="Merge Type"
                            style="-fx-font-size:10;-fx-text-fill:#475569;"/>
                     <ComboBox fx:id="mergeTypeCombo" prefWidth="145"
-                              style="-fx-font-size:12;"/>
+                              style="-fx-font-size:12;
+                                     -fx-background-radius:7;-fx-border-radius:7;
+                                     -fx-border-color:rgba(99,102,241,0.3);
+                                     -fx-background-color:#0d0f1a;
+                                     -fx-text-fill:#e2e8f0;"/>
                 </VBox>
                 <VBox spacing="4">
                     <Label text="Duration (days)"
@@ -91,7 +100,8 @@
                       style="-fx-background-radius:8;
                              -fx-border-color:rgba(99,102,241,0.25);
                              -fx-border-radius:8;-fx-font-size:12;
-                             -fx-background-color:#0d0f1a;"/>
+                             -fx-background-color:#0d0f1a;
+                             -fx-control-inner-background:#0d0f1a;"/>
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <Button text="📨 Send Merge Request" onAction="#onSendRequest"
                         style="-fx-background-color:#059669;-fx-text-fill:white;
@@ -124,7 +134,8 @@
                       style="-fx-background-radius:8;
                              -fx-border-color:rgba(99,102,241,0.25);
                              -fx-border-radius:8;-fx-font-size:12;
-                             -fx-background-color:#0d0f1a;"/>
+                             -fx-background-color:#0d0f1a;
+                             -fx-control-inner-background:#0d0f1a;"/>
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <Button text="✅ Accept &amp; Set Hub Name"
                         onAction="#onAcceptRequest"
@@ -165,7 +176,8 @@
                       style="-fx-background-radius:8;
                              -fx-border-color:rgba(99,102,241,0.25);
                              -fx-border-radius:8;-fx-font-size:12;
-                             -fx-background-color:#0d0f1a;"/>
+                             -fx-background-color:#0d0f1a;
+                             -fx-control-inner-background:#0d0f1a;"/>
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <Button text="🚪 Leave This Hub (Instant Unmerge)"
                         onAction="#onInstantUnmerge"

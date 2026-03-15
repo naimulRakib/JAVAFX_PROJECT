@@ -1,6 +1,7 @@
 package com.scholar.service;
 
 import com.scholar.model.StudyTask;
+import com.scholar.model.ClassOffPeriod;
 import com.scholar.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -160,16 +161,17 @@ public class DataService {
         } catch (SQLException e) { return false; }
     }
 
-    public boolean updateTaskDetails(String taskId, String title, String room, String desc, String ctCourse, String ctSyllabus, String importance) {
-        String sql = "UPDATE study_tasks SET title = ?, room_no = ?, description = ?, ct_course = ?, ct_syllabus = ?, importance = ? WHERE id = ?::uuid";
+    public boolean updateTaskDetails(String taskId, String title, String startTime, String room, String desc, String ctCourse, String ctSyllabus, String importance) {
+        String sql = "UPDATE study_tasks SET title = ?, start_time = ?, room_no = ?, description = ?, ct_course = ?, ct_syllabus = ?, importance = ? WHERE id = ?::uuid";
         try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, title);
-            pstmt.setString(2, room != null && !room.isEmpty() ? room : null);
-            pstmt.setString(3, desc);
-            pstmt.setString(4, ctCourse);
-            pstmt.setString(5, ctSyllabus);
-            pstmt.setString(6, importance); 
-            pstmt.setString(7, taskId);
+            pstmt.setString(2, startTime);
+            pstmt.setString(3, room != null && !room.isEmpty() ? room : null);
+            pstmt.setString(4, desc);
+            pstmt.setString(5, ctCourse);
+            pstmt.setString(6, ctSyllabus);
+            pstmt.setString(7, importance); 
+            pstmt.setString(8, taskId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -192,5 +194,113 @@ public class DataService {
             pstmt.setString(4, taskId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { return false; }
+    }
+
+    // =================================================================
+    //  SECTION 3: CLASS OFF PERIODS
+    // =================================================================
+
+    public boolean addClassOffPeriod(java.time.LocalDate start, java.time.LocalDate end, String reason) {
+        if (AuthService.CURRENT_CHANNEL_ID == -1) return false;
+        String sql = "INSERT INTO class_off_periods (channel_id, start_date, end_date, reason, created_by) " +
+                     "VALUES (?, ?::date, ?::date, ?, ?::uuid)";
+        try (Connection conn = connect()) {
+            ensureClassOffTable(conn);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, AuthService.CURRENT_CHANNEL_ID);
+                pstmt.setDate(2, java.sql.Date.valueOf(start));
+                pstmt.setDate(3, java.sql.Date.valueOf(end));
+                pstmt.setString(4, reason);
+                pstmt.setObject(5, AuthService.CURRENT_USER_ID);
+                return pstmt.executeUpdate() > 0;
+            }
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    public List<ClassOffPeriod> loadClassOffPeriods() {
+        if (AuthService.CURRENT_CHANNEL_ID == -1) return new ArrayList<>();
+        List<ClassOffPeriod> list = new ArrayList<>();
+        String sql = "SELECT id, start_date, end_date, reason FROM class_off_periods " +
+                     "WHERE channel_id = ? AND is_active = TRUE ORDER BY start_date ASC";
+        try (Connection conn = connect()) {
+            ensureClassOffTable(conn);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, AuthService.CURRENT_CHANNEL_ID);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    java.sql.Date s = rs.getDate("start_date");
+                    java.sql.Date e = rs.getDate("end_date");
+                    list.add(new ClassOffPeriod(
+                        String.valueOf(rs.getLong("id")),
+                        s != null ? s.toLocalDate() : null,
+                        e != null ? e.toLocalDate() : null,
+                        rs.getString("reason")
+                    ));
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public boolean reverseClassOffPeriod(String id) {
+        if (AuthService.CURRENT_CHANNEL_ID == -1 || id == null || id.isBlank()) return false;
+        String sql = "UPDATE class_off_periods SET is_active = FALSE WHERE id = ? AND channel_id = ?";
+        try (Connection conn = connect()) {
+            ensureClassOffTable(conn);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setLong(1, Long.parseLong(id));
+                pstmt.setInt(2, AuthService.CURRENT_CHANNEL_ID);
+                return pstmt.executeUpdate() > 0;
+            }
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    public int reverseClassOffByRange(java.time.LocalDate start, java.time.LocalDate end) {
+        if (AuthService.CURRENT_CHANNEL_ID == -1) return 0;
+        String sql = "UPDATE class_off_periods SET is_active = FALSE " +
+                     "WHERE channel_id = ? AND is_active = TRUE " +
+                     "AND NOT (end_date < ?::date OR start_date > ?::date)";
+        try (Connection conn = connect()) {
+            ensureClassOffTable(conn);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, AuthService.CURRENT_CHANNEL_ID);
+                pstmt.setDate(2, java.sql.Date.valueOf(start));
+                pstmt.setDate(3, java.sql.Date.valueOf(end));
+                return pstmt.executeUpdate();
+            }
+        } catch (SQLException e) { e.printStackTrace(); return 0; }
+    }
+
+    public int reverseAllClassOffPeriods() {
+        if (AuthService.CURRENT_CHANNEL_ID == -1) return 0;
+        String sql = "UPDATE class_off_periods SET is_active = FALSE WHERE channel_id = ? AND is_active = TRUE";
+        try (Connection conn = connect()) {
+            ensureClassOffTable(conn);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, AuthService.CURRENT_CHANNEL_ID);
+                return pstmt.executeUpdate();
+            }
+        } catch (SQLException e) { e.printStackTrace(); return 0; }
+    }
+
+    private void ensureClassOffTable(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS class_off_periods (" +
+                "id BIGSERIAL PRIMARY KEY," +
+                "channel_id INT NOT NULL," +
+                "start_date DATE NOT NULL," +
+                "end_date DATE NOT NULL," +
+                "reason TEXT," +
+                "created_by UUID," +
+                "is_active BOOLEAN NOT NULL DEFAULT TRUE," +
+                "created_at TIMESTAMPTZ DEFAULT NOW()" +
+                ")"
+            );
+            stmt.executeUpdate(
+                "CREATE INDEX IF NOT EXISTS idx_class_off_channel_dates " +
+                "ON class_off_periods (channel_id, start_date, end_date)"
+            );
+        }
     }
 }
